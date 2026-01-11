@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>font/SpaceGrotesk/SpaceGrotesk-Bold.ttf</string>
+		<string>font/SpaceGrotesk/SpaceGrotesk-SemiBold.ttf</string>
+		<string>font/SpaceGrotesk/SpaceGrotesk-Medium.ttf</string>
+		<string>font/SpaceGrotesk/SpaceGrotesk-Regular.ttf</string>
+		<string>font/SpaceGrotesk/SpaceGrotesk-Light.ttf</string>
+		<string>font/Inter-font/Inter_28pt-Regular.ttf</string>
+		<string>font/Inter-font/Inter_28pt-Medium.ttf</string>
+		<string>font/Inter-font/Inter_28pt-SemiBold.ttf</string>
+		<string>font/Inter-font/Inter_28pt-Bold.ttf</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+</dict>
+</plist>
