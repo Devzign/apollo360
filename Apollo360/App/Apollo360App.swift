@@ -16,6 +16,7 @@ struct Apollo360App: App {
     var body: some Scene {
         WindowGroup {
             DashboardView()
+                .preferredColorScheme(.light)
         }
     }
 }

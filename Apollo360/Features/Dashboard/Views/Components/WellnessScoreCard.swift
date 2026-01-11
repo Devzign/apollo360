@@ -13,13 +13,18 @@ struct WellnessScoreCard: View {
 
     var body: some View {
         DashboardCard {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .center, spacing: 6) {
                 HStack(alignment: .center) {
                     Text(title)
-                        .font(AppFont.display(size: 16, weight: .bold))                        .foregroundStyle(AppColor.black)
+                        .font(AppFont.display(size: 18, weight: .bold))
+                        .foregroundStyle(AppColor.black)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     WellnessModeToggle(selected: $mode)
                 }
+                .padding(.bottom, 10)
 
                 if mode == .absolute {
                     absoluteView
@@ -27,6 +32,7 @@ struct WellnessScoreCard: View {
                     relativeView
                 }
             }
+
         }
     }
 
@@ -102,8 +108,9 @@ private struct WellnessModeToggle: View {
                 Text(mode.rawValue)
                     .font(AppFont.body(size: 12, weight: .semibold))
                     .foregroundStyle(mode == selected ? AppColor.secondary : AppColor.grey)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
                     .background(mode == selected ? AppColor.primary : Color.clear)
                     .clipShape(Capsule())
                     .onTapGesture {
@@ -111,7 +118,7 @@ private struct WellnessModeToggle: View {
                     }
             }
         }
-        .padding(4)
+        .padding(3)
         .background(Color.black.opacity(0.05))
         .clipShape(Capsule())
     }
