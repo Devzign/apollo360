@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct DashboardView: View {
-    @StateObject private var viewModel = DashboardViewModel()
+    @StateObject private var viewModel: DashboardViewModel
+
+    init(session: SessionManager) {
+        _viewModel = StateObject(wrappedValue: DashboardViewModel(session: session))
+    }
 
     var body: some View {
         NavigationStack {
@@ -19,7 +23,7 @@ struct DashboardView: View {
                         description: viewModel.wellnessDescription,
                         currentScore: viewModel.currentScore,
                         previousScore: viewModel.previousScore,
-                        progress: viewModel.wellnessProgress,
+                        progress: viewModel.progress,
                         metrics: viewModel.wellnessMetrics,
                         isImproving: viewModel.isWellnessImproving,
                         changeValue: viewModel.wellnessChange,
@@ -34,7 +38,8 @@ struct DashboardView: View {
                     ActivitiesSummaryCard(
                         days: viewModel.activityDays,
                         stats: viewModel.activityStats,
-                        summaryNote: viewModel.activitySummaryNote
+                        summaryNote: viewModel.activitySummaryNote,
+                        weeklyChangePercent: viewModel.weeklyChangePercent
                     )
                     .dashboardSlideUp(delay: 0.3)
                 }
@@ -55,5 +60,5 @@ struct DashboardView: View {
 }
 
 #Preview {
-    DashboardView()
+    DashboardView(session: SessionManager())
 }

@@ -4,6 +4,12 @@ struct ActivitiesSummaryCard: View {
     let days: [ActivityDay]
     let stats: [ActivityStat]
     let summaryNote: String
+    let weeklyChangePercent: Int
+
+    private var formattedChangePercentage: String {
+        let prefix = weeklyChangePercent >= 0 ? "+" : ""
+        return "\(prefix)\(weeklyChangePercent)%"
+    }
 
     var body: some View {
         DashboardCard {
@@ -21,7 +27,7 @@ struct ActivitiesSummaryCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("+12%")
+                        Text(formattedChangePercentage)
                             .font(AppFont.body(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(AppColor.green)
@@ -118,7 +124,8 @@ private struct ActivityStatView: View {
             ActivityStat(value: "5/7", title: "Active Days", systemImage: "checkmark.circle", tint: AppColor.green),
             ActivityStat(value: "1,775", title: "Calories", systemImage: "flame", tint: AppColor.yellow)
         ],
-        summaryNote: "Great consistency! You've been active 5 out of 7 days."
+        summaryNote: "Great consistency! You've been active 5 out of 7 days.",
+        weeklyChangePercent: 12
     )
     .padding()
 }

@@ -9,14 +9,23 @@ import SwiftUI
 
 @main
 struct Apollo360App: App {
+    @StateObject private var session = SessionManager()
+
     init() {
         FontRegistrar.registerFonts()
     }
 
     var body: some Scene {
         WindowGroup {
-            DashboardView()
-                .preferredColorScheme(.light)
+            Group {
+                if session.isAuthenticated {
+                    DashboardView(session: session)
+                } else {
+                    LoginView()
+                }
+            }
+            .environmentObject(session)
+            .preferredColorScheme(.light)
         }
     }
 }
