@@ -1,6 +1,5 @@
 import Foundation
 
-/// Defines the set of supported environments when calling Apollo360 APIs.
 enum APIEnvironment: String, CaseIterable {
     case development
     case production
@@ -19,7 +18,6 @@ enum APIEnvironment: String, CaseIterable {
     }
 }
 
-/// Provides easy access to the current environment the app is targeting.
 enum APIConfiguration {
     static var currentEnvironment: APIEnvironment = {
         #if DEBUG
@@ -34,7 +32,6 @@ enum APIConfiguration {
     }
 }
 
-/// Consolidates endpoint paths so the API layer remains readable.
 enum APIEndpoint {
     static let patientLogin = "v1/auth/patient-login"
     static let verifyOTP = "v1/auth/verify-otp"

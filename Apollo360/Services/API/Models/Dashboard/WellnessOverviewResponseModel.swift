@@ -1,6 +1,5 @@
 import Foundation
 
-/// Response returned by `/dashboard/wellness-overview/:patientId`.
 struct WellnessOverviewAPIResponse: Decodable {
     let success: Bool
     let data: WellnessOverviewPayload

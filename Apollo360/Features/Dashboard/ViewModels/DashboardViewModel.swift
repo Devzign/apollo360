@@ -4,24 +4,24 @@ import SwiftUI
 
 @MainActor
 final class DashboardViewModel: ObservableObject {
-    @Published var stories: [DailyStory]
+    @Published var stories: [DailyStory] = []
     @Published var isLoadingInsights: Bool = false
     @Published var insightError: String?
-    @Published var wellnessMode: WellnessMode
-    @Published var currentScore: Int
-    @Published var previousScore: Int
-    @Published var progress: Double
-    @Published var wellnessMetrics: [WellnessMetric]
-    @Published var changeValue: Int
-    @Published var insights: [InsightItem]
-    @Published var cardioMetrics: [CardioMetric]
-    @Published var activityDays: [ActivityDay]
-    @Published var activityStats: [ActivityStat]
-    @Published var activitySummaryNote: String
-    @Published var weeklyChangePercent: Int
+    @Published var wellnessMode: WellnessMode = .absolute
+    @Published var currentScore: Int = 0
+    @Published var previousScore: Int = 0
+    @Published var progress: Double = 0
+    @Published var wellnessMetrics: [WellnessMetric] = []
+    @Published var changeValue: Int = 0
+    @Published var insights: [InsightItem] = []
+    @Published var cardioMetrics: [CardioMetric] = []
+    @Published var activityDays: [ActivityDay] = []
+    @Published var activityStats: [ActivityStat] = []
+    @Published var activitySummaryNote: String = ""
+    @Published var weeklyChangePercent: Int = 0
 
-    let session: SessionManager
-    private var relativeBreakdown: WellnessBreakdown
+    private let session: SessionManager
+    private var relativeBreakdown: WellnessBreakdown = WellnessBreakdown(activity: 0, sleep: 0, heart: 0, nutrition: 0)
     private let numberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -49,81 +49,35 @@ final class DashboardViewModel: ObservableObject {
 
     init(session: SessionManager) {
         self.session = session
-        let overview = DashboardAPIMock.wellnessOverview
-        self.relativeBreakdown = overview.relative.breakdown
-        self.wellnessMode = overview.mode
-        self.currentScore = overview.overallScore
-        self.previousScore = overview.relative.lastWeek
-        self.changeValue = overview.relative.delta
-        self.progress = Double(overview.overallScore) / 100.0
-        self.wellnessMetrics = Self.metrics(current: overview.relative.breakdown,
-                                            previous: overview.relative.breakdown)
-        self.stories = Self.defaultStories()
-        self.insights = DashboardAPIMock.apolloInsights.enumerated().map { index, detail in
-            InsightItem(
-                id: detail.id,
-                title: detail.title,
-                detail: detail.description,
-                iconURL: detail.iconURL,
-                impact: Self.impact(for: index)
-            )
-        }
-        self.cardioMetrics = [
-            CardioMetric(
-                title: "Blood Pressure",
-                value: "121/77",
-                unit: "mmHg",
-                trend: "+1% from last week",
-                tint: AppColor.red,
-                sparkline: [0.62, 0.64, 0.61, 0.66, 0.63, 0.65, 0.64]
-            ),
-            CardioMetric(
-                title: "Resting Heart Rate",
-                value: "65",
-                unit: "bpm",
-                trend: "-3 bpm from last week",
-                tint: AppColor.green,
-                sparkline: [0.56, 0.52, 0.54, 0.51, 0.49, 0.5, 0.48]
-            ),
-            CardioMetric(
-                title: "Glucose",
-                value: "96",
-                unit: "mg/dL",
-                trend: "Stable this week",
-                tint: AppColor.yellow,
-                sparkline: [0.48, 0.52, 0.5, 0.47, 0.49, 0.48, 0.46]
-            )
-        ]
-        self.activityDays = [
-            ActivityDay(label: "M", steps: 8234, isActive: true),
-            ActivityDay(label: "T", steps: 6521, isActive: true),
-            ActivityDay(label: "W", steps: 4102, isActive: false),
-            ActivityDay(label: "T", steps: 7845, isActive: true),
-            ActivityDay(label: "F", steps: 9012, isActive: true),
-            ActivityDay(label: "S", steps: 5234, isActive: true),
-            ActivityDay(label: "S", steps: 3421, isActive: false)
-        ]
-        self.activityStats = [
-            ActivityStat(value: Self.formatNumber(6338), title: "Avg Steps", systemImage: "figure.walk", tint: AppColor.primary),
-            ActivityStat(value: "5/7", title: "Active Days", systemImage: "checkmark.circle", tint: AppColor.green),
-            ActivityStat(value: Self.formatNumber(1775), title: "Calories", systemImage: "flame", tint: AppColor.yellow)
-        ]
-        self.activitySummaryNote = "Great consistency! You have been active 5 out of 7 days."
-        self.weeklyChangePercent = 12
-
+        fetchDailyStories()
         fetchWellnessOverview()
         fetchApolloInsights()
         fetchCardiometabolicMetrics()
         fetchActivities()
     }
 
-    private func fetchWellnessOverview() {
-        guard let patientId = session.patientId else {
-            return
+    private func fetchDailyStories() {
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
+        DashboardAPIService.shared.fetchDashboardInsights(patientId: patientId, bearerToken: token) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let payloads):
+                self.stories = payloads.map(Self.story(from:))
+                self.insightError = nil
+            case .failure(let error):
+                self.insightError = error.localizedDescription
+            }
         }
-        guard let token = session.accessToken else { return }
-        APIClient.shared.fetchWellnessOverview(patientId: patientId, bearerToken: token, mode: .absolute) { [weak self] result in
-            guard let self else { return }
+    }
+
+    private func fetchWellnessOverview() {
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
+        DashboardAPIService.shared.fetchWellnessOverview(patientId: patientId, bearerToken: token, mode: .absolute) { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let payload):
                 self.wellnessMode = WellnessMode(apiValue: payload.mode)
@@ -131,8 +85,7 @@ final class DashboardViewModel: ObservableObject {
                 self.progress = min(Double(payload.overallScore) / 100.0, 1.0)
                 let currentBreakdown = Self.breakdown(from: payload.absolute)
                 if let relative = payload.relative {
-                    let mapped = WellnessBreakdown(activity: relative.activity, sleep: relative.sleep, heart: relative.heart, nutrition: relative.nutrition)
-                    self.relativeBreakdown = mapped
+                    self.relativeBreakdown = Self.breakdown(from: relative)
                 }
                 self.updateMetrics(using: currentBreakdown)
                 self.changeValue = self.currentScore - self.previousScore
@@ -143,11 +96,12 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func fetchApolloInsights() {
-        guard let patientId = session.patientId else { return }
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
         isLoadingInsights = true
-        guard let token = session.accessToken else { return }
-        APIClient.shared.fetchApolloInsights(patientId: patientId, bearerToken: token) { [weak self] result in
-            guard let self else { return }
+        DashboardAPIService.shared.fetchApolloInsights(patientId: patientId, bearerToken: token) { [weak self] result in
+            guard let self = self else { return }
             self.isLoadingInsights = false
             switch result {
             case .success(let payload):
@@ -156,6 +110,7 @@ final class DashboardViewModel: ObservableObject {
                         id: insight.id,
                         title: insight.title,
                         detail: insight.description,
+                        systemImage: "lightbulb",
                         iconURL: insight.iconUrl,
                         impact: Self.impact(for: index)
                     )
@@ -168,10 +123,11 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func fetchCardiometabolicMetrics() {
-        guard let patientId = session.patientId else { return }
-        guard let token = session.accessToken else { return }
-        APIClient.shared.fetchCardiometabolicMetrics(patientId: patientId, bearerToken: token) { [weak self] result in
-            guard let self else { return }
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
+        DashboardAPIService.shared.fetchCardiometabolicMetrics(patientId: patientId, bearerToken: token) { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let payload):
                 let mapped = payload.metrics.careTeamMetrics.values.sorted { $0.title < $1.title }.map { metric in
@@ -184,9 +140,7 @@ final class DashboardViewModel: ObservableObject {
                         sparkline: self.normalizedSparkline(metric.sparkline)
                     )
                 }
-                if !mapped.isEmpty {
-                    self.cardioMetrics = mapped
-                }
+                self.cardioMetrics = mapped.isEmpty ? Self.defaultCardioMetrics() : mapped
             case .failure:
                 break
             }
@@ -194,19 +148,20 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func fetchActivities() {
-        guard let patientId = session.patientId else { return }
-        guard let token = session.accessToken else { return }
-        APIClient.shared.fetchActivities(patientId: patientId, bearerToken: token) { [weak self] result in
-            guard let self else { return }
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
+        DashboardAPIService.shared.fetchActivities(patientId: patientId, bearerToken: token) { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let payload):
                 self.activityDays = payload.chart.map { entry in
                     ActivityDay(label: entry.day, steps: entry.value, isActive: entry.isActive)
                 }
                 self.activityStats = [
-                    ActivityStat(value: Self.formatNumber(payload.summary.avgSteps), title: "Avg Steps", systemImage: "figure.walk", tint: AppColor.primary),
+                    ActivityStat(value: self.formatNumber(payload.summary.avgSteps), title: "Avg Steps", systemImage: "figure.walk", tint: AppColor.primary),
                     ActivityStat(value: "\(payload.summary.activeDays)/7", title: "Active Days", systemImage: "checkmark.circle", tint: AppColor.green),
-                    ActivityStat(value: Self.formatNumber(payload.summary.calories), title: "Calories", systemImage: "flame", tint: AppColor.yellow)
+                    ActivityStat(value: self.formatNumber(payload.summary.calories), title: "Calories", systemImage: "flame", tint: AppColor.yellow)
                 ]
                 self.activitySummaryNote = payload.message
                 self.weeklyChangePercent = payload.weeklyChangePercent
@@ -220,11 +175,9 @@ final class DashboardViewModel: ObservableObject {
         wellnessMetrics = Self.metrics(current: current, previous: relativeBreakdown)
     }
 
-    private static func formatNumber(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
+    private func formatNumber(_ value: Int) -> String {
         let number = NSNumber(value: value)
-        return formatter.string(from: number) ?? "\(value)"
+        return numberFormatter.string(from: number) ?? "\(value)"
     }
 
     private func tintColor(for value: String?) -> Color {
@@ -264,6 +217,15 @@ final class DashboardViewModel: ObservableObject {
         )
     }
 
+    private static func breakdown(from relative: WellnessRelativeBreakdown) -> WellnessBreakdown {
+        WellnessBreakdown(
+            activity: relative.activity,
+            sleep: relative.sleep,
+            heart: relative.heart,
+            nutrition: relative.nutrition
+        )
+    }
+
     private static func impact(for index: Int) -> InsightImpact {
         switch index {
         case 0: return .positive
@@ -285,21 +247,6 @@ final class DashboardViewModel: ObservableObject {
         )
     }
 
-    private static func defaultStories() -> [DailyStory] {
-        DashboardAPIMock.insightSnapshots.map { snapshot in
-            DailyStory(
-                title: snapshot.category,
-                tint: color(for: snapshot.category),
-                hasUpdate: true,
-                isViewed: false,
-                iconURL: snapshot.iconURL,
-                headline: snapshot.title,
-                detail: snapshot.subtitle,
-                recommendation: snapshot.recommendation
-            )
-        }
-    }
-
     private static func color(for category: String) -> Color {
         switch category.lowercased() {
         case "rpm":
@@ -313,5 +260,34 @@ final class DashboardViewModel: ObservableObject {
         default:
             return AppColor.secondary
         }
+    }
+
+    private static func defaultCardioMetrics() -> [CardioMetric] {
+        [
+            CardioMetric(
+                title: "Blood Pressure",
+                value: "121/77",
+                unit: "mmHg",
+                trend: "+1% from last week",
+                tint: AppColor.red,
+                sparkline: [0.62, 0.64, 0.61, 0.66, 0.63, 0.65, 0.64]
+            ),
+            CardioMetric(
+                title: "Resting Heart Rate",
+                value: "65",
+                unit: "bpm",
+                trend: "-3 bpm from last week",
+                tint: AppColor.green,
+                sparkline: [0.56, 0.52, 0.54, 0.51, 0.49, 0.5, 0.48]
+            ),
+            CardioMetric(
+                title: "Glucose",
+                value: "96",
+                unit: "mg/dL",
+                trend: "Stable this week",
+                tint: AppColor.yellow,
+                sparkline: [0.48, 0.52, 0.5, 0.47, 0.49, 0.48, 0.46]
+            )
+        ]
     }
 }

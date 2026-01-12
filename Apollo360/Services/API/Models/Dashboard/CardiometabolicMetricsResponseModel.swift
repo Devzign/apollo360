@@ -1,6 +1,5 @@
 import Foundation
 
-/// Response returned by `/dashboard/cardiometabolic-metrics/:patientId`.
 struct CardiometabolicMetricsAPIResponse: Decodable {
     let success: Bool
     let data: CardiometabolicMetricsPayload

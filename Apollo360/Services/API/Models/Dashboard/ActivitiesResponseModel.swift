@@ -1,6 +1,5 @@
 import Foundation
 
-/// Response returned by `/dashboard/activities/:patientId`.
 struct ActivitiesAPIResponse: Decodable {
     let success: Bool
     let data: ActivitiesPayload

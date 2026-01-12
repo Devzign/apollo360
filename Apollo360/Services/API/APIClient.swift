@@ -45,6 +45,9 @@ final class APIClient {
                 if let prettyResponse = Self.prettyPrintedJSON(data) {
                     debugPrint("[APIClient] response payload:\n\(prettyResponse)")
                 }
+                if let raw = String(data: data, encoding: .utf8) {
+                    debugPrint("[APIClient] raw response:\n\(raw)")
+                }
                 do {
                     let decoded = try JSONDecoder().decode(responseType, from: data)
                     DispatchQueue.main.async {
@@ -63,7 +66,6 @@ final class APIClient {
         }
     }
 
-    // Convenience overload without body for endpoints that don't require a request payload
     func request<T: Decodable>(endpoint: String,
                                method: HTTPMethod = .post,
                                headers: [String: String]? = nil,
@@ -131,6 +133,9 @@ final class APIClient {
                 if let pretty = Self.prettyPrintedJSON(data) {
                     debugPrint("[APIClient] response payload:\n\(pretty)")
                 }
+                if let raw = String(data: data, encoding: .utf8) {
+                    debugPrint("[APIClient] raw response:\n\(raw)")
+                }
                 completion(.failure(.serverError(statusCode: statusCode, data: data)))
                 return
             }
@@ -180,106 +185,6 @@ final class APIClient {
                 completion: completion)
     }
 
-    func fetchDashboardInsights(patientId: String,
-                                bearerToken: String,
-                                completion: @escaping (Result<[DashboardInsightPayload], APIError>) -> Void) {
-        request(endpoint: APIEndpoint.dashboardInsights(for: patientId),
-                method: .get,
-                headers: ["Authorization": "Bearer \(bearerToken)"],
-                responseType: DashboardInsightsResponse.self) { result in
-            switch result {
-            case .success(let response):
-                if response.success {
-                    completion(.success(response.data))
-                } else {
-                    completion(.failure(.serverError(statusCode: 500, data: nil)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    func fetchWellnessOverview(patientId: String,
-                                bearerToken: String,
-                                mode: WellnessMode,
-                                completion: @escaping (Result<WellnessOverviewPayload, APIError>) -> Void) {
-        request(endpoint: APIEndpoint.wellnessOverview(for: patientId, mode: mode),
-                method: .get,
-                headers: ["Authorization": "Bearer \(bearerToken)"],
-                responseType: WellnessOverviewAPIResponse.self) { result in
-            switch result {
-            case .success(let response):
-                if response.success {
-                    completion(.success(response.data))
-                } else {
-                    completion(.failure(.serverError(statusCode: 500, data: nil)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    func fetchApolloInsights(patientId: String,
-                             bearerToken: String,
-                             completion: @escaping (Result<ApolloInsightsPayload, APIError>) -> Void) {
-        request(endpoint: APIEndpoint.apolloInsights(for: patientId),
-                method: .get,
-                headers: ["Authorization": "Bearer \(bearerToken)"],
-                responseType: ApolloInsightsAPIResponse.self) { result in
-            switch result {
-            case .success(let response):
-                if response.success {
-                    completion(.success(response.data))
-                } else {
-                    completion(.failure(.serverError(statusCode: 500, data: nil)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    func fetchCardiometabolicMetrics(patientId: String,
-                                     bearerToken: String,
-                                     completion: @escaping (Result<CardiometabolicMetricsPayload, APIError>) -> Void) {
-        request(endpoint: APIEndpoint.cardiometabolicMetrics(for: patientId),
-                method: .get,
-                headers: ["Authorization": "Bearer \(bearerToken)"],
-                responseType: CardiometabolicMetricsAPIResponse.self) { result in
-            switch result {
-            case .success(let response):
-                if response.success {
-                    completion(.success(response.data))
-                } else {
-                    completion(.failure(.serverError(statusCode: 500, data: nil)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    func fetchActivities(patientId: String,
-                         bearerToken: String,
-                         completion: @escaping (Result<ActivitiesPayload, APIError>) -> Void) {
-        request(endpoint: APIEndpoint.activities(for: patientId),
-                method: .get,
-                headers: ["Authorization": "Bearer \(bearerToken)"],
-                responseType: ActivitiesAPIResponse.self) { result in
-            switch result {
-            case .success(let response):
-                if response.success {
-                    completion(.success(response.data))
-                } else {
-                    completion(.failure(.serverError(statusCode: 500, data: nil)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
 }
 
 extension APIClient {

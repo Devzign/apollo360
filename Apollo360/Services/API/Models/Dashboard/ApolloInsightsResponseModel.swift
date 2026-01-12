@@ -1,6 +1,5 @@
 import Foundation
 
-/// Response returned by `/dashboard/apollo-insights/:patientId`.
 struct ApolloInsightsAPIResponse: Decodable {
     let success: Bool
     let data: ApolloInsightsPayload

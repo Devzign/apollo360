@@ -125,24 +125,28 @@ private struct InsightIconView: View {
     ApolloInsightsCard(
         insights: [
             InsightItem(
+                id: "00000000-0000-0000-0000-000000000001",
                 title: "Sleep & Recovery Connection",
                 detail: "On nights with 7+ hours of sleep, your resting heart rate is 8 bpm lower the next morning.",
-                systemImage: "moon.stars.fill",
+                systemImage: "moon.stars.fill", iconURL: nil,
                 impact: .positive
             ),
             InsightItem(
+                id: "00000000-0000-0000-0000-000000000002",
                 title: "Activity Pattern",
                 detail: "Your most consistent activity days are Tuesday and Thursday. Building on this routine could help.",
-                systemImage: "figure.walk.circle.fill",
+                systemImage: "figure.walk.circle.fill", iconURL: nil,
                 impact: .neutral
             ),
             InsightItem(
+                id: "00000000-0000-0000-0000-000000000003",
                 title: "Heart Rate Variability",
                 detail: "Your HRV improves on days following evening walks. Consider adding more gentle movement.",
-                systemImage: "heart.circle.fill",
+                systemImage: "heart.circle.fill", iconURL: nil,
                 impact: .attention
             )
         ]
     )
     .padding()
 }
+
