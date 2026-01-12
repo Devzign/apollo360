@@ -50,18 +50,12 @@ final class APIClient {
                 }
                 do {
                     let decoded = try JSONDecoder().decode(responseType, from: data)
-                    DispatchQueue.main.async {
-                        completion(.success(decoded))
-                    }
+                    self.completeOnMain(completion, .success(decoded))
                 } catch {
-                    DispatchQueue.main.async {
-                        completion(.failure(.decodingFailed(error)))
-                    }
+                    self.completeOnMain(completion, .failure(.decodingFailed(error)))
                 }
             case .failure(let error):
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
+                self.completeOnMain(completion, .failure(error))
             }
         }
     }
@@ -107,7 +101,7 @@ final class APIClient {
                     debugPrint("[APIClient] request payload:\n\(prettyBody)")
                 }
             } catch {
-                completion(.failure(.encodingFailed(error)))
+                completeOnMain(completion, .failure(.encodingFailed(error)))
                 return
             }
         }
@@ -115,13 +109,13 @@ final class APIClient {
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 debugPrint("[APIClient] error -> \(error)")
-                completion(.failure(.requestFailed(error)))
+                self.completeOnMain(completion, .failure(.requestFailed(error)))
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 debugPrint("[APIClient] invalid response")
-                completion(.failure(.invalidResponse))
+                self.completeOnMain(completion, .failure(.invalidResponse))
                 return
             }
 
@@ -139,18 +133,25 @@ final class APIClient {
                 if let raw = String(data: data, encoding: .utf8) {
                     debugPrint("[APIClient] raw response:\n\(raw)")
                 }
-                completion(.failure(.serverError(statusCode: statusCode, data: data)))
+                self.completeOnMain(completion, .failure(.serverError(statusCode: statusCode, data: data)))
                 return
             }
 
             guard !data.isEmpty else {
-                completion(.failure(.noData))
+                self.completeOnMain(completion, .failure(.noData))
                 return
             }
 
-            completion(.success(data))
+            self.completeOnMain(completion, .success(data))
         }
         .resume()
+    }
+
+    private func completeOnMain<T>(_ completion: @escaping (Result<T, APIError>) -> Void,
+                                   _ result: Result<T, APIError>) {
+        DispatchQueue.main.async {
+            completion(result)
+        }
     }
 
     // Convenience overload without body for simple requests

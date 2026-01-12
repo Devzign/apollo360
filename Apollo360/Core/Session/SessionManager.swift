@@ -5,6 +5,7 @@ extension Notification.Name {
     static let sessionInvalidated = Notification.Name("sessionInvalidated")
 }
 
+@MainActor
 final class SessionManager: ObservableObject {
     @Published private(set) var isAuthenticated: Bool = false
     @Published private(set) var accessToken: String?
@@ -42,15 +43,18 @@ final class SessionManager: ObservableObject {
     }
     
     func clearSession() {
-        accessToken = nil
-        refreshToken = nil
-        patientId = nil
-        username = nil
-        isAuthenticated = false
-        defaults.removeObject(forKey: StorageKeys.accessToken)
-        defaults.removeObject(forKey: StorageKeys.refreshToken)
-        defaults.removeObject(forKey: StorageKeys.patientId)
-        defaults.removeObject(forKey: StorageKeys.username)
+        DispatchQueue.main.async {
+            self.accessToken = nil
+            self.refreshToken = nil
+            self.patientId = nil
+            self.username = nil
+            self.isAuthenticated = false
+
+            self.defaults.removeObject(forKey: StorageKeys.accessToken)
+            self.defaults.removeObject(forKey: StorageKeys.refreshToken)
+            self.defaults.removeObject(forKey: StorageKeys.patientId)
+            self.defaults.removeObject(forKey: StorageKeys.username)
+        }
     }
     
     private func loadFromStorage() {
@@ -76,3 +80,4 @@ final class SessionManager: ObservableObject {
         NotificationCenter.default.removeObserver(self)
     }
 }
+
