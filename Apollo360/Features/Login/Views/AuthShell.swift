@@ -14,10 +14,6 @@ struct AuthShell<Content: View>: View {
 
                 VStack(spacing: 0) {
                     VStack(spacing: 12) {
-                        Text("Connect to Metro to develop JavaScript.")
-                            .font(AppFont.body(size: 14))
-                            .foregroundStyle(.white)
-
                         Text("apollo")
                             .font(AppFont.display(size: 56, weight: .bold))
                             .foregroundStyle(.white)

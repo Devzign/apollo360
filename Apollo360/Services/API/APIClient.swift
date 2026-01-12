@@ -128,6 +128,9 @@ final class APIClient {
 
             debugPrint("[APIClient] status \(statusCode), data length \(data.count)")
             guard (200...299).contains(statusCode) else {
+                if let pretty = Self.prettyPrintedJSON(data) {
+                    debugPrint("[APIClient] response payload:\n\(pretty)")
+                }
                 completion(.failure(.serverError(statusCode: statusCode, data: data)))
                 return
             }
@@ -198,10 +201,12 @@ final class APIClient {
     }
 
     func fetchWellnessOverview(patientId: String,
+                                bearerToken: String,
                                 mode: WellnessMode,
                                 completion: @escaping (Result<WellnessOverviewPayload, APIError>) -> Void) {
         request(endpoint: APIEndpoint.wellnessOverview(for: patientId, mode: mode),
                 method: .get,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
                 responseType: WellnessOverviewAPIResponse.self) { result in
             switch result {
             case .success(let response):
@@ -217,9 +222,11 @@ final class APIClient {
     }
 
     func fetchApolloInsights(patientId: String,
+                             bearerToken: String,
                              completion: @escaping (Result<ApolloInsightsPayload, APIError>) -> Void) {
         request(endpoint: APIEndpoint.apolloInsights(for: patientId),
                 method: .get,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
                 responseType: ApolloInsightsAPIResponse.self) { result in
             switch result {
             case .success(let response):
@@ -235,9 +242,11 @@ final class APIClient {
     }
 
     func fetchCardiometabolicMetrics(patientId: String,
+                                     bearerToken: String,
                                      completion: @escaping (Result<CardiometabolicMetricsPayload, APIError>) -> Void) {
         request(endpoint: APIEndpoint.cardiometabolicMetrics(for: patientId),
                 method: .get,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
                 responseType: CardiometabolicMetricsAPIResponse.self) { result in
             switch result {
             case .success(let response):
@@ -253,9 +262,11 @@ final class APIClient {
     }
 
     func fetchActivities(patientId: String,
+                         bearerToken: String,
                          completion: @escaping (Result<ActivitiesPayload, APIError>) -> Void) {
         request(endpoint: APIEndpoint.activities(for: patientId),
                 method: .get,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
                 responseType: ActivitiesAPIResponse.self) { result in
             switch result {
             case .success(let response):

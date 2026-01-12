@@ -49,7 +49,7 @@ struct PasswordLoginView: View {
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken,
                         patientId: "\(response.user.id)",
-                        username: response.user.username
+                        username: "\(response.user.firstName) \(response.user.lastName)"
                     )
                 }
             }

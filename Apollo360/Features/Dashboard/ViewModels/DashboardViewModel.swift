@@ -29,7 +29,9 @@ final class DashboardViewModel: ObservableObject {
     }()
 
     let greeting = "Good morning,"
-    let userName = "Amit Sinha"
+    var userName: String {
+        session.username ?? "Amit Sinha"
+    }
 
     let snapshotTitle = "Your Daily Snapshot"
     let snapshotSubtitle = "Personalized stories generated from your data to help you understand trends and take simple, supportive actions."
@@ -119,7 +121,8 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId else {
             return
         }
-        APIClient.shared.fetchWellnessOverview(patientId: patientId, mode: .absolute) { [weak self] result in
+        guard let token = session.accessToken else { return }
+        APIClient.shared.fetchWellnessOverview(patientId: patientId, bearerToken: token, mode: .absolute) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let payload):
@@ -142,7 +145,8 @@ final class DashboardViewModel: ObservableObject {
     private func fetchApolloInsights() {
         guard let patientId = session.patientId else { return }
         isLoadingInsights = true
-        APIClient.shared.fetchApolloInsights(patientId: patientId) { [weak self] result in
+        guard let token = session.accessToken else { return }
+        APIClient.shared.fetchApolloInsights(patientId: patientId, bearerToken: token) { [weak self] result in
             guard let self else { return }
             self.isLoadingInsights = false
             switch result {
@@ -165,7 +169,8 @@ final class DashboardViewModel: ObservableObject {
 
     private func fetchCardiometabolicMetrics() {
         guard let patientId = session.patientId else { return }
-        APIClient.shared.fetchCardiometabolicMetrics(patientId: patientId) { [weak self] result in
+        guard let token = session.accessToken else { return }
+        APIClient.shared.fetchCardiometabolicMetrics(patientId: patientId, bearerToken: token) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let payload):
@@ -190,7 +195,8 @@ final class DashboardViewModel: ObservableObject {
 
     private func fetchActivities() {
         guard let patientId = session.patientId else { return }
-        APIClient.shared.fetchActivities(patientId: patientId) { [weak self] result in
+        guard let token = session.accessToken else { return }
+        APIClient.shared.fetchActivities(patientId: patientId, bearerToken: token) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let payload):
