@@ -203,4 +203,47 @@ extension APIClient {
         }
         return prettyString
     }
+
+    fileprivate struct ServerErrorPayload: Decodable {
+        let message: String?
+        let errorCode: String?
+    }
+
+    fileprivate static func serverErrorMessage(from data: Data?) -> String? {
+        guard let data, !data.isEmpty else {
+            return nil
+        }
+        if let payload = try? JSONDecoder().decode(ServerErrorPayload.self, from: data),
+           let message = payload.message?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !message.isEmpty {
+            return message
+        }
+        let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return raw?.isEmpty == false ? raw : nil
+    }
+}
+
+extension APIError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "The request URL is invalid."
+        case .encodingFailed(let error):
+            return error.localizedDescription
+        case .requestFailed(let error):
+            return error.localizedDescription
+        case .invalidResponse:
+            return "The server returned an unexpected response."
+        case .serverError(let statusCode, let data):
+            if let backendMessage = APIClient.serverErrorMessage(from: data) {
+                return backendMessage
+            }
+            return HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
+        case .decodingFailed(let error):
+            return "Unable to read the server response. \(error.localizedDescription)"
+        case .noData:
+            return "The server returned no data."
+        }
+    }
 }

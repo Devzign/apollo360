@@ -10,6 +10,7 @@ final class PasswordLoginViewModel: ObservableObject {
     @Published var alertTitle: String = ""
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
+    @Published var alertStyle: AlertStyle = .standard
     var onLoginSuccess: ((PasswordLoginResponse) -> Void)?
 
     var isFormValid: Bool {
@@ -38,14 +39,15 @@ final class PasswordLoginViewModel: ObservableObject {
                 self.onLoginSuccess?(response)
                 self.showAlert(title: "Welcome \(response.user.firstName)", message: "Logged in as \(response.user.username).")
             case .failure(let error):
-                self.showAlert(title: "Login failed", message: error.localizedDescription)
+                self.showAlert(title: "Login failed", message: error.localizedDescription, style: .error)
             }
         }
     }
 
-    private func showAlert(title: String, message: String) {
+    private func showAlert(title: String, message: String, style: AlertStyle = .standard) {
         alertTitle = title
         alertMessage = message
+        alertStyle = style
         showAlert = true
     }
 }

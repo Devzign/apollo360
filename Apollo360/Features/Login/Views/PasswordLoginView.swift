@@ -42,6 +42,7 @@ struct PasswordLoginView: View {
             Button("OK", role: .cancel) { viewModel.showAlert = false }
         } message: {
             Text(viewModel.alertMessage)
+                .foregroundStyle(viewModel.alertStyle == .error ? AppColor.red : AppColor.black)
         }
         .onAppear {
             if viewModel.onLoginSuccess == nil {

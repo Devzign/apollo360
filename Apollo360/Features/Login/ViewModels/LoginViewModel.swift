@@ -13,6 +13,7 @@ final class LoginViewModel: ObservableObject {
     @Published var alertTitle: String = ""
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
+    @Published var alertStyle: AlertStyle = .standard
 
     private var phoneDigits: String = ""
 
@@ -103,7 +104,7 @@ final class LoginViewModel: ObservableObject {
                 self.isOTPSent = true
                 self.showAlert(title: "Next step", message: response.message ?? "OTP sent successfully.")
             case .failure(let error):
-                self.showAlert(title: "Something went wrong", message: error.localizedDescription)
+                self.showAlert(title: "Something went wrong", message: error.localizedDescription, style: .error)
             }
         }
     }
@@ -133,7 +134,7 @@ final class LoginViewModel: ObservableObject {
                     self.showAlert(title: "Verified", message: response.message ?? "OTP verified successfully.")
                 }
             case .failure(let error):
-                self.showAlert(title: "Verification failed", message: error.localizedDescription)
+                self.showAlert(title: "Verification failed", message: error.localizedDescription, style: .error)
             }
         }
     }
@@ -202,9 +203,10 @@ final class LoginViewModel: ObservableObject {
         year = String(format: "%04d", yearValue)
     }
 
-    private func showAlert(title: String, message: String) {
+    private func showAlert(title: String, message: String, style: AlertStyle = .standard) {
         alertTitle = title
         alertMessage = message
+        alertStyle = style
         showAlert = true
     }
 }

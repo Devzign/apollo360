@@ -6,8 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4850316CBBE49EC30ABDA204 /* Pods_Apollo360.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F52293A9A20688EA9D32982A /* Pods_Apollo360.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		0C8A195A17D23AD47755D3BC /* Pods-Apollo360.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.debug.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.debug.xcconfig"; sourceTree = "<group>"; };
 		628A3D852F1087B30037BE39 /* Apollo360.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apollo360.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A76C22E292A400D86AA143D6 /* Pods-Apollo360.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.release.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.release.xcconfig"; sourceTree = "<group>"; };
+		F52293A9A20688EA9D32982A /* Pods_Apollo360.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Apollo360.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,17 +43,30 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4850316CBBE49EC30ABDA204 /* Pods_Apollo360.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5B8A29947BC9BD525A6972EE /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				0C8A195A17D23AD47755D3BC /* Pods-Apollo360.debug.xcconfig */,
+				A76C22E292A400D86AA143D6 /* Pods-Apollo360.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		628A3D7C2F1087B30037BE39 = {
 			isa = PBXGroup;
 			children = (
 				628A3D872F1087B30037BE39 /* Apollo360 */,
 				628A3D862F1087B30037BE39 /* Products */,
+				5B8A29947BC9BD525A6972EE /* Pods */,
+				91E16DD69D11533B10206002 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,6 +78,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		91E16DD69D11533B10206002 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F52293A9A20688EA9D32982A /* Pods_Apollo360.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -65,9 +93,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 628A3D902F1087B40037BE39 /* Build configuration list for PBXNativeTarget "Apollo360" */;
 			buildPhases = (
+				FF2314C269D7A28F88B595E7 /* [CP] Check Pods Manifest.lock */,
 				628A3D812F1087B30037BE39 /* Sources */,
 				628A3D822F1087B30037BE39 /* Frameworks */,
 				628A3D832F1087B30037BE39 /* Resources */,
+				B38729F24CD57209F374657C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -77,8 +107,6 @@
 				628A3D872F1087B30037BE39 /* Apollo360 */,
 			);
 			name = Apollo360;
-			packageProductDependencies = (
-			);
 			productName = Apollo360;
 			productReference = 628A3D852F1087B30037BE39 /* Apollo360.app */;
 			productType = "com.apple.product-type.application";
@@ -126,6 +154,48 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		B38729F24CD57209F374657C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FF2314C269D7A28F88B595E7 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Apollo360-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		628A3D812F1087B30037BE39 /* Sources */ = {
@@ -261,6 +331,7 @@
 		};
 		628A3D912F1087B40037BE39 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C8A195A17D23AD47755D3BC /* Pods-Apollo360.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -295,6 +366,7 @@
 		};
 		628A3D922F1087B40037BE39 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A76C22E292A400D86AA143D6 /* Pods-Apollo360.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
