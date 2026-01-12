@@ -18,12 +18,58 @@ final class LoginViewModel: ObservableObject {
 
     @Published var isOTPSent: Bool = false
     var onVerifySuccess: ((PatientLoginResponse) -> Void)?
+    @Published var datePickerDate: Date = Date()
 
+    private let calendar = Calendar(identifier: .gregorian)
+
+    var dobDateRange: ClosedRange<Date> {
+        let start = calendar.date(from: DateComponents(year: 1800, month: 1, day: 1)) ?? Date.distantPast
+        return start...Date()
+    }
+
+    var dateValidationMessage: String? {
+        guard hasAnyDateInput else { return nil }
+        return sanitizedDOBComponents == nil
+            ? "Enter a valid date between 01/01/1800 and today."
+            : nil
+    }
+
+    private var hasAnyDateInput: Bool {
+        !month.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !day.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !year.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    private var currentYear: Int {
+        calendar.component(.year, from: Date())
+    }
+
+    func updateMonth(_ raw: String) {
+        let digits = restrictDigits(raw, limit: 2)
+        month = clampDigits(digits, limit: 2, range: 1...12)
+    }
+
+    func updateDay(_ raw: String) {
+        let digits = restrictDigits(raw, limit: 2)
+        day = clampDigits(digits, limit: 2, range: 1...31)
+    }
+
+    func updateYear(_ raw: String) {
+        let digits = restrictDigits(raw, limit: 4)
+        year = clampDigits(digits, limit: 4, range: 1800...currentYear)
+    }
+
+    private func restrictDigits(_ raw: String, limit: Int) -> String {
+        let digits = raw.filter(\.isNumber)
+        return String(digits.prefix(limit))
+    }
+
+    private func clampDigits(_ digits: String, limit: Int, range: ClosedRange<Int>) -> String {
+        guard digits.count == limit, let value = Int(digits) else { return digits }
+        let clamped = min(max(value, range.lowerBound), range.upperBound)
+        return String(format: "%0\(limit)d", clamped)
+    }
     var isFormValid: Bool {
-        !month.trimmingCharacters(in: .whitespaces).isEmpty &&
-            !day.trimmingCharacters(in: .whitespaces).isEmpty &&
-            !year.trimmingCharacters(in: .whitespaces).isEmpty &&
-            phoneDigits.count == 10
+        phoneDigits.count == 10 && formattedDOB != nil
     }
 
     var phoneValidationMessage: String? {
@@ -81,7 +127,11 @@ final class LoginViewModel: ObservableObject {
             switch result {
             case .success(let response):
                 self.onVerifySuccess?(response)
-                self.showAlert(title: "Verified", message: response.message ?? "OTP verified successfully.")
+                if let user = response.user {
+                    self.showAlert(title: "Welcome \(user.firstName)", message: "Logged in as \(user.username).")
+                } else {
+                    self.showAlert(title: "Verified", message: response.message ?? "OTP verified successfully.")
+                }
             case .failure(let error):
                 self.showAlert(title: "Verification failed", message: error.localizedDescription)
             }
@@ -112,6 +162,16 @@ final class LoginViewModel: ObservableObject {
     }
 
     private var formattedDOB: String? {
+        guard let components = sanitizedDOBComponents,
+              let year = components.year,
+              let month = components.month,
+              let day = components.day else {
+            return nil
+        }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    private var sanitizedDOBComponents: DateComponents? {
         let sanitizedMonth = month.trimmingCharacters(in: .whitespacesAndNewlines)
         let sanitizedDay = day.trimmingCharacters(in: .whitespacesAndNewlines)
         let sanitizedYear = year.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -119,14 +179,27 @@ final class LoginViewModel: ObservableObject {
         guard
             let monthInt = Int(sanitizedMonth), (1...12).contains(monthInt),
             let dayInt = Int(sanitizedDay), (1...31).contains(dayInt),
-            let yearInt = Int(sanitizedYear), yearInt >= 1900
+            let yearInt = Int(sanitizedYear),
+            (1800...calendar.component(.year, from: Date())).contains(yearInt)
         else {
             return nil
         }
 
-        let monthString = String(format: "%02d", monthInt)
-        let dayString = String(format: "%02d", dayInt)
-        return "\(yearInt)-\(monthString)-\(dayString)"
+        let components = DateComponents(year: yearInt, month: monthInt, day: dayInt)
+        guard let date = calendar.date(from: components), date <= Date() else {
+            return nil
+        }
+        return components
+    }
+
+    func updateDOBFields(from date: Date) {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let monthValue = components.month,
+              let dayValue = components.day,
+              let yearValue = components.year else { return }
+        month = String(format: "%02d", monthValue)
+        day = String(format: "%02d", dayValue)
+        year = String(format: "%04d", yearValue)
     }
 
     private func showAlert(title: String, message: String) {
