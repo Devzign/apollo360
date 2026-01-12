@@ -136,14 +136,21 @@ private struct WellnessProgressRing: View {
 
             Circle()
                 .trim(from: 0, to: animatedProgress)
-                .stroke(AppColor.blue, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                .stroke(
+                    AppColor.blue,
+                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
+                )
                 .rotationEffect(.degrees(-90))
-                .shadow(color: AppColor.blue.opacity(0.3), radius: 8, x: 0, y: 0)
+                .shadow(
+                    color: AppColor.blue.opacity(0.3),
+                    radius: 8
+                )
 
             VStack(spacing: 6) {
                 Text("\(score)")
                     .font(AppFont.display(size: 46, weight: .bold))
                     .foregroundStyle(AppColor.black)
+
                 Text("Overall Score")
                     .font(AppFont.body(size: 12))
                     .foregroundStyle(AppColor.grey)
@@ -155,10 +162,33 @@ private struct WellnessProgressRing: View {
                 animatedProgress = progress
             }
         }
-        .onChange(of: progress) {
-            withAnimation(.easeOut(duration: 0.8)) {
-                animatedProgress = progress
-            }
+        .modifier(ProgressChangeHandler(
+            progress: progress,
+            animatedProgress: $animatedProgress
+        ))
+    }
+}
+
+
+private struct ProgressChangeHandler: ViewModifier {
+    let progress: Double
+    @Binding var animatedProgress: Double
+
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content
+                .onChange(of: progress) {
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        animatedProgress = progress
+                    }
+                }
+        } else {
+            content
+                .onChange(of: progress, perform: { newValue in
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        animatedProgress = newValue
+                    }
+                })
         }
     }
 }

@@ -3,6 +3,7 @@ import UIKit
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         KeyboardAccessoryManager.shared.activate()
+        DebugFontLogger.printAvailableFonts()
         return true
     }
 }
@@ -49,3 +50,23 @@ private final class KeyboardAccessoryManager {
         currentResponder?.resignFirstResponder()
     }
 }
+private enum DebugFontLogger {
+    static func printAvailableFonts() {
+        #if DEBUG
+        let families = UIFont.familyNames.sorted()
+        guard !families.isEmpty else {
+            print("[Fonts] No font families found.")
+            return
+        }
+        print("[Fonts] Registered font families and names:")
+        for family in families {
+            let names = UIFont.fontNames(forFamilyName: family).sorted()
+            print("  Family: \(family)")
+            for name in names {
+                print("    \(name)")
+            }
+        }
+        #endif
+    }
+}
+

@@ -1,10 +1,10 @@
 import SwiftUI
 import UIKit
-import UIKit
 
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject private var session: SessionManager
+    @State private var isDatePickerPresented: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -38,11 +38,51 @@ struct LoginView: View {
                     session.updateSession(
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken,
-                        patientId: response.userId,
-                        username: nil
+                        patientId: response.patientIdentifier,
+                        username: response.displayName
                     )
                 }
             }
+        }
+        .sheet(isPresented: $isDatePickerPresented) {
+            ZStack {
+                Color.white.ignoresSafeArea()
+                NavigationStack {
+                    VStack(alignment: .leading, spacing: 24) {
+                        DatePicker(
+                            "Date of Birth",
+                            selection: $viewModel.datePickerDate,
+                            in: viewModel.dobDateRange,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: viewModel.datePickerDate) { newValue in
+                            viewModel.updateDOBFields(from: newValue)
+                        }
+
+                        Button("Done") {
+                            isDatePickerPresented = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding(.top, 8)
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+                    .navigationTitle("Select date")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                isDatePickerPresented = false
+                            }
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.fraction(0.70)])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -57,9 +97,39 @@ struct LoginView: View {
                 .foregroundStyle(AppColor.black)
 
             HStack(spacing: 12) {
-                MiniInputField(placeholder: "MM", text: $viewModel.month)
-                MiniInputField(placeholder: "DD", text: $viewModel.day)
-                MiniInputField(placeholder: "YYYY", text: $viewModel.year)
+                MiniInputField(
+                    placeholder: "MM",
+                    text: Binding(get: { viewModel.month }, set: viewModel.updateMonth)
+                )
+                MiniInputField(
+                    placeholder: "DD",
+                    text: Binding(get: { viewModel.day }, set: viewModel.updateDay)
+                )
+                MiniInputField(
+                    placeholder: "YYYY",
+                    text: Binding(get: { viewModel.year }, set: viewModel.updateYear)
+                )
+
+                Button {
+                    isDatePickerPresented.toggle()
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 20, weight: .semibold))
+                        .frame(width: 44, height: 50)
+                        .foregroundStyle(AppColor.green)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppColor.green, lineWidth: 1.2)
+                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let validationMessage = viewModel.dateValidationMessage {
+                Text(validationMessage)
+                    .font(AppFont.body(size: 12, weight: .medium))
+                    .foregroundStyle(AppColor.red)
             }
 
             Text("Phone Number")
