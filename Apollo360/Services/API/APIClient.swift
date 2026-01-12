@@ -130,6 +130,9 @@ final class APIClient {
 
             debugPrint("[APIClient] status \(statusCode), data length \(data.count)")
             guard (200...299).contains(statusCode) else {
+                if statusCode == 401 {
+                    NotificationCenter.default.post(name: .sessionInvalidated, object: nil)
+                }
                 if let pretty = Self.prettyPrintedJSON(data) {
                     debugPrint("[APIClient] response payload:\n\(pretty)")
                 }

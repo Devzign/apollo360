@@ -20,6 +20,7 @@ struct PasswordLoginView: View {
                         .foregroundStyle(AppColor.black)
                 }
                 .toggleStyle(CheckboxToggleStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 4)
 
                 Button(action: viewModel.login) {
