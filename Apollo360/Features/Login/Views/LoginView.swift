@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import UIKit
 
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
@@ -65,11 +67,14 @@ struct LoginView: View {
                 .foregroundStyle(AppColor.black)
 
             PhoneInputField(
-                text: Binding(
-                    get: { viewModel.formattedPhoneNumber },
-                    set: { viewModel.updatePhoneNumber($0) }
-                )
+                text: viewModel.formattedPhoneNumber,
+                onTextChange: viewModel.updatePhoneNumber
             )
+            if let validationMessage = viewModel.phoneValidationMessage {
+                Text(validationMessage)
+                    .font(AppFont.body(size: 12, weight: .medium))
+                    .foregroundStyle(AppColor.red)
+            }
         }
     }
 
@@ -131,15 +136,17 @@ private struct MiniInputField: View {
 }
 
 private struct PhoneInputField: View {
-    @Binding var text: String
+    let text: String
+    let onTextChange: (String) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "phone.fill")
                 .foregroundStyle(AppColor.green)
-            TextField("Enter Your Phone Number", text: $text)
-                .font(AppFont.body(size: 16, weight: .medium))
-                .keyboardType(.phonePad)
+            PhoneNumberTextField(
+                displayText: text,
+                onTextChange: onTextChange
+            )
         }
         .padding(.horizontal, 18)
         .frame(height: 58)
@@ -153,6 +160,56 @@ private struct PhoneInputField: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
         )
+    }
+}
+
+private struct PhoneNumberTextField: UIViewRepresentable {
+    let displayText: String
+    let onTextChange: (String) -> Void
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.keyboardType = .phonePad
+        textField.textContentType = .telephoneNumber
+        textField.autocapitalizationType = .none
+        textField.autocorrectionType = .no
+        textField.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        textField.placeholder = "Enter Your Phone Number"
+        textField.delegate = context.coordinator
+        textField.text = displayText
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != displayText {
+            uiView.text = displayText
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        let parent: PhoneNumberTextField
+
+        init(_ parent: PhoneNumberTextField) {
+            self.parent = parent
+        }
+
+        func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+            let currentText = textField.text ?? ""
+            let nsText = currentText as NSString
+            let updated = nsText.replacingCharacters(in: range, with: string)
+            let digits = updated.filter(\.isNumber)
+            let limitedDigits = String(digits.prefix(10))
+            parent.onTextChange(limitedDigits)
+            let endPosition = textField.endOfDocument
+            if let newRange = textField.textRange(from: endPosition, to: endPosition) {
+                textField.selectedTextRange = newRange
+            }
+            return false
+        }
     }
 }
 

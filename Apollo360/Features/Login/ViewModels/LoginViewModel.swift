@@ -26,6 +26,11 @@ final class LoginViewModel: ObservableObject {
             phoneDigits.count == 10
     }
 
+    var phoneValidationMessage: String? {
+        guard !phoneDigits.isEmpty else { return nil }
+        return phoneDigits.count == 10 ? nil : "Enter a 10-digit mobile number."
+    }
+
     func sendOTP() {
         guard isFormValid,
               let dob = formattedDOB else {
