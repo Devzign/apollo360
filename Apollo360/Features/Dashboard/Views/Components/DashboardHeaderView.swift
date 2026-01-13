@@ -10,9 +10,21 @@ import SwiftUI
 struct DashboardHeaderView: View {
     let greeting: String
     let userName: String
+    let onMenuTap: () -> Void
 
     var body: some View {
         HStack(alignment: .center) {
+            Button(action: onMenuTap) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(AppColor.black)
+                    .padding(8)
+                    .background(
+                        Circle()
+                            .fill(AppColor.colorECF0F3)
+                    )
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(greeting)
                     .font(AppFont.body(size: 14))
@@ -77,5 +89,5 @@ private struct HeaderIconButton: View {
 
 
 #Preview {
-    DashboardHeaderView(greeting: "Good morning,", userName: "Amit Sinha")
+    DashboardHeaderView(greeting: "Good morning,", userName: "Amit Sinha", onMenuTap: {})
 }
