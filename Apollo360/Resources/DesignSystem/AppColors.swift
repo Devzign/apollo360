@@ -1,7 +1,6 @@
 import SwiftUI
 
 enum AppColor {
-    // Prefix colors with App to avoid conflicting with UIKit/SwiftUI symbols.
     static let primary = Color("AppPrimary")
     static let secondary = Color("AppSecondary")
     static let white = Color("AppWhite")
