@@ -1,3 +1,10 @@
+//
+//  DashboardView.swift
+//  Apollo360
+//
+//  Created by Amit Sinha on 11/01/26.
+//
+
 import SwiftUI
 
 struct DashboardView: View {
