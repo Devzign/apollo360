@@ -8,42 +8,24 @@ struct LoginView: View {
 
     var body: some View {
         NavigationStack {
-            AuthShell {
-                VStack(spacing: 24) {
-                    formFields
+            ZStack {
+                AppColor.green.ignoresSafeArea()
 
-                    if viewModel.isOTPSent {
-                        otpInput
-                    }
-
-                    actionButton
-
-                    NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
-                        Text("Use username & password login")
-                            .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.green)
-                    }
-                    .padding(.top, 6)
+                VStack {
+                    Spacer()
+                        .frame(height: 64)
+                    Image("apolloLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200)
+                        .padding(.bottom, 16)
+                    Spacer()
+                    loginCard
+                    Spacer()
+                        .frame(height: 32)
                 }
             }
-        }
-        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
-            Button("OK", role: .cancel) { viewModel.showAlert = false }
-        } message: {
-            Text(viewModel.alertMessage)
-                .foregroundStyle(viewModel.alertStyle == .error ? AppColor.red : AppColor.black)
-        }
-        .onAppear {
-            if viewModel.onVerifySuccess == nil {
-                viewModel.onVerifySuccess = { response in
-                    session.updateSession(
-                        accessToken: response.accessToken,
-                        refreshToken: response.refreshToken,
-                        patientId: response.patientIdentifier,
-                        username: response.displayName
-                    )
-                }
-            }
+            .navigationBarHidden(true)
         }
         .sheet(isPresented: $isDatePickerPresented) {
             ZStack {
@@ -59,11 +41,9 @@ struct LoginView: View {
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .frame(maxWidth: .infinity)
-                        .onChange(of: viewModel.datePickerDate) { newValue in
-                            viewModel.updateDOBFields(from: newValue)
-                        }
 
                         Button("Done") {
+                            viewModel.updateDOBFields(from: viewModel.datePickerDate)
                             isDatePickerPresented = false
                         }
                         .buttonStyle(.borderedProminent)
@@ -85,56 +65,95 @@ struct LoginView: View {
             .presentationDetents([.fraction(0.70)])
             .presentationDragIndicator(.visible)
         }
+        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) { viewModel.showAlert = false }
+        } message: {
+            Text(viewModel.alertMessage)
+                .foregroundStyle(viewModel.alertStyle == .error ? AppColor.red : AppColor.black)
+        }
+        .onAppear {
+            if viewModel.onVerifySuccess == nil {
+                viewModel.onVerifySuccess = { response in
+                    session.updateSession(
+                        accessToken: response.accessToken,
+                        refreshToken: response.refreshToken,
+                        patientId: response.patientIdentifier,
+                        username: response.displayName
+                    )
+                }
+            }
+        }
+    }
+
+    private var loginCard: some View {
+        VStack(spacing: 22) {
+            VStack(spacing: 4) {
+                Text("Sign In")
+                    .font(AppFont.display(size: 32, weight: .bold))
+                    .foregroundStyle(AppColor.black)
+
+                Text("Enter your Sign In details")
+                    .font(AppFont.body(size: 14))
+                    .foregroundStyle(AppColor.grey)
+            }
+
+            formFields
+
+            if viewModel.isOTPSent {
+                otpInput
+            }
+
+            actionButton
+
+            NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
+                Text("Caregiver Log-In")
+                    .font(AppFont.body(size: 14, weight: .medium))
+                    .foregroundStyle(AppColor.green)
+            }
+            .padding(.top, 8)
+        }
+        .padding(30)
+        .frame(maxWidth: 380)
+        .background(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.18), radius: 24, x: 0, y: 12)
+        )
+        .padding(.horizontal, 24)
     }
 
     private var formFields: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Welcome to Apollo!")
-                .font(AppFont.display(size: 26, weight: .bold))
-                .foregroundStyle(AppColor.green)
-
-            Text("Date Of Birth")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Date of Birth")
                 .font(AppFont.body(size: 14, weight: .semibold))
                 .foregroundStyle(AppColor.black)
 
-            HStack(spacing: 12) {
-                MiniInputField(
-                    placeholder: "MM",
-                    text: Binding(get: { viewModel.month }, set: viewModel.updateMonth),
-                    maxLength: 2
-                )
-                MiniInputField(
-                    placeholder: "DD",
-                    text: Binding(get: { viewModel.day }, set: viewModel.updateDay),
-                    maxLength: 2
-                )
-                MiniInputField(
-                    placeholder: "YYYY",
-                    text: Binding(get: { viewModel.year }, set: viewModel.updateYear),
-                    maxLength: 4
-                )
-
-                Button {
-                    isDatePickerPresented.toggle()
-                } label: {
+            Button {
+                viewModel.datePickerDate = viewModel.selectedDateOfBirth ?? Date()
+                isDatePickerPresented = true
+            } label: {
+                HStack {
+                    Text(viewModel.dateOfBirthDisplayText.isEmpty ? "MM-DD-YYYY" : viewModel.dateOfBirthDisplayText)
+                        .font(AppFont.body(size: 16, weight: .medium))
+                        .foregroundStyle(viewModel.dateOfBirthDisplayText.isEmpty ? Color.gray.opacity(0.9) : AppColor.black)
+                    Spacer()
                     Image(systemName: "calendar")
-                        .font(.system(size: 20, weight: .semibold))
-                        .frame(width: 44, height: 50)
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(AppColor.green)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(AppColor.green, lineWidth: 1.2)
-                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-                        )
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .frame(height: 54)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
+                )
             }
-
-            if let validationMessage = viewModel.dateValidationMessage {
-                Text(validationMessage)
-                    .font(AppFont.body(size: 12, weight: .medium))
-                    .foregroundStyle(AppColor.red)
-            }
+            .buttonStyle(.plain)
 
             Text("Phone Number")
                 .font(AppFont.body(size: 14, weight: .semibold))
@@ -144,6 +163,7 @@ struct LoginView: View {
                 text: viewModel.formattedPhoneNumber,
                 onTextChange: viewModel.updatePhoneNumber
             )
+
             if let validationMessage = viewModel.phoneValidationMessage {
                 Text(validationMessage)
                     .font(AppFont.body(size: 12, weight: .medium))
@@ -159,6 +179,7 @@ struct LoginView: View {
                 .foregroundStyle(AppColor.black)
             OTPInputField(text: $viewModel.otpCode)
         }
+        .padding(.top, 6)
     }
 
     private var actionButton: some View {
@@ -174,7 +195,7 @@ struct LoginView: View {
                     .fill(AppColor.green)
                     .shadow(color: Color.black.opacity(0.28), radius: 18, x: 0, y: 10)
 
-                Text(viewModel.isOTPSent ? "Verify OTP" : "Send OTP")
+                Text(viewModel.isOTPSent ? "Verify OTP" : "Sign In")
                     .font(AppFont.body(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -185,58 +206,22 @@ struct LoginView: View {
     }
 }
 
-private struct MiniInputField: View {
-    let placeholder: String
-    @Binding var text: String
-    let maxLength: Int
-
-    var body: some View {
-        TextField(placeholder, text: $text)
-            .font(AppFont.body(size: 16, weight: .medium))
-            .foregroundStyle(AppColor.black)
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.center)
-            .padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 3)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
-            )
-            .onChange(of: text) { newValue in
-                let digitsOnly = newValue.filter(\.isNumber)
-                let limited = String(digitsOnly.prefix(maxLength))
-                if limited != newValue {
-                    text = limited
-                }
-            }
-    }
-}
-
 private struct PhoneInputField: View {
     let text: String
     let onTextChange: (String) -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "phone.fill")
-                .foregroundStyle(AppColor.green)
-            PhoneNumberTextField(
-                displayText: text,
-                onTextChange: onTextChange
-            )
-        }
+        PhoneNumberTextField(
+            displayText: text,
+            onTextChange: onTextChange
+        )
         .padding(.horizontal, 18)
-        .frame(height: 58)
+        .frame(height: 56)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -256,7 +241,7 @@ private struct PhoneNumberTextField: UIViewRepresentable {
         textField.autocapitalizationType = .none
         textField.autocorrectionType = .no
         textField.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        textField.placeholder = "Enter Your Phone Number"
+        textField.placeholder = "(xxx) xxx-xxxx"
         textField.delegate = context.coordinator
         textField.text = displayText
         return textField

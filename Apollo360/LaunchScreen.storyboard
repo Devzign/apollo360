@@ -23,7 +23,7 @@
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <imageView autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="whiteLogo" translatesAutoresizingMaskIntoConstraints="NO" id="Izj-NN-UtV">
+                            <imageView autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="apolloLogo" translatesAutoresizingMaskIntoConstraints="NO" id="Izj-NN-UtV">
                                 <rect key="frame" x="96.666666666666686" y="351" width="200" height="200"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" image="YES" notEnabled="YES"/>
@@ -51,7 +51,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="whiteLogo" width="327" height="105"/>
+        <image name="apolloLogo" width="98.5" height="31.5"/>
         <namedColor name="AppPrimary">
             <color red="0.41960784313725491" green="0.59607843137254901" blue="0.44705882352941179" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>

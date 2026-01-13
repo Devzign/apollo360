@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 62124B012F155CD300A0AA28 /* IQKeyboardManagerSwift */; };
+		626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 626BD2F82F16536B00D4DD11 /* Kingfisher */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */,
 				62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -112,6 +114,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				62124B002F155CD300A0AA28 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */,
+				626BD2F72F16536B00D4DD11 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 628A3D862F1087B30037BE39 /* Products */;
@@ -365,6 +368,14 @@
 				minimumVersion = 8.0.2;
 			};
 		};
+		626BD2F72F16536B00D4DD11 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.6.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -372,6 +383,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 62124B002F155CD300A0AA28 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
 			productName = IQKeyboardManagerSwift;
+		};
+		626BD2F82F16536B00D4DD11 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 626BD2F72F16536B00D4DD11 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
