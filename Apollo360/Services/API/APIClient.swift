@@ -22,16 +22,16 @@ private struct EmptyRequestBody: Encodable {}
 
 final class APIClient {
     static let shared = APIClient()
-
+    
     private let session: URLSession
     private let baseURL: URL
-
+    
     private init(session: URLSession = .shared,
                  baseURL: URL = APIConfiguration.baseURL) {
         self.session = session
         self.baseURL = baseURL
     }
-
+    
     func request<Body: Encodable, T: Decodable>(endpoint: String,
                                                 method: HTTPMethod = .post,
                                                 body: Body? = nil,
@@ -59,7 +59,7 @@ final class APIClient {
             }
         }
     }
-
+    
     func request<T: Decodable>(endpoint: String,
                                method: HTTPMethod = .post,
                                headers: [String: String]? = nil,
@@ -72,14 +72,14 @@ final class APIClient {
                 responseType: responseType,
                 completion: completion)
     }
-
+    
     func performDataRequest<Body: Encodable>(endpoint: String,
                                              method: HTTPMethod = .post,
                                              body: Body? = nil,
                                              headers: [String: String]? = nil,
                                              completion: @escaping (Result<Data, APIError>) -> Void) {
         let url = baseURL.appendingPathComponent(endpoint)
-
+        
         debugPrint("[APIClient] network -> '\(method.rawValue) \(url.absoluteString)'")
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
@@ -92,7 +92,7 @@ final class APIClient {
                 request.setValue(value, forHTTPHeaderField: key)
             }
         }
-
+        
         if let body = body {
             do {
                 request.httpBody = try JSONEncoder().encode(body)
@@ -105,23 +105,23 @@ final class APIClient {
                 return
             }
         }
-
+        
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 debugPrint("[APIClient] error -> \(error)")
                 self.completeOnMain(completion, .failure(.requestFailed(error)))
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 debugPrint("[APIClient] invalid response")
                 self.completeOnMain(completion, .failure(.invalidResponse))
                 return
             }
-
+            
             let statusCode = httpResponse.statusCode
             let data = data ?? Data()
-
+            
             debugPrint("[APIClient] status \(statusCode), data length \(data.count)")
             guard (200...299).contains(statusCode) else {
                 if statusCode == 401 {
@@ -136,24 +136,24 @@ final class APIClient {
                 self.completeOnMain(completion, .failure(.serverError(statusCode: statusCode, data: data)))
                 return
             }
-
+            
             guard !data.isEmpty else {
                 self.completeOnMain(completion, .failure(.noData))
                 return
             }
-
+            
             self.completeOnMain(completion, .success(data))
         }
         .resume()
     }
-
+    
     private func completeOnMain<T>(_ completion: @escaping (Result<T, APIError>) -> Void,
                                    _ result: Result<T, APIError>) {
         DispatchQueue.main.async {
             completion(result)
         }
     }
-
+    
     // Convenience overload without body for simple requests
     func performDataRequest(endpoint: String,
                             method: HTTPMethod = .post,
@@ -165,12 +165,12 @@ final class APIClient {
                            headers: headers,
                            completion: completion)
     }
-
+    
     func patientLogin(with payload: PatientLoginRequest,
                       completion: @escaping (Result<Data, APIError>) -> Void) {
         performDataRequest(endpoint: APIEndpoint.patientLogin, method: .post, body: payload, completion: completion)
     }
-
+    
     func verifyOTP(with payload: VerifyOTPRequest,
                    completion: @escaping (Result<PatientLoginResponse, APIError>) -> Void) {
         request(endpoint: APIEndpoint.verifyOTP,
@@ -179,7 +179,7 @@ final class APIClient {
                 responseType: PatientLoginResponse.self,
                 completion: completion)
     }
-
+    
     func loginWithPassword(with payload: PasswordLoginRequest,
                            completion: @escaping (Result<PasswordLoginResponse, APIError>) -> Void) {
         request(endpoint: APIEndpoint.passwordLogin,
@@ -188,7 +188,7 @@ final class APIClient {
                 responseType: PasswordLoginResponse.self,
                 completion: completion)
     }
-
+    
 }
 
 extension APIClient {
@@ -203,12 +203,12 @@ extension APIClient {
         }
         return prettyString
     }
-
+    
     fileprivate struct ServerErrorPayload: Decodable {
         let message: String?
         let errorCode: String?
     }
-
+    
     fileprivate static func serverErrorMessage(from data: Data?) -> String? {
         guard let data, !data.isEmpty else {
             return nil

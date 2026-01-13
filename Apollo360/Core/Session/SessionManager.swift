@@ -49,7 +49,7 @@ final class SessionManager: ObservableObject {
             self.patientId = nil
             self.username = nil
             self.isAuthenticated = false
-
+            
             self.defaults.removeObject(forKey: StorageKeys.accessToken)
             self.defaults.removeObject(forKey: StorageKeys.refreshToken)
             self.defaults.removeObject(forKey: StorageKeys.patientId)

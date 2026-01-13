@@ -100,15 +100,18 @@ struct LoginView: View {
             HStack(spacing: 12) {
                 MiniInputField(
                     placeholder: "MM",
-                    text: Binding(get: { viewModel.month }, set: viewModel.updateMonth)
+                    text: Binding(get: { viewModel.month }, set: viewModel.updateMonth),
+                    maxLength: 2
                 )
                 MiniInputField(
                     placeholder: "DD",
-                    text: Binding(get: { viewModel.day }, set: viewModel.updateDay)
+                    text: Binding(get: { viewModel.day }, set: viewModel.updateDay),
+                    maxLength: 2
                 )
                 MiniInputField(
                     placeholder: "YYYY",
-                    text: Binding(get: { viewModel.year }, set: viewModel.updateYear)
+                    text: Binding(get: { viewModel.year }, set: viewModel.updateYear),
+                    maxLength: 4
                 )
 
                 Button {
@@ -185,6 +188,7 @@ struct LoginView: View {
 private struct MiniInputField: View {
     let placeholder: String
     @Binding var text: String
+    let maxLength: Int
 
     var body: some View {
         TextField(placeholder, text: $text)
@@ -203,6 +207,13 @@ private struct MiniInputField: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
             )
+            .onChange(of: text) { newValue in
+                let digitsOnly = newValue.filter(\.isNumber)
+                let limited = String(digitsOnly.prefix(maxLength))
+                if limited != newValue {
+                    text = limited
+                }
+            }
     }
 }
 
