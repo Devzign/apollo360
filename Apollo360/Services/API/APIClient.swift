@@ -195,6 +195,15 @@ final class APIClient {
                 responseType: PasswordLoginResponse.self,
                 completion: completion)
     }
+
+    func logout(bearerToken: String,
+                completion: @escaping (Result<LogoutResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.logout,
+                method: .post,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
+                responseType: LogoutResponse.self,
+                completion: completion)
+    }
     
 }
 

@@ -43,6 +43,7 @@ enum APIEndpoint {
     static let patientLogin = "v1/auth/patient-login"
     static let verifyOTP = "v1/auth/verify-otp"
     static let passwordLogin = "v1/auth/login"
+    static let logout = "v1/auth/logout"
     static func dashboardInsights(for patientId: String) -> String {
         "dashboard/insights/\(patientId)"
     }

@@ -16,6 +16,7 @@ struct SideMenuItem: Identifiable {
 
 struct SideMenuView: View {
     let onClose: () -> Void
+    let logoutAction: () -> Void
 
     private let menuItems: [SideMenuItem] = [
         SideMenuItem(title: "Dashboard", icon: "square.grid.2x2", badge: nil),
@@ -54,7 +55,7 @@ struct SideMenuView: View {
                             .foregroundStyle(.white)
                     }
                     Spacer()
-                    Button(action: onClose) {
+                        Button(action: onClose) {
                         Image(systemName: "xmark")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(.white)
@@ -85,7 +86,10 @@ struct SideMenuView: View {
 
                 Spacer()
 
-                Button(action: {}) {
+                Button(action: {
+                    logoutAction()
+                    onClose()
+                }) {
                     HStack {
                         Image(systemName: "arrow.backward.circle")
                             .font(.system(size: 20, weight: .medium))
