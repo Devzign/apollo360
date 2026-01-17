@@ -8,62 +8,72 @@
 import SwiftUI
 
 struct DashboardView: View {
+
+    // MARK: - State
     @StateObject private var viewModel: DashboardViewModel
     @State private var selectedTab: DashboardTab = .home
-    @State private var isSideMenuVisible: Bool = false
-    private let session: SessionManager
+    @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
 
+    private let session: SessionManager
+
+    // MARK: - Init
     init(session: SessionManager) {
         self.session = session
         _viewModel = StateObject(wrappedValue: DashboardViewModel(session: session))
     }
 
+    // MARK: - Body
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                contentView
-                    .background(Color.black.opacity(0.02))
+            contentView
+                .background(Color.black.opacity(0.02))
 
-                VStack(spacing: 0) {
-                    DashboardTabBar(selectedTab: $selectedTab)
-                        .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 8)
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                DashboardHeaderView(
-                    greeting: viewModel.greeting,
-                    userName: viewModel.userName,
-                    onMenuTap: {
-                        withAnimation(.easeInOut) {
-                            isSideMenuVisible = true
+                // ✅ TOP HEADER
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    DashboardHeaderView(
+                        greeting: viewModel.greeting,
+                        userName: viewModel.userName,
+                        onMenuTap: {
+                            withAnimation(.easeInOut) {
+                                isSideMenuVisible = true
+                            }
                         }
+                    )
+                }
+
+                // ✅ BOTTOM TAB BAR (CORRECT)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    DashboardTabBar(selectedTab: $selectedTab)
+                        .frame(height: 80)
+                        .background(
+                            Color.white
+                                .shadow(color: .black.opacity(0.1), radius: 10, y: -4)
+                        )
+                }
+
+                .toolbar(.hidden, for: .navigationBar)
+                .overlay(sideMenuOverlay)
+                .alert("Logout", isPresented: $showingLogoutConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Logout", role: .destructive) {
+                        handleLogout()
                     }
-                )
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .overlay(sideMenuOverlay)
-            .alert("Logout", isPresented: $showingLogoutConfirmation) {
-                Button("Cancel", role: .cancel) {
-                    showingLogoutConfirmation = false
+                } message: {
+                    Text("Are you sure you want to log out of Apollo360?")
                 }
-                Button("Logout", role: .destructive) {
-                    showingLogoutConfirmation = false
-                    handleLogout()
-                }
-            } message: {
-                Text("Are you sure you want to log out of Apollo360?")
-            }
         }
     }
 
+    // MARK: - Content View
     @ViewBuilder
     private var contentView: some View {
         switch selectedTab {
+
         case .home:
             ScrollView {
                 VStack(spacing: 24) {
+
                     DailyStoriesView(
                         title: viewModel.snapshotTitle,
                         subtitle: viewModel.snapshotSubtitle,
@@ -86,29 +96,34 @@ struct DashboardView: View {
 
                     ApolloInsightsCard(insights: viewModel.insights)
                         .dashboardSlideUp(delay: 0.18)
+
                     CardiometabolicMetricsCard(metrics: viewModel.cardioMetrics)
                         .dashboardSlideUp(delay: 0.24)
+
                     ActivitiesSummaryCard(
                         days: viewModel.activityDays,
                         stats: viewModel.activityStats,
                         summaryNote: viewModel.activitySummaryNote,
                         weeklyChangePercent: viewModel.weeklyChangePercent
                     )
-                    .dashboardSlideUp(delay: 0.3)
+                    .dashboardSlideUp(delay: 0.30)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 120)
+                .padding(.bottom, 20)
             }
+
         default:
             DashboardTabPlaceholderView(title: selectedTab.displayTitle)
         }
     }
 
+    // MARK: - Side Menu
     @ViewBuilder
     private var sideMenuOverlay: some View {
         if isSideMenuVisible {
             ZStack(alignment: .leading) {
+
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                     .onTapGesture {
@@ -117,34 +132,40 @@ struct DashboardView: View {
                         }
                     }
 
-                SideMenuView(onClose: {
-                    withAnimation(.easeInOut) {
-                        isSideMenuVisible = false
+                SideMenuView(
+                    onClose: {
+                        withAnimation(.easeInOut) {
+                            isSideMenuVisible = false
+                        }
+                    },
+                    logoutAction: {
+                        showingLogoutConfirmation = true
                     }
-                }, logoutAction: {
-                    showingLogoutConfirmation = true
-                })
+                )
                 .frame(width: 280)
                 .transition(.move(edge: .leading))
             }
-            .animation(.easeInOut, value: isSideMenuVisible)
         }
     }
 
+    // MARK: - Logout
     private func handleLogout() {
         withAnimation(.easeInOut) {
             isSideMenuVisible = false
         }
+
         guard let token = session.accessToken else {
             session.clearSession()
             return
         }
+
         APIClient.shared.logout(bearerToken: token) { _ in
             session.clearSession()
         }
     }
 }
 
+// MARK: - Preview
 #Preview {
     DashboardView(session: SessionManager())
 }

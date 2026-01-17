@@ -16,6 +16,7 @@ enum DashboardTab: String, CaseIterable {
 }
 
 struct DashboardTabBar: View {
+
     @Binding var selectedTab: DashboardTab
 
     private let leadingItems: [DashboardTab] = [.metrics, .library]
@@ -23,59 +24,79 @@ struct DashboardTabBar: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+
+            Color.white
+                .ignoresSafeArea(.container, edges: .bottom)
+                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: -10)
+
+            TopRoundedRectangle(cornerRadius: 32)
                 .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.15), radius: 18, x: 0, y: 8)
 
             HStack {
-                HStack(spacing: 24) {
+                HStack(spacing: 20) {
                     ForEach(leadingItems, id: \.self) { tab in
                         tabButton(for: tab)
                     }
                 }
+
                 Spacer()
-                HStack(spacing: 24) {
+
+                HStack(spacing: 20) {
                     ForEach(trailingItems, id: \.self) { tab in
                         tabButton(for: tab)
                     }
                 }
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
 
-            Button(action: {
+            Button {
                 selectedTab = .home
-            }) {
+            } label: {
                 ZStack {
                     Circle()
-                        .fill(AppColor.green)
-                        .frame(width: 68, height: 68)
-                        .shadow(color: Color.black.opacity(0.25), radius: 18, x: 0, y: 10)
+                        .fill(Color.white)
+                        .frame(width: 85, height: 85)
+                        .shadow(color: Color.black.opacity(0.18), radius: 18, x: 0, y: 12)
+
                     Circle()
-                        .stroke(Color.white, lineWidth: 4)
-                        .frame(width: 74, height: 74)
+                        .stroke(AppColor.green.opacity(0.35), lineWidth: 6)
+                        .frame(width: 80, height: 80)
+
+                    Circle()
+                        .fill(AppColor.green)
+                        .frame(width: 60, height: 60)
+
                     Image(systemName: "house.fill")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(.white)
                 }
             }
-            .offset(y: -30)
+            .offset(y: -28)
         }
         .frame(height: 80)
     }
 
+    // MARK: - Tab Button
     @ViewBuilder
     private func tabButton(for tab: DashboardTab) -> some View {
         let info = tabInfo(for: tab)
-        Button(action: {
+
+        Button {
             selectedTab = tab
-        }) {
-            VStack(spacing: 4) {
+        } label: {
+            VStack(spacing: 3) {
                 Image(systemName: info.icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(selectedTab == tab ? AppColor.green : AppColor.black)
+                    .foregroundStyle(
+                        selectedTab == tab ? AppColor.green : AppColor.black
+                    )
+
                 Text(info.title)
                     .font(AppFont.body(size: 12, weight: .semibold))
-                    .foregroundStyle(selectedTab == tab ? AppColor.green : AppColor.black)
+                    .foregroundStyle(
+                        selectedTab == tab ? AppColor.green : AppColor.black
+                    )
             }
         }
         .buttonStyle(.plain)
@@ -108,3 +129,4 @@ extension DashboardTab {
         }
     }
 }
+#Preview { DashboardTabBar(selectedTab: .constant(.home)) .padding() }
