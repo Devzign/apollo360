@@ -135,32 +135,47 @@ struct LoginView: View {
                 .font(AppFont.body(size: 14, weight: .semibold))
                 .foregroundStyle(AppColor.black)
 
-            Button {
-                viewModel.datePickerDate = viewModel.selectedDateOfBirth ?? Date()
-                isDatePickerPresented = true
-            } label: {
-                HStack {
-                    Text(viewModel.dateOfBirthDisplayText.isEmpty ? "MM-DD-YYYY" : viewModel.dateOfBirthDisplayText)
-                        .font(AppFont.body(size: 16, weight: .medium))
-                        .foregroundStyle(viewModel.dateOfBirthDisplayText.isEmpty ? Color.gray.opacity(0.9) : AppColor.black)
-                    Spacer()
-                    Image(systemName: "calendar")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(AppColor.green)
+            HStack(spacing: 12) {
+                TextField(
+                    "MM-DD-YYYY",
+                    text: Binding(
+                        get: { viewModel.dateOfBirthText },
+                        set: { viewModel.updateDateOfBirthText($0) }
+                    )
+                )
+                .font(AppFont.body(size: 16, weight: .medium))
+                .keyboardType(.numbersAndPunctuation)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .frame(maxWidth: .infinity)
+
+                Button {
+                    viewModel.datePickerDate = viewModel.selectedDateOfBirth ?? Date()
+                    isDatePickerPresented = true
+                } label: {
+                    Image("calendar_icon")
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .foregroundStyle(
+                            viewModel.selectedDateOfBirth == nil ? Color.gray.opacity(0.7) : AppColor.green
+                        )
                 }
-                .padding(.horizontal, 16)
-                .frame(height: 54)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
-                )
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .frame(height: 54)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.gray.opacity(0.35), lineWidth: 1.2)
+            )
 
             Text("Phone Number")
                 .font(AppFont.body(size: 14, weight: .semibold))

@@ -50,7 +50,7 @@ private struct CardioMetricRowView: View {
             }
 
             MetricSparklineView(values: metric.sparkline, color: metric.tint)
-                .frame(height: 30)
+                .frame(height: 36)
 
             Text(metric.trend)
                 .font(AppFont.body(size: 12))
@@ -66,12 +66,16 @@ private struct MetricSparklineView: View {
     let values: [Double]
     let color: Color
 
+    @State private var drawProgress: CGFloat = 0
+
     var body: some View {
         GeometryReader { geometry in
             let points = normalized(values: values)
             let width = geometry.size.width
             let height = geometry.size.height
             let step = points.count > 1 ? width / CGFloat(points.count - 1) : 0
+
+            let fullPath = SparklineShape(values: points, step: step, height: height)
 
             ZStack {
                 Path { path in
@@ -88,19 +92,28 @@ private struct MetricSparklineView: View {
                 }
                 .stroke(Color.black.opacity(0.08), lineWidth: 1)
 
-                Path { path in
-                    guard points.count > 1 else { return }
-                    for index in points.indices {
-                        let x = CGFloat(index) * step
-                        let y = height - (CGFloat(points[index]) * height)
-                        if index == 0 {
-                            path.move(to: CGPoint(x: x, y: y))
-                        } else {
-                            path.addLine(to: CGPoint(x: x, y: y))
-                        }
-                    }
-                }
-                .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                fullPath
+                    .trim(from: 0, to: drawProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.6)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 2.6, lineCap: .round)
+                    )
+                    .shadow(color: color.opacity(0.25), radius: 4, x: 0, y: 2)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.2)) {
+                drawProgress = 1
+            }
+        }
+        .onChange(of: values) { _ in
+            drawProgress = 0
+            withAnimation(.easeOut(duration: 1.2)) {
+                drawProgress = 1
             }
         }
     }
@@ -110,6 +123,32 @@ private struct MetricSparklineView: View {
             return values.map { _ in 0.5 }
         }
         return values.map { ($0 - minValue) / (maxValue - minValue) }
+    }
+}
+
+private struct SparklineShape: Shape {
+    let values: [Double]
+    let step: CGFloat
+    let height: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard values.count > 1 else { return path }
+
+        for index in values.indices {
+            let x = CGFloat(index) * step
+            let y = height - (CGFloat(values[index]) * height)
+            if index == 0 {
+                path.move(to: CGPoint(x: x, y: y))
+            } else {
+                path.addLine(to: CGPoint(x: x, y: y))
+            }
+        }
+        return path
+    }
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        AnimatablePair(step, height)
     }
 }
 

@@ -25,6 +25,8 @@ final class LoginViewModel: ObservableObject {
     var onVerifySuccess: ((PatientLoginResponse) -> Void)?
     @Published var selectedDateOfBirth: Date?
     @Published var datePickerDate: Date = Date()
+    @Published var dateOfBirthText: String = ""
+    @Published var dateOfBirthValidationMessage: String?
 
     private let calendar = Calendar(identifier: .gregorian)
 
@@ -47,10 +49,7 @@ final class LoginViewModel: ObservableObject {
         return formatter
     }()
 
-    var dateOfBirthDisplayText: String {
-        guard let dob = selectedDateOfBirth else { return "" }
-        return Self.displayDOBFormatter.string(from: dob)
-    }
+    private static let dobDigitsLength = 8
 
     var isFormValid: Bool {
         phoneDigits.count == 10 && selectedDateOfBirth != nil
@@ -62,9 +61,14 @@ final class LoginViewModel: ObservableObject {
     }
 
     func sendOTP() {
-        guard isFormValid,
-              let dob = formattedDOB else {
+        guard phoneDigits.count == 10 else {
             showAlert(title: "Missing information", message: "Please complete every field before continuing.")
+            return
+        }
+
+        guard let dob = formattedDOB else {
+            let message = dateOfBirthValidationMessage ?? "Please complete every field before continuing."
+            showAlert(title: "Missing information", message: message)
             return
         }
 
@@ -129,6 +133,44 @@ final class LoginViewModel: ObservableObject {
         formattedPhoneNumber = formatPhoneNumber(truncated)
     }
 
+    func updateDateOfBirthText(_ text: String) {
+        let digitsOnly = text.filter(\.isNumber)
+        let limitedDigits = String(digitsOnly.prefix(Self.dobDigitsLength))
+        let formattedText = Self.formattedDOBDisplay(from: limitedDigits)
+
+        if dateOfBirthText != formattedText {
+            dateOfBirthText = formattedText
+        }
+
+        guard !limitedDigits.isEmpty else {
+            selectedDateOfBirth = nil
+            dateOfBirthValidationMessage = nil
+            return
+        }
+
+        guard limitedDigits.count == Self.dobDigitsLength else {
+            selectedDateOfBirth = nil
+            dateOfBirthValidationMessage = nil
+            return
+        }
+
+        guard let parsedDate = buildDate(from: limitedDigits) else {
+            selectedDateOfBirth = nil
+            dateOfBirthValidationMessage = "Enter a valid date in MM-DD-YYYY format."
+            return
+        }
+
+        if parsedDate > Date() {
+            selectedDateOfBirth = nil
+            dateOfBirthValidationMessage = "Date of birth cannot be in the future."
+            return
+        }
+
+        selectedDateOfBirth = parsedDate
+        datePickerDate = parsedDate
+        dateOfBirthValidationMessage = nil
+    }
+
     private func formatPhoneNumber(_ digits: String) -> String {
         switch digits.count {
         case 0...3:
@@ -150,9 +192,52 @@ final class LoginViewModel: ObservableObject {
         return Self.apiDOBFormatter.string(from: dob)
     }
 
+    private static func formattedDOBDisplay(from digits: String) -> String {
+        let month = digits.prefix(2)
+        var result = String(month)
+        let remaining = digits.dropFirst(month.count)
+        if !remaining.isEmpty {
+            result += "-"
+            let day = remaining.prefix(2)
+            result += String(day)
+            let yearSegment = remaining.dropFirst(day.count)
+            if !yearSegment.isEmpty {
+                result += "-" + String(yearSegment)
+            }
+        }
+        return result
+    }
+
+    private func buildDate(from digits: String) -> Date? {
+        guard digits.count == Self.dobDigitsLength else { return nil }
+        let monthDigits = digits.prefix(2)
+        let dayDigits = digits.dropFirst(2).prefix(2)
+        let yearDigits = digits.dropFirst(4)
+
+        guard let month = Int(monthDigits), (1...12).contains(month),
+              let day = Int(dayDigits), (1...31).contains(day),
+              let year = Int(yearDigits) else {
+            return nil
+        }
+
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+
+        guard let date = calendar.date(from: components),
+              date >= dobDateRange.lowerBound else {
+            return nil
+        }
+
+        return date
+    }
+
     func updateDOBFields(from date: Date) {
         selectedDateOfBirth = date
         datePickerDate = date
+        dateOfBirthText = Self.displayDOBFormatter.string(from: date)
+        dateOfBirthValidationMessage = nil
     }
 
     private func showAlert(title: String, message: String, style: AlertStyle = .standard) {

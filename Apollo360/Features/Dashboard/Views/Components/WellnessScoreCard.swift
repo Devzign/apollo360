@@ -135,11 +135,17 @@ private struct WellnessProgressRing: View {
     let score: Int
     let progress: Double
     @State private var animatedProgress: Double = 0
+    @State private var pulse: Bool = false
 
     var body: some View {
         ZStack {
             Circle()
                 .stroke(Color.black.opacity(0.05), lineWidth: 14)
+
+            Circle()
+                .stroke(AppColor.blue.opacity(0.12), lineWidth: 32)
+                .scaleEffect(pulse ? 1.08 : 0.92)
+                .blur(radius: 1)
 
             Circle()
                 .trim(from: 0, to: animatedProgress)
@@ -167,6 +173,11 @@ private struct WellnessProgressRing: View {
         .onAppear {
             withAnimation(.easeOut(duration: 1.2)) {
                 animatedProgress = progress
+            }
+            withAnimation(
+                .easeInOut(duration: 1.6).repeatForever(autoreverses: true)
+            ) {
+                pulse = true
             }
         }
         .modifier(ProgressChangeHandler(

@@ -12,7 +12,7 @@ struct DailyStoriesView: View {
     let subtitle: String
     let stories: [DailyStory]
 
-    @State private var selectedStory: DailyStory?
+    @State private var selectedStoryIndex: Int?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -28,23 +28,28 @@ struct DailyStoriesView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(stories) { story in
+                HStack(spacing: 10) {
+                    ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
                         Button {
-                            selectedStory = story
+                            selectedStoryIndex = index
                         } label: {
                             StoryBadgeView(story: story)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .fullScreenCover(item: $selectedStory) { story in
-            DailyStoryModalView(story: story)
+        .fullScreenCover(isPresented: Binding(
+            get: { selectedStoryIndex != nil },
+            set: { if !$0 { selectedStoryIndex = nil } }
+        )) {
+            if let index = selectedStoryIndex {
+                DailyStoryCarouselView(stories: stories, initialIndex: index)
+            }
         }
     }
 }
@@ -52,8 +57,10 @@ struct DailyStoriesView: View {
 private struct StoryBadgeView: View {
     let story: DailyStory
 
-    private let ringSize: CGFloat = 40
-    private let outerSize: CGFloat = 52
+    private let ringSize: CGFloat = 44
+    private let outerSize: CGFloat = 60
+
+    private let iconSize: CGFloat = 36
 
     var body: some View {
         VStack(spacing: 8) {
@@ -73,7 +80,7 @@ private struct StoryBadgeView: View {
                             .padding(5)
                     )
 
-                StoryBadgeIcon(story: story)
+                    StoryBadgeIcon(story: story, iconSize: iconSize)
             }
             .frame(width: outerSize, height: outerSize)
             .overlay(alignment: .topTrailing) {
@@ -90,9 +97,9 @@ private struct StoryBadgeView: View {
             }
 
             Text(story.title)
-                .font(AppFont.body(size: 12, weight: .medium))
+                .font(AppFont.body(size: 13, weight: .medium))
                 .foregroundStyle(AppColor.black)
-                .frame(width: 60)
+                .frame(width: 80)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
@@ -115,7 +122,7 @@ private struct StoryBadgeView: View {
 
 private struct StoryBadgeIcon: View {
     let story: DailyStory
-    private let iconSize: CGFloat = 28
+    let iconSize: CGFloat
 
     var body: some View {
         Group {

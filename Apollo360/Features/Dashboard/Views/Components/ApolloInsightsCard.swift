@@ -26,9 +26,6 @@ struct ApolloInsightsCard: View {
                         Text("Apollo Insights")
                             .font(AppFont.display(size: 18, weight: .bold))
                             .foregroundStyle(AppColor.black)
-                        Text("Patterns across your health data")
-                            .font(AppFont.body(size: 13))
-                            .foregroundStyle(AppColor.grey)
                     }
                     Spacer()
                 }
@@ -45,6 +42,7 @@ struct ApolloInsightsCard: View {
 
 private struct InsightRowView: View {
     let item: InsightItem
+    @State private var revealProgress: CGFloat = 0
 
     var body: some View {
         let color = impactColor(item.impact)
@@ -76,6 +74,25 @@ private struct InsightRowView: View {
                 .stroke(color.opacity(0.25), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(alignment: .bottomLeading) {
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [color, color.opacity(0.35)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 4)
+                .padding(.horizontal, 8)
+                .scaleEffect(x: revealProgress, y: 1, anchor: .leading)
+        }
+        .onAppear {
+            revealProgress = 0
+            withAnimation(.easeOut(duration: 1.0)) {
+                revealProgress = 1
+            }
+        }
     }
 
     private func impactColor(_ impact: InsightImpact) -> Color {
@@ -156,4 +173,3 @@ private struct InsightIconView: View {
     )
     .padding()
 }
-
