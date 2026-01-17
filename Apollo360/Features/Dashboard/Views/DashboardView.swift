@@ -14,72 +14,76 @@ struct DashboardView: View {
     @State private var selectedTab: DashboardTab = .home
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
-
-    private let session: SessionManager
+    @State private var bottomSafeArea: CGFloat = 0
 
     // MARK: - Init
     init(session: SessionManager) {
-        self.session = session
         _viewModel = StateObject(wrappedValue: DashboardViewModel(session: session))
     }
 
     // MARK: - Body
     var body: some View {
         NavigationStack {
-            contentView
-                .background(Color.black.opacity(0.02))
+            ZStack(alignment: .bottom) {
 
-                // ✅ TOP HEADER
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    DashboardHeaderView(
-                        greeting: viewModel.greeting,
-                        userName: viewModel.userName,
-                        onMenuTap: {
-                            withAnimation(.easeInOut) {
-                                isSideMenuVisible = true
+                // Main content
+                contentView
+                    .background(Color.black.opacity(0.02))
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        DashboardHeaderView(
+                            greeting: viewModel.greeting,
+                            userName: viewModel.userName,
+                            onMenuTap: {
+                                withAnimation(.easeInOut) {
+                                    isSideMenuVisible = true
+                                }
                             }
-                        }
-                    )
-                }
-
-                // ✅ BOTTOM TAB BAR (CORRECT)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    DashboardTabBar(selectedTab: $selectedTab)
-                        .frame(height: 80)
-                        .background(
-                            Color.white
-                                .shadow(color: .black.opacity(0.1), radius: 10, y: -4)
                         )
-                }
-
-                .toolbar(.hidden, for: .navigationBar)
-                .overlay(sideMenuOverlay)
-                .alert("Logout", isPresented: $showingLogoutConfirmation) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Logout", role: .destructive) {
-                        handleLogout()
                     }
-                } message: {
-                    Text("Are you sure you want to log out of Apollo360?")
+
+                // Tab Bar
+                DashboardTabBar(
+                    selectedTab: $selectedTab,
+                    bottomInset: bottomSafeArea
+                )
+                .padding(.horizontal, 5)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .overlay(sideMenuOverlay)
+            .alert("Logout", isPresented: $showingLogoutConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Logout", role: .destructive) {
+                    viewModel.logout()
                 }
+            } message: {
+                Text("Are you sure you want to log out of Apollo360?")
+            }
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: BottomSafeAreaPreferenceKey.self,
+                    value: proxy.safeAreaInsets.bottom
+                )
+            }
+        )
+        .onPreferenceChange(BottomSafeAreaPreferenceKey.self) {
+            bottomSafeArea = $0
         }
     }
 
-    // MARK: - Content View
+    // MARK: - Content
     @ViewBuilder
     private var contentView: some View {
         switch selectedTab {
-
         case .home:
             ScrollView {
                 VStack(spacing: 24) {
-
                     DailyStoriesView(
                         title: viewModel.snapshotTitle,
                         subtitle: viewModel.snapshotSubtitle,
                         stories: viewModel.stories
                     )
-                    .dashboardSlideUp(delay: 0.05)
 
                     WellnessScoreCard(
                         title: viewModel.wellnessTitle,
@@ -92,13 +96,9 @@ struct DashboardView: View {
                         changeValue: viewModel.wellnessChange,
                         mode: $viewModel.wellnessMode
                     )
-                    .dashboardSlideUp(delay: 0.12)
 
                     ApolloInsightsCard(insights: viewModel.insights)
-                        .dashboardSlideUp(delay: 0.18)
-
                     CardiometabolicMetricsCard(metrics: viewModel.cardioMetrics)
-                        .dashboardSlideUp(delay: 0.24)
 
                     ActivitiesSummaryCard(
                         days: viewModel.activityDays,
@@ -106,15 +106,16 @@ struct DashboardView: View {
                         summaryNote: viewModel.activitySummaryNote,
                         weeklyChangePercent: viewModel.weeklyChangePercent
                     )
-                    .dashboardSlideUp(delay: 0.30)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 20)
+                .padding(.bottom, 140)
             }
 
         default:
-            DashboardTabPlaceholderView(title: selectedTab.displayTitle)
+            DashboardTabPlaceholderView(
+                title: selectedTab.displayTitle
+            )
         }
     }
 
@@ -123,7 +124,6 @@ struct DashboardView: View {
     private var sideMenuOverlay: some View {
         if isSideMenuVisible {
             ZStack(alignment: .leading) {
-
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                     .onTapGesture {
@@ -147,21 +147,13 @@ struct DashboardView: View {
             }
         }
     }
+}
 
-    // MARK: - Logout
-    private func handleLogout() {
-        withAnimation(.easeInOut) {
-            isSideMenuVisible = false
-        }
-
-        guard let token = session.accessToken else {
-            session.clearSession()
-            return
-        }
-
-        APIClient.shared.logout(bearerToken: token) { _ in
-            session.clearSession()
-        }
+// MARK: - Safe Area Preference
+private struct BottomSafeAreaPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

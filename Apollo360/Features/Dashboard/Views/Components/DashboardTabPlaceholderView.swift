@@ -7,6 +7,24 @@
 
 import SwiftUI
 
+extension DashboardTab {
+    var displayTitle: String {
+        switch self {
+        case .metrics:
+            return "Metrics"
+        case .library:
+            return "Library"
+        case .home:
+            return "Home"
+        case .message:
+            return "Messages"
+        case .appointment:
+            return "Appointments"
+        }
+    }
+}
+
+
 struct DashboardTabPlaceholderView: View {
     let title: String
 

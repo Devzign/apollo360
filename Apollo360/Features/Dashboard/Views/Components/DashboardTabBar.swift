@@ -18,115 +18,124 @@ enum DashboardTab: String, CaseIterable {
 struct DashboardTabBar: View {
 
     @Binding var selectedTab: DashboardTab
+    var bottomInset: CGFloat = 0
 
+    // MARK: - Constants
     private let leadingItems: [DashboardTab] = [.metrics, .library]
     private let trailingItems: [DashboardTab] = [.message, .appointment]
+    private let cornerRadius: CGFloat = 34
+    private let barHeight: CGFloat = 88
+    private let inactiveTint = Color(red: 65 / 255, green: 65 / 255, blue: 65 / 255)
 
+    // MARK: - Body
     var body: some View {
         ZStack {
-
-            Color.white
-                .ignoresSafeArea(.container, edges: .bottom)
-                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: -10)
-
-            TopRoundedRectangle(cornerRadius: 32)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.white)
+                .shadow(color: .black.opacity(0.16), radius: 18, x: 0, y: -8)
 
+            // Tabs
             HStack {
-                HStack(spacing: 20) {
-                    ForEach(leadingItems, id: \.self) { tab in
-                        tabButton(for: tab)
-                    }
-                }
+                tabGroup(items: leadingItems)
 
                 Spacer()
 
-                HStack(spacing: 20) {
-                    ForEach(trailingItems, id: \.self) { tab in
-                        tabButton(for: tab)
-                    }
-                }
+                tabGroup(items: trailingItems)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-
-            Button {
-                selectedTab = .home
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 85, height: 85)
-                        .shadow(color: Color.black.opacity(0.18), radius: 18, x: 0, y: 12)
-
-                    Circle()
-                        .stroke(AppColor.green.opacity(0.35), lineWidth: 6)
-                        .frame(width: 80, height: 80)
-
-                    Circle()
-                        .fill(AppColor.green)
-                        .frame(width: 60, height: 60)
-
-                    Image(systemName: "house.fill")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .offset(y: -28)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
         }
-        .frame(height: 80)
+        .frame(height: barHeight + bottomInset)
+        .overlay(centerButton.offset(y: -barHeight * 0.4))
+        .ignoresSafeArea(edges: .bottom)
     }
 
-    // MARK: - Tab Button
-    @ViewBuilder
-    private func tabButton(for tab: DashboardTab) -> some View {
-        let info = tabInfo(for: tab)
-
+    // MARK: - Center Button
+    private var centerButton: some View {
         Button {
-            selectedTab = tab
+            selectedTab = .home
         } label: {
-            VStack(spacing: 3) {
-                Image(systemName: info.icon)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(
-                        selectedTab == tab ? AppColor.green : AppColor.black
-                    )
+            let isActive = selectedTab == .home
+            let circleColor = isActive ? AppColor.green : inactiveTint
 
-                Text(info.title)
-                    .font(AppFont.body(size: 12, weight: .semibold))
-                    .foregroundStyle(
-                        selectedTab == tab ? AppColor.green : AppColor.black
-                    )
+            ZStack {
+                Circle()
+                    .stroke(Color.white, lineWidth: 6)
+                    .frame(width: 98, height: 98)
+
+                Circle()
+                    .stroke(Color(red: 220 / 255, green: 220 / 255, blue: 220 / 255), lineWidth: 5)
+                    .frame(width: 86, height: 86)
+
+                Circle()
+                    .fill(circleColor)
+                    .frame(width: 74, height: 74)
+
+                Image("home")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .foregroundStyle(.white)
             }
         }
         .buttonStyle(.plain)
     }
 
-    private func tabInfo(for tab: DashboardTab) -> (icon: String, title: String) {
+    // MARK: - Tab Group
+    private func tabGroup(items: [DashboardTab]) -> some View {
+        HStack(spacing: 34) {
+            ForEach(items, id: \.self) { tab in
+                tabButton(for: tab)
+            }
+        }
+    }
+
+    // MARK: - Tab Button
+    private func tabButton(for tab: DashboardTab) -> some View {
+        let info = tabInfo(for: tab)
+        let isSelected = selectedTab == tab
+        let tint = isSelected ? AppColor.green : inactiveTint
+
+        return Button {
+            selectedTab = tab
+        } label: {
+            VStack(spacing: 4) {
+                Image(info.asset)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .foregroundStyle(tint)
+
+                Text(info.title)
+                    .font(AppFont.body(size: 12, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Tab Info
+    private func tabInfo(for tab: DashboardTab) -> (asset: String, title: String) {
         switch tab {
         case .metrics:
-            return ("chart.line.uptrend.xyaxis", "Metrics")
+            return ("matrics", "Metrics")
         case .library:
-            return ("books.vertical", "Library")
+            return ("library", "Library")
         case .message:
-            return ("bubble.left.and.bubble.right", "Message")
+            return ("message", "Message")
         case .appointment:
-            return ("calendar.badge.clock", "Appoint.")
-        default:
-            return ("house.fill", "Home")
+            return ("appoinment", "Appoint.")
+        case .home:
+            return ("home", "Home")
         }
     }
 }
 
-extension DashboardTab {
-    var displayTitle: String {
-        switch self {
-        case .metrics: return "Metrics"
-        case .library: return "Library"
-        case .home: return "Home"
-        case .message: return "Messages"
-        case .appointment: return "Appointments"
-        }
-    }
+#Preview {
+    DashboardTabBar(
+        selectedTab: .constant(.home),
+        bottomInset: 34
+    )
 }
-#Preview { DashboardTabBar(selectedTab: .constant(.home)) .padding() }

@@ -297,4 +297,15 @@ final class DashboardViewModel: ObservableObject {
             )
         ]
     }
+
+    func logout() {
+        guard let token = session.accessToken else {
+            session.clearSession()
+            return
+        }
+
+        APIClient.shared.logout(bearerToken: token) { [weak self] _ in
+            self?.session.clearSession()
+        }
+    }
 }
