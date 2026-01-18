@@ -60,9 +60,11 @@ private struct InsightRowView: View {
                     .font(AppFont.body(size: 14, weight: .semibold))
                     .foregroundStyle(AppColor.black)
 
-                Text(item.detail)
-                    .font(AppFont.body(size: 12))
-                    .foregroundStyle(AppColor.grey)
+                TypewriterText(
+                    text: item.detail,
+                    font: AppFont.body(size: 12),
+                    color: AppColor.grey
+                )
             }
 
             Spacer()
@@ -136,6 +138,49 @@ private struct InsightIconView: View {
         Image(systemName: "sparkles")
             .font(.system(size: iconSize, weight: .semibold))
             .foregroundStyle(tint)
+    }
+}
+
+private struct TypewriterText: View {
+    let text: String
+    var font: Font
+    var color: Color
+    var typingSpeed: TimeInterval = 0.02
+
+    @State private var revealedCount = 0
+    @State private var typingTask: Task<Void, Never>?
+
+    var body: some View {
+        Text(String(text.prefix(revealedCount)))
+            .font(font)
+            .foregroundStyle(color)
+            .multilineTextAlignment(.leading)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .onAppear {
+                startTyping()
+            }
+            .onChange(of: text) { _ in
+                startTyping()
+            }
+            .onDisappear {
+                typingTask?.cancel()
+            }
+    }
+
+    private func startTyping() {
+        typingTask?.cancel()
+        revealedCount = 0
+
+        typingTask = Task {
+            let characters = Array(text)
+            for index in characters.indices {
+                try? await Task.sleep(nanoseconds: UInt64(typingSpeed * 1_000_000_000))
+                await MainActor.run {
+                    revealedCount = index + 1
+                }
+            }
+        }
     }
 }
 
