@@ -113,9 +113,14 @@ struct LoginView: View {
             actionButton
 
             NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
-                Text("Caregiver Log-In")
-                    .font(AppFont.body(size: 14, weight: .medium))
-                    .foregroundStyle(AppColor.green)
+                HStack(spacing: 2) {
+                    Text("Caregiver")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundStyle(AppColor.black)
+                    Text(" Log-In")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundStyle(AppColor.green)
+                }
             }
             .padding(.top, 8)
         }

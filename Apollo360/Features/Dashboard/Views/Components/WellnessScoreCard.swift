@@ -170,6 +170,7 @@ private struct WellnessProgressRing: View {
             }
         }
         .frame(width: 220, height: 220)
+        .padding(.vertical, 16)
         .onAppear {
             withAnimation(.easeOut(duration: 1.2)) {
                 animatedProgress = progress

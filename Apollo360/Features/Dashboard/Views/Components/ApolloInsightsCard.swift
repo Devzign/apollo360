@@ -87,12 +87,6 @@ private struct InsightRowView: View {
                 .padding(.horizontal, 8)
                 .scaleEffect(x: revealProgress, y: 1, anchor: .leading)
         }
-        .onAppear {
-            revealProgress = 0
-            withAnimation(.easeOut(duration: 1.0)) {
-                revealProgress = 1
-            }
-        }
     }
 
     private func impactColor(_ impact: InsightImpact) -> Color {

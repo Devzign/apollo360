@@ -120,7 +120,7 @@ struct DashboardTabBar: View {
     private func tabInfo(for tab: DashboardTab) -> (asset: String, title: String) {
         switch tab {
         case .metrics:
-            return ("matrics", "Metrics")
+            return ("metrics", "Metrics")
         case .library:
             return ("library", "Library")
         case .message:
