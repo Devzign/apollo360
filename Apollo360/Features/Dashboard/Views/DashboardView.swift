@@ -8,39 +8,41 @@
 import SwiftUI
 
 struct DashboardView: View {
-
+    
     // MARK: - State
     @StateObject private var viewModel: DashboardViewModel
     @State private var selectedTab: DashboardTab = .home
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
     @State private var bottomSafeArea: CGFloat = 0
-
+    private let session: SessionManager
+    
     // MARK: - Init
     init(session: SessionManager) {
+        self.session = session
         _viewModel = StateObject(wrappedValue: DashboardViewModel(session: session))
     }
-
+    
     // MARK: - Body
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-
+                
                 // Main content
                 contentView
                     .background(Color.black.opacity(0.02))
                     .safeAreaInset(edge: .top, spacing: 0) {
-                        DashboardHeaderView(
-                            greeting: viewModel.greeting,
-                            userName: viewModel.userName,
-                            onMenuTap: {
-                                withAnimation(.easeInOut) {
-                                    isSideMenuVisible = true
-                                }
+                    SectionHeaderView(
+                        title: selectedTab.displayTitle,
+                        onMenuTap: {
+                            withAnimation(.easeOut(duration: 0.35)) {
+                                isSideMenuVisible = true
                             }
-                        )
+                        },
+                        onGridTap: {}
+                    )
                     }
-
+                
                 // Tab Bar
                 DashboardTabBar(
                     selectedTab: $selectedTab,
@@ -49,7 +51,14 @@ struct DashboardView: View {
                 .padding(.horizontal, 5)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .overlay(sideMenuOverlay)
+            .overlay {
+                ZStack {
+                    if viewModel.isLoading {
+                        AppShimmerOverlay()
+                    }
+                    sideMenuOverlay
+                }
+            }
             .alert("Logout", isPresented: $showingLogoutConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Logout", role: .destructive) {
@@ -71,7 +80,7 @@ struct DashboardView: View {
             bottomSafeArea = $0
         }
     }
-
+    
     // MARK: - Content
     @ViewBuilder
     private var contentView: some View {
@@ -118,7 +127,7 @@ struct DashboardView: View {
             )
         }
     }
-
+    
     // MARK: - Side Menu
     @ViewBuilder
     private var sideMenuOverlay: some View {
@@ -126,34 +135,65 @@ struct DashboardView: View {
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
+                    .transition(.opacity)
                     .onTapGesture {
-                        withAnimation(.easeInOut) {
-                            isSideMenuVisible = false
-                        }
+                        closeSideMenu()
                     }
 
-                SideMenuView(
-                    onClose: {
-                        withAnimation(.easeInOut) {
-                            isSideMenuVisible = false
+                    SideMenuView(
+                        selectedTab: selectedTab,
+                        onSelectTab: { selectedTab = $0 },
+                        onClose: closeSideMenu,
+                        logoutAction: {
+                            showingLogoutConfirmation = true
                         }
-                    },
-                    logoutAction: {
-                        showingLogoutConfirmation = true
-                    }
-                )
+                    )
                 .frame(width: 280)
-                .transition(.move(edge: .leading))
+                .modifier(SideMenuMotion(isVisible: isSideMenuVisible))
+                .transition(.sideMenu)
             }
+            .animation(.easeOut(duration: 0.35), value: isSideMenuVisible)
+        }
+    }
+
+    private func closeSideMenu() {
+        withAnimation(.easeIn(duration: 0.25)) {
+            isSideMenuVisible = false
         }
     }
 }
-
 // MARK: - Safe Area Preference
 private struct BottomSafeAreaPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+private extension AnyTransition {
+    static var sideMenu: AnyTransition {
+        let insertion = AnyTransition.move(edge: .leading)
+            .combined(with: .scale(scale: 0.95, anchor: .leading))
+            .combined(with: .opacity)
+        let removal = AnyTransition.move(edge: .leading)
+            .combined(with: .opacity)
+        return .asymmetric(insertion: insertion, removal: removal)
+    }
+}
+
+private struct SideMenuMotion: ViewModifier {
+    let isVisible: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isVisible ? 1 : 0.92, anchor: .leading)
+            .rotation3DEffect(
+                .degrees(isVisible ? 0 : -12),
+                axis: (x: 0, y: 1, z: 0),
+                anchor: .leading,
+                perspective: 0.7
+            )
+            .shadow(color: Color.black.opacity(0.4), radius: 30, y: 18)
     }
 }
 

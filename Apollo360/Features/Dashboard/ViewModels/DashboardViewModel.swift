@@ -13,6 +13,7 @@ import SwiftUI
 final class DashboardViewModel: ObservableObject {
     @Published var stories: [DailyStory] = []
     @Published var isLoadingInsights: Bool = false
+    @Published private(set) var isLoading: Bool = true
     @Published var insightError: String?
     @Published var wellnessMode: WellnessMode = .absolute
     @Published var currentScore: Int = 0
@@ -28,6 +29,11 @@ final class DashboardViewModel: ObservableObject {
     @Published var weeklyChangePercent: Int = 0
 
     private let session: SessionManager
+    private var pendingLoads = 0 {
+        didSet {
+            isLoading = pendingLoads > 0
+        }
+    }
     private var relativeBreakdown: WellnessBreakdown = WellnessBreakdown(activity: 0, sleep: 0, heart: 0, nutrition: 0)
     private let numberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -67,7 +73,9 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
+        beginLoading()
         DashboardAPIService.shared.fetchDashboardInsights(patientId: patientId, bearerToken: token) { [weak self] result in
+            defer { self?.endLoading() }
             guard let self = self else { return }
             switch result {
             case .success(let payloads):
@@ -83,7 +91,9 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
+        beginLoading()
         DashboardAPIService.shared.fetchWellnessOverview(patientId: patientId, bearerToken: token, mode: .absolute) { [weak self] result in
+            defer { self?.endLoading() }
             guard let self = self else { return }
             switch result {
             case .success(let payload):
@@ -106,8 +116,12 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
+        beginLoading()
         isLoadingInsights = true
         DashboardAPIService.shared.fetchApolloInsights(patientId: patientId, bearerToken: token) { [weak self] result in
+            defer {
+                self?.endLoading()
+            }
             guard let self = self else { return }
             self.isLoadingInsights = false
             switch result {
@@ -133,7 +147,9 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
+        beginLoading()
         DashboardAPIService.shared.fetchCardiometabolicMetrics(patientId: patientId, bearerToken: token) { [weak self] result in
+            defer { self?.endLoading() }
             guard let self = self else { return }
             switch result {
             case .success(let payload):
@@ -158,7 +174,9 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
+        beginLoading()
         DashboardAPIService.shared.fetchActivities(patientId: patientId, bearerToken: token) { [weak self] result in
+            defer { self?.endLoading() }
             guard let self = self else { return }
             switch result {
             case .success(let payload):
@@ -204,6 +222,14 @@ final class DashboardViewModel: ObservableObject {
             return existing
         }
         return [0.5, 0.5, 0.5]
+    }
+
+    private func beginLoading() {
+        pendingLoads += 1
+    }
+
+    private func endLoading() {
+        pendingLoads = max(pendingLoads - 1, 0)
     }
 
     private static func metrics(current: WellnessBreakdown, previous: WellnessBreakdown) -> [WellnessMetric] {

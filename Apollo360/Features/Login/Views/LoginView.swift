@@ -12,6 +12,7 @@ struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject private var session: SessionManager
     @State private var isDatePickerPresented: Bool = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,19 @@ struct LoginView: View {
                 }
             }
             .navigationBarHidden(true)
+            .overlay(
+                VStack {
+                    HStack {
+                        BackButton {
+                            dismiss()
+                        }
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 20)
+            )
         }
         .sheet(isPresented: $isDatePickerPresented) {
             ZStack {

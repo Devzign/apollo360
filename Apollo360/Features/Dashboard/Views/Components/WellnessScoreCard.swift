@@ -17,6 +17,7 @@ struct WellnessScoreCard: View {
     let isImproving: Bool
     let changeValue: Int
     @Binding var mode: WellnessMode
+    @State private var isShowingBreakdown = false
 
     var body: some View {
         DashboardCard {
@@ -39,14 +40,22 @@ struct WellnessScoreCard: View {
                     relativeView
                 }
             }
-
+        }
+        .sheet(isPresented: $isShowingBreakdown) {
+            ScoreBreakdownView(
+                score: currentScore,
+                mode: mode,
+                metrics: metrics
+            )
         }
     }
 
     private var absoluteView: some View {
         VStack(spacing: 16) {
-            WellnessProgressRing(score: currentScore, progress: progress)
-                .frame(maxWidth: .infinity)
+            WellnessProgressRing(score: currentScore, progress: progress, onTap: {
+                isShowingBreakdown = true
+            })
+            .frame(maxWidth: .infinity)
 
             Text(description)
                 .font(AppFont.body(size: 13))
@@ -134,6 +143,7 @@ private struct WellnessModeToggle: View {
 private struct WellnessProgressRing: View {
     let score: Int
     let progress: Double
+    var onTap: (() -> Void)? = nil
     @State private var animatedProgress: Double = 0
     @State private var pulse: Bool = false
 
@@ -171,6 +181,10 @@ private struct WellnessProgressRing: View {
         }
         .frame(width: 220, height: 220)
         .padding(.vertical, 16)
+        .contentShape(Circle())
+        .onTapGesture {
+            onTap?()
+        }
         .onAppear {
             withAnimation(.easeOut(duration: 1.2)) {
                 animatedProgress = progress
@@ -187,7 +201,6 @@ private struct WellnessProgressRing: View {
         ))
     }
 }
-
 
 private struct ProgressChangeHandler: ViewModifier {
     let progress: Double

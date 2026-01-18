@@ -59,4 +59,10 @@ enum APIEndpoint {
     static func activities(for patientId: String) -> String {
         "dashboard/activities/\(patientId)"
     }
+    static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
+        "v1/messages/all/\(patientId)?a360hId=\(a360hId)"
+    }
+    static var sendMessage: String {
+        "v1/messages"
+    }
 }

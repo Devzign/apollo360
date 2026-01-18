@@ -45,16 +45,9 @@ final class APIClient {
                                                 headers: [String: String]? = nil,
                                                 responseType: T.Type,
                                                 completion: @escaping (Result<T, APIError>) -> Void) {
-        debugPrint("[APIClient] request -> endpoint: \(endpoint), method: \(method.rawValue)")
         performDataRequest(endpoint: endpoint, method: method, body: body, headers: headers) { result in
             switch result {
             case .success(let data):
-                if let prettyResponse = Self.prettyPrintedJSON(data) {
-                    debugPrint("[APIClient] response payload:\n\(prettyResponse)")
-                }
-                if let raw = String(data: data, encoding: .utf8) {
-                    debugPrint("[APIClient] raw response:\n\(raw)")
-                }
                 do {
                     let decoded = try JSONDecoder().decode(responseType, from: data)
                     self.completeOnMain(completion, .success(decoded))
@@ -86,8 +79,6 @@ final class APIClient {
                                              headers: [String: String]? = nil,
                                              completion: @escaping (Result<Data, APIError>) -> Void) {
         let url = baseURL.appendingPathComponent(endpoint)
-        
-        debugPrint("[APIClient] network -> '\(method.rawValue) \(url.absoluteString)'")
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -103,19 +94,26 @@ final class APIClient {
         if let body = body {
             do {
                 request.httpBody = try JSONEncoder().encode(body)
-                if let bodyData = request.httpBody,
-                   let prettyBody = Self.prettyPrintedJSON(bodyData) {
-                    debugPrint("[APIClient] request payload:\n\(prettyBody)")
-                }
             } catch {
                 completeOnMain(completion, .failure(.encodingFailed(error)))
                 return
             }
         }
+
+        #if DEBUG
+        APILogger.logRequest(
+            endpoint: endpoint,
+            method: method.rawValue,
+            headers: request.allHTTPHeaderFields,
+            body: request.httpBody
+        )
+        #endif
         
         session.dataTask(with: request) { data, response, error in
             if let error = error {
-                debugPrint("[APIClient] error -> \(error)")
+                #if DEBUG
+                APILogger.logError(endpoint: endpoint, error: error)
+                #endif
                 self.completeOnMain(completion, .failure(.requestFailed(error)))
                 return
             }
@@ -129,16 +127,12 @@ final class APIClient {
             let statusCode = httpResponse.statusCode
             let data = data ?? Data()
             
-            debugPrint("[APIClient] status \(statusCode), data length \(data.count)")
+            #if DEBUG
+            APILogger.logResponse(endpoint: endpoint, statusCode: statusCode, data: data)
+            #endif
             guard (200...299).contains(statusCode) else {
                 if statusCode == 401 {
                     NotificationCenter.default.post(name: .sessionInvalidated, object: nil)
-                }
-                if let pretty = Self.prettyPrintedJSON(data) {
-                    debugPrint("[APIClient] response payload:\n\(pretty)")
-                }
-                if let raw = String(data: data, encoding: .utf8) {
-                    debugPrint("[APIClient] raw response:\n\(raw)")
                 }
                 self.completeOnMain(completion, .failure(.serverError(statusCode: statusCode, data: data)))
                 return
@@ -208,18 +202,6 @@ final class APIClient {
 }
 
 extension APIClient {
-    fileprivate static func prettyPrintedJSON(_ data: Data) -> String? {
-        guard
-            let object = try? JSONSerialization.jsonObject(with: data),
-            JSONSerialization.isValidJSONObject(object),
-            let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
-            let prettyString = String(data: prettyData, encoding: .utf8)
-        else {
-            return nil
-        }
-        return prettyString
-    }
-    
     fileprivate struct ServerErrorPayload: Decodable {
         let message: String?
         let errorCode: String?
