@@ -28,7 +28,7 @@ struct DailyStoriesView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: 16) {
                     ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
                         Button {
                             selectedStoryIndex = index
@@ -57,10 +57,10 @@ struct DailyStoriesView: View {
 private struct StoryBadgeView: View {
     let story: DailyStory
 
-    private let ringSize: CGFloat = 44
-    private let outerSize: CGFloat = 60
+    private let ringSize: CGFloat = 70
+    private let outerSize: CGFloat = 70
 
-    private let iconSize: CGFloat = 36
+    private let iconSize: CGFloat = 45
 
     var body: some View {
         VStack(spacing: 8) {
@@ -72,7 +72,7 @@ private struct StoryBadgeView: View {
                     .overlay(
                         Circle()
                             .fill(AppColor.secondary)
-                            .padding(4)
+                            .padding(8)
                     )
                     .overlay(
                         Circle()
@@ -97,7 +97,7 @@ private struct StoryBadgeView: View {
             }
 
             Text(story.title)
-                .font(AppFont.body(size: 13, weight: .medium))
+                .font(AppFont.body(size: 14, weight: .medium))
                 .foregroundStyle(AppColor.black)
                 .frame(width: 80)
                 .lineLimit(1)

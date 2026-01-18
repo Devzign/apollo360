@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import Combine
 import Kingfisher
 
 struct DailyStoryCarouselView: View {
@@ -15,6 +16,8 @@ struct DailyStoryCarouselView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
+
+    @State private var autoAdvanceTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     init(stories: [DailyStory], initialIndex: Int) {
         self.stories = stories
@@ -42,7 +45,7 @@ struct DailyStoryCarouselView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color.black.opacity(0.96)
                 .ignoresSafeArea()
 
             if stories.isEmpty {
@@ -50,40 +53,39 @@ struct DailyStoryCarouselView: View {
                     .foregroundStyle(Color.white.opacity(0.8))
                     .font(AppFont.body(size: 16, weight: .medium))
             } else {
-                TabView(selection: $currentIndex) {
-                    ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
-                        DailyStoryContentView(story: story)
-                            .tag(index)
-                    }
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .ignoresSafeArea()
+                GeometryReader { proxy in
+                    let cardWidth = proxy.size.width
+                    let cardHeight = proxy.size.height
 
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        ForEach(stories.indices, id: \.self) { index in
-                            Capsule()
-                                .fill(index <= currentIndex ? Color.white : Color.white.opacity(0.3))
-                                .frame(height: 3)
-                                .frame(maxWidth: .infinity)
+                    TabView(selection: $currentIndex) {
+                        ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
+                            DailyStoryContentView(story: story)
+                                .tag(index)
                         }
                     }
-                    .padding(.horizontal, 16)
-
-                    Text(stories[currentIndex].title)
-                        .font(AppFont.body(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.white)
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                    .frame(width: cardWidth, height: cardHeight)
+                    .background(
+                        RoundedRectangle(cornerRadius: 38, style: .continuous)
+                            .fill(Color.black)
+                            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 38, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
                 }
-                .padding(.top, 20)
-                .frame(maxWidth: .infinity, alignment: .top)
 
                 tapRegions
-
                 closeButton
-                shareButtonOverlay
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onReceive(autoAdvanceTimer) { _ in
+            guard !stories.isEmpty else { return }
+            goToNext()
+        }
     }
 
     private var tapRegions: some View {
@@ -116,26 +118,6 @@ struct DailyStoryCarouselView: View {
         dismiss()
     }
 
-    private var shareButtonOverlay: some View {
-        VStack {
-            Spacer()
-            HStack {
-                Spacer()
-                Button {
-                    // share action placeholder
-                } label: {
-                    Image(systemName: "paperplane")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.white.opacity(0.9))
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.4)))
-                }
-            }
-            .padding(.trailing, 24)
-            .padding(.bottom, 32)
-        }
-        .ignoresSafeArea()
-    }
 }
 
 private struct DailyStoryContentView: View {
@@ -145,25 +127,31 @@ private struct DailyStoryContentView: View {
         ZStack {
             storyBackground
 
-            VStack(spacing: 16) {
-                VStack(spacing: 12) {
-                    storyProgressBar
-                    storyStatusRow
-                    storyInfoRow
-                }
+            VStack {
+                headerStack
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
 
                 Spacer()
 
                 storyHeadline
+                    .padding(.horizontal, 24)
 
                 Spacer()
+
+                storyBottomBar
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 36)
-            .padding(.bottom, 30)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
+    private var headerStack: some View {
+        VStack(spacing: 12) {
+            storyProgressBar
+            storyInfoRow
+        }
     }
 
     private var storyBackground: some View {
@@ -172,7 +160,9 @@ private struct DailyStoryContentView: View {
                let uiImage = UIImage(named: imageName) {
                 Image(uiImage: uiImage)
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
             } else if let iconURL = story.iconURL {
                 KFImage(iconURL)
                     .placeholder {
@@ -181,7 +171,8 @@ private struct DailyStoryContentView: View {
                     }
                     .fade(duration: 0.25)
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
             } else {
                 RoundedRectangle(cornerRadius: 0)
@@ -223,19 +214,6 @@ private struct DailyStoryContentView: View {
             .shadow(color: Color.white.opacity(0.4), radius: 4, x: 0, y: 1)
     }
 
-    private var storyStatusRow: some View {
-        HStack {
-            Text("7:38")
-                .font(AppFont.body(size: 17, weight: .semibold))
-            Spacer()
-            Image(systemName: "wifi")
-                .font(.system(size: 15))
-            Image(systemName: "battery.100")
-                .font(.system(size: 15))
-        }
-        .foregroundStyle(Color.white.opacity(0.9))
-    }
-
     private var storyInfoRow: some View {
         HStack(spacing: 12) {
             Circle()
@@ -254,6 +232,8 @@ private struct DailyStoryContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(story.title)
                     .font(AppFont.body(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+
                 if let detail = story.detail {
                     Text(detail)
                         .font(AppFont.body(size: 13))
@@ -289,6 +269,22 @@ private struct DailyStoryContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var storyBottomBar: some View {
+        HStack(spacing: 16) {
+            Spacer()
+            HStack(spacing: 18) {
+                Image(systemName: "heart")
+                Image(systemName: "paperplane")
+            }
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(Color.white.opacity(0.95))
+        }
+        .foregroundStyle(Color.white.opacity(0.9))
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(Color.white.opacity(0.08))
+        .clipShape(Capsule())
+    }
 }
 
 #Preview {
