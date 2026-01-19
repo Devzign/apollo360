@@ -34,19 +34,6 @@ struct LoginView: View {
                 }
             }
             .navigationBarHidden(true)
-            .overlay(
-                VStack {
-                    HStack {
-                        BackButton {
-                            dismiss()
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .padding(.top, 8)
-                .padding(.horizontal, 20)
-            )
         }
         .sheet(isPresented: $isDatePickerPresented) {
             ZStack {
