@@ -45,19 +45,19 @@ enum APIEndpoint {
     static let passwordLogin = "v1/auth/login"
     static let logout = "v1/auth/logout"
     static func dashboardInsights(for patientId: String) -> String {
-        "dashboard/insights/\(patientId)"
+        "v1/dashboard/insights/\(patientId)"
     }
     static func wellnessOverview(for patientId: String, mode: WellnessMode) -> String {
-        "dashboard/wellness-overview/\(patientId)?mode=\(mode.rawValue.lowercased())"
+        "v1/dashboard/wellness-overview/\(patientId)?mode=\(mode.rawValue.lowercased())"
     }
     static func apolloInsights(for patientId: String) -> String {
-        "dashboard/apollo-insights/\(patientId)"
+        "v1/dashboard/apollo-insights/\(patientId)"
     }
     static func cardiometabolicMetrics(for patientId: String) -> String {
-        "dashboard/cardiometabolic-metrics/\(patientId)"
+        "v1/dashboard/cardiometabolic-metrics/\(patientId)"
     }
     static func activities(for patientId: String) -> String {
-        "dashboard/activities/\(patientId)"
+        "v1/dashboard/activities/\(patientId)"
     }
     static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)"
