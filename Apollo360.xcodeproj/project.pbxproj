@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 62124B012F155CD300A0AA28 /* IQKeyboardManagerSwift */; };
 		626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 626BD2F82F16536B00D4DD11 /* Kingfisher */; };
+		62F033802F1F1BFF00763ECB /* SwiftUIDragMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 62F0337F2F1F1BFF00763ECB /* SwiftUIDragMenu */; };
+		62F033832F1F1C1400763ECB /* SwiftUIAnimatedRingCharts in Frameworks */ = {isa = PBXBuildFile; productRef = 62F033822F1F1C1400763ECB /* SwiftUIAnimatedRingCharts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,8 +43,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62F033832F1F1C1400763ECB /* SwiftUIAnimatedRingCharts in Frameworks */,
 				626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */,
 				62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */,
+				62F033802F1F1BFF00763ECB /* SwiftUIDragMenu in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +119,8 @@
 			packageReferences = (
 				62124B002F155CD300A0AA28 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */,
 				626BD2F72F16536B00D4DD11 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				62F0337E2F1F1BFF00763ECB /* XCRemoteSwiftPackageReference "SwiftUIDragMenu" */,
+				62F033812F1F1C1400763ECB /* XCRemoteSwiftPackageReference "SwiftUIAnimatedRingCharts" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 628A3D862F1087B30037BE39 /* Products */;
@@ -376,6 +382,22 @@
 				minimumVersion = 8.6.2;
 			};
 		};
+		62F0337E2F1F1BFF00763ECB /* XCRemoteSwiftPackageReference "SwiftUIDragMenu" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/devmehmetates/SwiftUIDragMenu";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		62F033812F1F1C1400763ECB /* XCRemoteSwiftPackageReference "SwiftUIAnimatedRingCharts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/devmehmetates/SwiftUIAnimatedRingCharts";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -388,6 +410,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 626BD2F72F16536B00D4DD11 /* XCRemoteSwiftPackageReference "Kingfisher" */;
 			productName = Kingfisher;
+		};
+		62F0337F2F1F1BFF00763ECB /* SwiftUIDragMenu */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62F0337E2F1F1BFF00763ECB /* XCRemoteSwiftPackageReference "SwiftUIDragMenu" */;
+			productName = SwiftUIDragMenu;
+		};
+		62F033822F1F1C1400763ECB /* SwiftUIAnimatedRingCharts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62F033812F1F1C1400763ECB /* XCRemoteSwiftPackageReference "SwiftUIAnimatedRingCharts" */;
+			productName = SwiftUIAnimatedRingCharts;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

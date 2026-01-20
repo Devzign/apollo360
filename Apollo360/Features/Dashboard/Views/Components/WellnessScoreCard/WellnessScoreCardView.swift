@@ -45,7 +45,8 @@ struct WellnessScoreCardView: View {
 
     private var absoluteView: some View {
         VStack(spacing: 16) {
-            FitnessGaugeView(value: Double(currentScore))
+            EnergyWaveCircleView(energy: Double(currentScore))
+//            WellnessRingCircleView(metrics: metrics, overallScore: currentScore)
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture {
