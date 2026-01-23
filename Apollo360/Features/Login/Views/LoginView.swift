@@ -13,6 +13,11 @@ struct LoginView: View {
     @EnvironmentObject private var session: SessionManager
     @State private var isDatePickerPresented: Bool = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var cardMaxWidth: CGFloat {
+        horizontalSizeClass == .regular ? 520 : 380
+    }
 
     var body: some View {
         NavigationStack {
@@ -126,7 +131,7 @@ struct LoginView: View {
             .padding(.top, 8)
         }
         .padding(30)
-        .frame(maxWidth: 380)
+        .frame(maxWidth: cardMaxWidth)
         .background(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
                 .fill(Color.white)

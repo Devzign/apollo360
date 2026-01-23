@@ -20,6 +20,8 @@ extension DashboardTab {
             return "Messages"
         case .appointment:
             return "Appointments"
+        case .forms:
+            return "Forms"
         }
     }
 }

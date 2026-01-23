@@ -9,42 +9,53 @@ import SwiftUI
 
 struct AuthShell<Content: View>: View {
     private let content: Content
-
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
+    private var horizontalPadding: CGFloat {
+        horizontalSizeClass == .regular ? 30 : 24
+    }
+    
+    private var cardMaxWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 520 : 380
+    }
+    
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
-
+    
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .top) {
-                AppColor.green.ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    VStack(spacing: 12) {
-                        Text("apollo")
-                            .font(AppFont.display(size: 56, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.top, 48)
-                    Spacer()
-                }
-
-                VStack(spacing: 0) {
+        ZStack {
+            AppColor.green.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                Spacer()
+                
+                    .frame(height: 64)
+                Image("apolloLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 200)
+                    .padding(.bottom, 16)
+                
+                Spacer()
+                
+                HStack {
                     Spacer()
                     VStack(spacing: 0) {
                         content
                     }
-                    .padding(.vertical, 24)
-                    .padding(.horizontal, 26)
-                    .padding(.bottom, geometry.safeAreaInsets.bottom + 30)
-                    .frame(maxWidth: .infinity)
+                    .padding(30)
+                    .frame(maxWidth: cardMaxWidth)
                     .background(
-                        Color.white
-                            .cornerRadius(40, corners: [.topLeft, .topRight])
-                            .shadow(color: Color.black.opacity(0.2), radius: 24, x: 0, y: -12)
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.18), radius: 24, x: 0, y: 12)
                     )
+                    Spacer()
                 }
-                .ignoresSafeArea(edges: .bottom)
+                .padding(.horizontal, horizontalPadding)
+                
+                Spacer().frame(height: 32)
             }
         }
     }
