@@ -2,43 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>UIAppFonts</key>
-    <array>
-        <string>SpaceGrotesk-Bold.ttf</string>
-        <string>SpaceGrotesk-SemiBold.ttf</string>
-        <string>SpaceGrotesk-Medium.ttf</string>
-        <string>SpaceGrotesk-Regular.ttf</string>
-        <string>SpaceGrotesk-Light.ttf</string>
-
-        <string>Inter_28pt-Regular.ttf</string>
-        <string>Inter_28pt-Medium.ttf</string>
-        <string>Inter_28pt-SemiBold.ttf</string>
-        <string>Inter_28pt-Bold.ttf</string>
-
-        <string>Poppins-Black.ttf</string>
-        <string>Poppins-BlackItalic.ttf</string>
-        <string>Poppins-Bold.ttf</string>
-        <string>Poppins-BoldItalic.ttf</string>
-        <string>Poppins-ExtraBold.ttf</string>
-        <string>Poppins-ExtraBoldItalic.ttf</string>
-        <string>Poppins-ExtraLight.ttf</string>
-        <string>Poppins-ExtraLightItalic.ttf</string>
-        <string>Poppins-Italic.ttf</string>
-        <string>Poppins-Light.ttf</string>
-        <string>Poppins-LightItalic.ttf</string>
-        <string>Poppins-Medium.ttf</string>
-        <string>Poppins-MediumItalic.ttf</string>
-        <string>Poppins-Regular.ttf</string>
-        <string>Poppins-SemiBold.ttf</string>
-        <string>Poppins-SemiBoldItalic.ttf</string>
-        <string>Poppins-Thin.ttf</string>
-        <string>Poppins-ThinItalic.ttf</string>
-    </array>
-
-    <key>UIUserInterfaceStyle</key>
-    <string>Light</string>
-
-    <key>UILaunchStoryboardName</key>
-    <string>LaunchScreen</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>font/poppins/Poppins-Black.ttf</string>
+		<string>font/poppins/Poppins-BlackItalic.ttf</string>
+		<string>font/poppins/Poppins-Bold.ttf</string>
+		<string>font/poppins/Poppins-BoldItalic.ttf</string>
+		<string>font/poppins/Poppins-ExtraBold.ttf</string>
+		<string>font/poppins/Poppins-ExtraBoldItalic.ttf</string>
+		<string>font/poppins/Poppins-ExtraLight.ttf</string>
+		<string>font/poppins/Poppins-ExtraLightItalic.ttf</string>
+		<string>font/poppins/Poppins-Italic.ttf</string>
+		<string>font/poppins/Poppins-Light.ttf</string>
+		<string>font/poppins/Poppins-LightItalic.ttf</string>
+		<string>font/poppins/Poppins-Medium.ttf</string>
+		<string>font/poppins/Poppins-MediumItalic.ttf</string>
+		<string>font/poppins/Poppins-Regular.ttf</string>
+		<string>font/poppins/Poppins-SemiBold.ttf</string>
+		<string>font/poppins/Poppins-SemiBoldItalic.ttf</string>
+		<string>font/poppins/Poppins-Thin.ttf</string>
+		<string>font/poppins/Poppins-ThinItalic.ttf</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

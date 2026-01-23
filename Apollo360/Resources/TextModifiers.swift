@@ -11,20 +11,7 @@ import UIKit
 
 // MARK: - Font Styles
 enum AppFontStyle: String {
-    
-    // MARK: Space Grotesk
-    case spaceGroteskLight     = "SpaceGrotesk-Light"
-    case spaceGroteskRegular   = "SpaceGrotesk-Regular"
-    case spaceGroteskMedium    = "SpaceGrotesk-Medium"
-    case spaceGroteskSemiBold  = "SpaceGrotesk-SemiBold"
-    case spaceGroteskBold      = "SpaceGrotesk-Bold"
-    
-    // MARK: Inter
-    case interRegular   = "Inter_28pt-Regular"
-    case interMedium    = "Inter_28pt-Medium"
-    case interSemiBold  = "Inter_28pt-SemiBold"
-    case interBold      = "Inter_28pt-Bold"
-    
+
     // MARK: Poppins
     case poppinsThin            = "Poppins-Thin"
     case poppinsThinItalic      = "Poppins-ThinItalic"

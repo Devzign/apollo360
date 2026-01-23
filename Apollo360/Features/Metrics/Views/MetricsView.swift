@@ -262,6 +262,12 @@ private struct RangeSelector: View {
     }
 }
 
-#Preview {
+#Preview("iPhone") {
     MetricsView(horizontalPadding: 20)
+        .environment(\.horizontalSizeClass, .compact)
+}
+
+#Preview("iPad") {
+    MetricsView(horizontalPadding: 50)
+        .environment(\.horizontalSizeClass, .regular)
 }

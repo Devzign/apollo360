@@ -8,32 +8,40 @@
 import SwiftUI
 import UIKit
 
-/// Centralized typography helpers that prefer the Space Grotesk display family and Inter for body text.
+/// Centralized typography helpers that use the Poppins family across the app.
 enum AppTypography {
     static func display(size: CGFloat, weight: Font.Weight = .bold) -> Font {
         customFont(
             candidates: [
-                "SpaceGrotesk-Bold",
-                "SpaceGrotesk-SemiBold",
-                "SpaceGrotesk-Regular",
-                "Inter-Bold",
-                "Inter-SemiBold",
-                "Inter-Regular"
+                "Poppins-Black",
+                "Poppins-BlackItalic",
+                "Poppins-ExtraBold",
+                "Poppins-ExtraBoldItalic",
+                "Poppins-Bold",
+                "Poppins-BoldItalic",
+                "Poppins-SemiBold",
+                "Poppins-SemiBoldItalic"
             ],
             size: size,
-            fallback: .system(size: size, weight: weight, design: .rounded)
+            fallback: .system(size: size, weight: weight, design: .default)
         )
     }
 
     static func body(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         customFont(
             candidates: [
-                "Inter-Regular",
-                "Inter-Medium",
-                "Inter-SemiBold",
-                "Inter-Bold",
-                "SpaceGrotesk-Regular",
-                "SpaceGrotesk-Medium"
+                "Poppins-Regular",
+                "Poppins-Italic",
+                "Poppins-Light",
+                "Poppins-LightItalic",
+                "Poppins-Medium",
+                "Poppins-MediumItalic",
+                "Poppins-SemiBold",
+                "Poppins-SemiBoldItalic",
+                "Poppins-ExtraLight",
+                "Poppins-ExtraLightItalic",
+                "Poppins-Thin",
+                "Poppins-ThinItalic"
             ],
             size: size,
             fallback: .system(size: size, weight: weight, design: .default)

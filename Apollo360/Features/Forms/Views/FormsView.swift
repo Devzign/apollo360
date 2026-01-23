@@ -77,7 +77,14 @@ private struct FormRow: View {
     }
 }
 
-#Preview {
+#Preview("iPhone") {
     FormsView(horizontalPadding: 20)
         .previewLayout(.sizeThatFits)
+        .environment(\.horizontalSizeClass, .compact)
+}
+
+#Preview("iPad") {
+    FormsView(horizontalPadding: 50)
+        .previewLayout(.sizeThatFits)
+        .environment(\.horizontalSizeClass, .regular)
 }

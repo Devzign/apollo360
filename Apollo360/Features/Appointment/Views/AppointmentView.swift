@@ -142,7 +142,14 @@ private struct IconLeadingLabelStyle: LabelStyle {
     }
 }
 
-#Preview {
+#Preview("iPhone") {
     AppointmentView(horizontalPadding: 20)
         .previewLayout(.sizeThatFits)
+        .environment(\.horizontalSizeClass, .compact)
+}
+
+#Preview("iPad") {
+    AppointmentView(horizontalPadding: 50)
+        .previewLayout(.sizeThatFits)
+        .environment(\.horizontalSizeClass, .regular)
 }

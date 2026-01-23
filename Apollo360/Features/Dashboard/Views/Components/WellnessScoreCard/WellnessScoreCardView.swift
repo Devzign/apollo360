@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct WellnessScoreCardView: View {
+struct WellnessScoreCard: View {
     let title: String
     let description: String
     let currentScore: Int
@@ -10,7 +10,6 @@ struct WellnessScoreCardView: View {
     let isImproving: Bool
     let changeValue: Int
     @Binding var mode: WellnessMode
-    @State private var isShowingBreakdown = false
 
     var body: some View {
         DashboardCard {
@@ -33,25 +32,14 @@ struct WellnessScoreCardView: View {
                     relativeView
                 }
             }
-        }
-        .sheet(isPresented: $isShowingBreakdown) {
-            ScoreBreakdownView(
-                score: currentScore,
-                mode: mode,
-                metrics: metrics
-            )
+
         }
     }
 
     private var absoluteView: some View {
         VStack(spacing: 16) {
-            EnergyWaveCircleView(energy: Double(currentScore))
-//            WellnessRingCircleView(metrics: metrics, overallScore: currentScore)
+            WellnessProgressRing(score: currentScore, progress: progress)
                 .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    isShowingBreakdown = true
-                }
 
             Text(description)
                 .font(AppFont.body(size: 13))
@@ -115,7 +103,7 @@ private struct WellnessScoreCardPreview: View {
     @State private var mode: WellnessMode = .absolute
 
     var body: some View {
-        WellnessScoreCardView(
+        WellnessScoreCard(
             title: "Wellness Overview",
             description: "Your current wellness level based on activity, sleep, heart health, and nutrition patterns.",
             currentScore: 82,
@@ -134,8 +122,16 @@ private struct WellnessScoreCardPreview: View {
     }
 }
 
-#Preview {
+#Preview("Wellness - iPhone") {
     WellnessScoreCardPreview()
         .padding()
         .background(Color.black.opacity(0.02))
+        .environment(\.horizontalSizeClass, .compact)
+}
+
+#Preview("Wellness - iPad") {
+    WellnessScoreCardPreview()
+        .padding()
+        .background(Color.black.opacity(0.02))
+        .environment(\.horizontalSizeClass, .regular)
 }

@@ -10,8 +10,7 @@ import Foundation
 
 @MainActor enum FontRegistrar {
     private static let fontFolders = [
-        "font/SpaceGrotesk",
-        "font/Inter-font"
+        "font/poppins"
     ]
 
 
