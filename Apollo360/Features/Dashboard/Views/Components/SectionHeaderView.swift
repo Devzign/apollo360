@@ -2,7 +2,7 @@
 //  SectionHeaderView.swift
 //  Apollo360
 //
-//  Created by Codex on 11/01/26.
+//  Created by Amit Sinha on 11/01/26.
 //
 
 import SwiftUI
