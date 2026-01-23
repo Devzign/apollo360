@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct FormsView: View {
+    let horizontalPadding: CGFloat
     private let formTitles: [String] = [
         "Terms, Conditions and Consent",
         "Privacy",
@@ -39,7 +40,7 @@ struct FormsView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, horizontalPadding)
             .padding(.top, 16)
             .padding(.bottom, 140)
         }
@@ -77,6 +78,6 @@ private struct FormRow: View {
 }
 
 #Preview {
-    FormsView()
+    FormsView(horizontalPadding: 20)
         .previewLayout(.sizeThatFits)
 }

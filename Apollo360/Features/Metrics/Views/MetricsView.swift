@@ -10,6 +10,7 @@ import SwiftUI
 struct MetricsView: View {
     @State private var selectedRange = "1D"
     @State private var isFeeling = false
+    let horizontalPadding: CGFloat
 
     private let cards: [MetricCard] = [
         MetricCard(
@@ -72,7 +73,7 @@ struct MetricsView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, horizontalPadding)
             .padding(.top, 16)
             .padding(.bottom, 140)
         }
@@ -262,5 +263,5 @@ private struct RangeSelector: View {
 }
 
 #Preview {
-    MetricsView()
+    MetricsView(horizontalPadding: 20)
 }

@@ -16,6 +16,7 @@ struct DashboardView: View {
     @State private var showingLogoutConfirmation = false
     @State private var bottomSafeArea: CGFloat = 0
     private let session: SessionManager
+    private var screenHorizontalPadding: CGFloat { isiPad() ? 100 : 20 }
     
     // MARK: - Init
     init(session: SessionManager) {
@@ -41,6 +42,7 @@ struct DashboardView: View {
                         },
                         onGridTap: {}
                     )
+                    .padding(.horizontal, screenHorizontalPadding)
                     }
                 
                 // Tab Bar
@@ -116,15 +118,25 @@ struct DashboardView: View {
                         weeklyChangePercent: viewModel.weeklyChangePercent
                     )
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, screenHorizontalPadding)
                 .padding(.top, 16)
                 .padding(.bottom, 140)
             }
+
+        case .metrics:
+            MetricsView(horizontalPadding: screenHorizontalPadding)
+
+        case .forms:
+            FormsView(horizontalPadding: screenHorizontalPadding)
+
+        case .appointment:
+            AppointmentView(horizontalPadding: screenHorizontalPadding)
 
         default:
             DashboardTabPlaceholderView(
                 title: selectedTab.displayTitle
             )
+            .padding(.horizontal, screenHorizontalPadding)
         }
     }
     
