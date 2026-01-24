@@ -13,7 +13,7 @@ import SwiftUI
 final class DashboardViewModel: ObservableObject {
     @Published var stories: [DailyStory] = []
     @Published var isLoadingInsights: Bool = false
-    @Published private(set) var isLoading: Bool = true
+    @Published private(set) var isLoading: Bool = false
     @Published var insightError: String?
     @Published var wellnessMode: WellnessMode = .absolute
     @Published var currentScore: Int = 0

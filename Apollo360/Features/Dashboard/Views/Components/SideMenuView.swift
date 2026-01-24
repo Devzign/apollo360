@@ -37,7 +37,7 @@ struct SideMenuView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [AppColor.green, AppColor.green.opacity(0.85)],
+                colors: [AppColor.green, AppColor.green.opacity(0.90)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -45,9 +45,10 @@ struct SideMenuView: View {
 
             VStack(spacing: 0) {
                 headerSection
+                    .padding(.top, 6)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 8) {
                         ForEach(options) { option in
                             menuRow(for: option)
                         }
@@ -64,8 +65,10 @@ struct SideMenuView: View {
                     .padding(.bottom, 8)
 
                 logoutRow
+                    .padding(.bottom, 16)
             }
         }
+        .ignoresSafeArea()
     }
 
     private var headerSection: some View {
@@ -159,4 +162,14 @@ struct SideMenuView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+#Preview("Side Menu") {
+    SideMenuView(
+        selectedTab: .home,
+        onSelectTab: { _ in },
+        onClose: {},
+        logoutAction: {}
+    )
+    .frame(width: 320)
 }

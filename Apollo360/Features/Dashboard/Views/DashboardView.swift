@@ -15,8 +15,10 @@ struct DashboardView: View {
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
     @State private var bottomSafeArea: CGFloat = 0
+    @State private var visibleHomeSections: Set<HomeSection> = []
     private let session: SessionManager
     private var screenHorizontalPadding: CGFloat { isiPad() ? 100 : 20 }
+    private var headerHorizontalPadding: CGFloat { isiPad() ? screenHorizontalPadding : 0 }
     
     // MARK: - Init
     init(session: SessionManager) {
@@ -29,7 +31,6 @@ struct DashboardView: View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 
-                // Main content
                 contentView
                     .background(Color.black.opacity(0.02))
                     .safeAreaInset(edge: .top, spacing: 0) {
@@ -42,10 +43,9 @@ struct DashboardView: View {
                         },
                         onGridTap: {}
                     )
-                    .padding(.horizontal, screenHorizontalPadding)
+                    .padding(.horizontal, headerHorizontalPadding)
                     }
                 
-                // Tab Bar
                 DashboardTabBar(
                     selectedTab: $selectedTab,
                     bottomInset: bottomSafeArea
@@ -89,34 +89,45 @@ struct DashboardView: View {
         switch selectedTab {
         case .home:
             ScrollView {
-                VStack(spacing: 24) {
-                    DailyStoriesView(
-                        title: viewModel.snapshotTitle,
-                        subtitle: viewModel.snapshotSubtitle,
-                        stories: viewModel.stories
-                    )
+                LazyVStack(spacing: 24) {
+                    homeSection(.stories, order: 0) {
+                        DailyStoriesView(
+                            title: viewModel.snapshotTitle,
+                            subtitle: viewModel.snapshotSubtitle,
+                            stories: viewModel.stories
+                        )
+                    }
 
-                    WellnessScoreCard(
-                        title: viewModel.wellnessTitle,
-                        description: viewModel.wellnessDescription,
-                        currentScore: viewModel.currentScore,
-                        previousScore: viewModel.previousScore,
-                        progress: viewModel.progress,
-                        metrics: viewModel.wellnessMetrics,
-                        isImproving: viewModel.isWellnessImproving,
-                        changeValue: viewModel.wellnessChange,
-                        mode: $viewModel.wellnessMode
-                    )
+                    homeSection(.wellness, order: 1) {
+                        WellnessScoreCard(
+                            title: viewModel.wellnessTitle,
+                            description: viewModel.wellnessDescription,
+                            currentScore: viewModel.currentScore,
+                            previousScore: viewModel.previousScore,
+                            progress: viewModel.progress,
+                            metrics: viewModel.wellnessMetrics,
+                            isImproving: viewModel.isWellnessImproving,
+                            changeValue: viewModel.wellnessChange,
+                            mode: $viewModel.wellnessMode
+                        )
+                    }
 
-                    ApolloInsightsCard(insights: viewModel.insights)
-                    CardiometabolicMetricsCard(metrics: viewModel.cardioMetrics)
+                    homeSection(.insights, order: 2) {
+                        ApolloInsightsCard(insights: viewModel.insights)
+                    }
 
-                    ActivitiesSummaryCard(
-                        days: viewModel.activityDays,
-                        stats: viewModel.activityStats,
-                        summaryNote: viewModel.activitySummaryNote,
-                        weeklyChangePercent: viewModel.weeklyChangePercent
-                    )
+                    homeSection(.cardio, order: 3) {
+                        CardiometabolicMetricsCard(metrics: viewModel.cardioMetrics)
+                    }
+
+                    homeSection(.activities, order: 4) {
+                        ActivitiesSummaryCard(
+                            days: viewModel.activityDays,
+                            stats: viewModel.activityStats,
+                            summaryNote: viewModel.activitySummaryNote,
+                            weeklyChangePercent: viewModel.weeklyChangePercent
+                        )
+                    }
                 }
                 .padding(.horizontal, screenHorizontalPadding)
                 .padding(.top, 16)
@@ -172,6 +183,23 @@ struct DashboardView: View {
         withAnimation(.easeIn(duration: 0.25)) {
             isSideMenuVisible = false
         }
+    }
+
+    // MARK: - Home Section Animations
+    private func homeSection<Content: View>(_ section: HomeSection, order: Int, @ViewBuilder content: () -> Content) -> some View {
+        content()
+            .opacity(visibleHomeSections.contains(section) ? 1 : 0)
+            .offset(y: visibleHomeSections.contains(section) ? 0 : 24)
+            .onAppear {
+                guard !visibleHomeSections.contains(section) else { return }
+                _ = withAnimation(.easeOut(duration: 0.45).delay(Double(order) * 0.08)) {
+                    visibleHomeSections.insert(section)
+                }
+            }
+    }
+
+    private enum HomeSection: Hashable {
+        case stories, wellness, insights, cardio, activities
     }
 }
 // MARK: - Safe Area Preference

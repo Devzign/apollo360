@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AppointmentView: View {
     let horizontalPadding: CGFloat
+    @State private var visibleAppointments: Set<UUID> = []
 
     private let appointments: [AppointmentCard] = [
         AppointmentCard(
@@ -36,14 +37,23 @@ struct AppointmentView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 Text("Upcoming Appointments")
                     .font(AppFont.display(size: 26, weight: .semibold))
                     .foregroundStyle(AppColor.black)
                     .padding(.top, 6)
 
-                ForEach(appointments) { appointment in
+                ForEach(Array(appointments.enumerated()), id: \.element.id) { index, appointment in
                     AppointmentCardView(appointment: appointment)
+                        .opacity(visibleAppointments.contains(appointment.id) ? 1 : 0)
+                        .offset(y: visibleAppointments.contains(appointment.id) ? 0 : 22)
+                        .onAppear {
+                            guard !visibleAppointments.contains(appointment.id) else { return }
+
+                            withAnimation(.easeOut(duration: 0.4).delay(Double(index) * 0.08)) {
+                                visibleAppointments.insert(appointment.id)
+                            }
+                        }
                 }
 
                 Spacer(minLength: 40)

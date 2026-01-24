@@ -37,7 +37,7 @@ struct DashboardTabBar: View {
     }
 
     private var horizontalPadding: CGFloat {
-        horizontalSizeClass == .regular ? 32 : 16
+        horizontalSizeClass == .regular ? 32 : 6
     }
 
     private var itemSpacing: CGFloat {
@@ -54,6 +54,13 @@ struct DashboardTabBar: View {
 
     private var centerButtonDiameter: CGFloat {
         horizontalSizeClass == .regular ? 76 : 68
+    }
+
+    private var bottomPadding: CGFloat {
+        if horizontalSizeClass == .regular {
+            return max(bottomInset, 12)
+        }
+        return max(bottomInset - 28, 0)
     }
 
     // MARK: - Body
@@ -81,12 +88,12 @@ struct DashboardTabBar: View {
                 Spacer()
             }
             .padding(.horizontal, horizontalPadding)
-            .padding(.bottom, max(bottomInset, 10))
+            .padding(.bottom, bottomPadding)
 
             centerButton
-                .offset(y: -barHeight * 0.32)
+                .offset(y: -barHeight * 0.42)
         }
-        .frame(height: barHeight + centerButtonDiameter * 0.65 + bottomInset)
+        .frame(height: barHeight + centerButtonDiameter * 0.65 + bottomPadding)
         .ignoresSafeArea(edges: .bottom)
     }
 
