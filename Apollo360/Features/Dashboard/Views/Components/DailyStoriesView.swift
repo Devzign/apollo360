@@ -12,25 +12,50 @@ struct DailyStoriesView: View {
     let subtitle: String
     let stories: [DailyStory]
 
+    @Namespace private var storyNamespace
     @State private var selectedStoryIndex: Int?
     @State private var backgroundTint: Color = AppColor.secondary
+    @State private var activeStory: DailyStory?
+    @State private var showHero = false
+    @State private var showCarousel = false
 
     var body: some View {
+        ZStack {
+            mainContent
+
+            if let activeStory {
+                heroCircle(for: activeStory)
+            }
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { showCarousel && selectedStoryIndex != nil },
+                set: { if !$0 { showCarousel = false; resetHero() } }
+            ),
+            onDismiss: resetHero
+        ) {
+            if let index = selectedStoryIndex {
+                DailyStoryCarouselView(stories: stories, initialIndex: index)
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+        }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 12) {
             header
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
-                        Button {
-                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                                backgroundTint = story.tint
-                            }
-                            selectedStoryIndex = index
-                        } label: {
-                            StoryBadgeView(story: story)
+                        StoryBadgeView(
+                            story: story,
+                            namespace: storyNamespace,
+                            isHidden: activeStory?.id == story.id && showHero
+                        ) {
+                            handleTap(on: story, index: index)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 6)
@@ -42,14 +67,6 @@ struct DailyStoriesView: View {
         .background(backgroundTint.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: backgroundTint)
-        .fullScreenCover(isPresented: Binding(
-            get: { selectedStoryIndex != nil },
-            set: { if !$0 { selectedStoryIndex = nil } }
-        )) {
-            if let index = selectedStoryIndex {
-                DailyStoryCarouselView(stories: stories, initialIndex: index)
-            }
-        }
     }
 
     private var header: some View {
@@ -64,10 +81,50 @@ struct DailyStoriesView: View {
                 .lineSpacing(2)
         }
     }
+    private func handleTap(on story: DailyStory, index: Int) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            backgroundTint = story.tint
+            activeStory = story
+            showHero = true
+        }
+
+        selectedStoryIndex = index
+
+        // start carousel after hero scales up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            showCarousel = true
+        }
+    }
+
+    private func resetHero() {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            showHero = false
+            activeStory = nil
+        }
+        selectedStoryIndex = nil
+    }
+
+    @ViewBuilder
+    private func heroCircle(for story: DailyStory) -> some View {
+        GeometryReader { proxy in
+            Circle()
+                .fill(story.tint)
+                .matchedGeometryEffect(id: story.id, in: storyNamespace, isSource: false)
+                .frame(width: showHero ? max(proxy.size.height, proxy.size.width) * 1.2 : 70,
+                       height: showHero ? max(proxy.size.height, proxy.size.width) * 1.2 : 70)
+                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                .opacity(showHero ? 1 : 0)
+                .ignoresSafeArea()
+        }
+        .allowsHitTesting(false)
+    }
 }
 
 private struct StoryBadgeView: View {
     let story: DailyStory
+    let namespace: Namespace.ID
+    let isHidden: Bool
+    let onTap: () -> Void
 
     private let ringSize: CGFloat = 70
     private let outerSize: CGFloat = 70
@@ -75,46 +132,52 @@ private struct StoryBadgeView: View {
     private let iconSize: CGFloat = 45
 
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .strokeBorder(ringStyle, lineWidth: 2)
-                    .frame(width: ringSize, height: ringSize)
-                    .opacity(story.isViewed ? 0.6 : 1.0)
-                    .overlay(
-                        Circle()
-                            .fill(story.tint.opacity(0.16))
-                            .padding(8)
-                    )
-                    .overlay(
-                        Circle()
-                            .fill(story.tint)
-                            .padding(5)
-                    )
-
-                    StoryBadgeIcon(story: story, iconSize: iconSize)
-            }
-            .frame(width: outerSize, height: outerSize)
-            .overlay(alignment: .topTrailing) {
-                if story.hasUpdate {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                ZStack {
                     Circle()
-                        .fill(AppColor.primary)
-                        .frame(width: 10, height: 10)
+                        .strokeBorder(ringStyle, lineWidth: 2)
+                        .frame(width: ringSize, height: ringSize)
+                        .opacity(story.isViewed ? 0.6 : 1.0)
                         .overlay(
                             Circle()
-                                .stroke(AppColor.secondary, lineWidth: 2)
+                                .fill(story.tint.opacity(0.16))
+                                .padding(8)
                         )
-                        .offset(x: -2, y: 2)
+                        .overlay(
+                            Circle()
+                                .fill(story.tint)
+                                .padding(5)
+                        )
+                        .overlay {
+                            StoryBadgeIcon(story: story, iconSize: iconSize)
+                        }
+                        .matchedGeometryEffect(id: story.id, in: namespace)
+                        .opacity(isHidden ? 0 : 1)
                 }
-            }
+                .frame(width: outerSize, height: outerSize)
+                .overlay(alignment: .topTrailing) {
+                    if story.hasUpdate {
+                        Circle()
+                            .fill(AppColor.primary)
+                            .frame(width: 10, height: 10)
+                            .overlay(
+                                Circle()
+                                    .stroke(AppColor.secondary, lineWidth: 2)
+                            )
+                            .offset(x: -2, y: 2)
+                    }
+                }
 
-            Text(story.title)
-                .font(AppFont.body(size: 14, weight: .medium))
-                .foregroundStyle(AppColor.black)
-                .frame(width: 80)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                Text(story.title)
+                    .font(AppFont.body(size: 14, weight: .medium))
+                    .foregroundStyle(AppColor.black)
+                    .frame(width: 80)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
+        .buttonStyle(.plain)
     }
 
     private var ringStyle: AnyShapeStyle {

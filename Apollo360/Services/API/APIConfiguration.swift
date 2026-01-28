@@ -64,6 +64,12 @@ enum APIEndpoint {
     static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)"
     }
+    static func messagesConversation(for patientId: Int, a360hId: Int, providerMemberId: Int) -> String {
+        "v1/messages/all/\(patientId)?a360hId=\(a360hId)&providerMemberId=\(providerMemberId)"
+    }
+    static func providers(for patientId: Int) -> String {
+        "v1/list-of-providers/\(patientId)"
+    }
     static var sendMessage: String {
         "v1/messages"
     }

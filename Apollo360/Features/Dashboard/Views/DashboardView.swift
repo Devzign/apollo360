@@ -133,6 +133,10 @@ struct DashboardView: View {
         case .appointment:
             AppointmentView(horizontalPadding: screenHorizontalPadding)
 
+        case .message:
+            MessageListView(session: session)
+                .padding(.horizontal, screenHorizontalPadding / 2)
+
         default:
             DashboardTabPlaceholderView(
                 title: selectedTab.displayTitle
