@@ -13,24 +13,19 @@ struct DailyStoriesView: View {
     let stories: [DailyStory]
 
     @State private var selectedStoryIndex: Int?
+    @State private var backgroundTint: Color = AppColor.secondary
 
     var body: some View {
         VStack(spacing: 12) {
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(AppFont.display(size: 22, weight: .bold))
-                    .foregroundStyle(AppColor.black)
-                Text(subtitle)
-                    .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-            }
+            header
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
                         Button {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                backgroundTint = story.tint
+                            }
                             selectedStoryIndex = index
                         } label: {
                             StoryBadgeView(story: story)
@@ -43,6 +38,10 @@ struct DailyStoriesView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
+        .padding(12)
+        .background(backgroundTint.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: backgroundTint)
         .fullScreenCover(isPresented: Binding(
             get: { selectedStoryIndex != nil },
             set: { if !$0 { selectedStoryIndex = nil } }
@@ -50,6 +49,19 @@ struct DailyStoriesView: View {
             if let index = selectedStoryIndex {
                 DailyStoryCarouselView(stories: stories, initialIndex: index)
             }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(AppFont.display(size: 22, weight: .bold))
+                .foregroundStyle(AppColor.black)
+            Text(subtitle)
+                .font(AppFont.body(size: 13))
+                .foregroundStyle(AppColor.grey)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
         }
     }
 }
@@ -71,7 +83,7 @@ private struct StoryBadgeView: View {
                     .opacity(story.isViewed ? 0.6 : 1.0)
                     .overlay(
                         Circle()
-                            .fill(AppColor.secondary)
+                            .fill(story.tint.opacity(0.16))
                             .padding(8)
                     )
                     .overlay(
@@ -135,7 +147,7 @@ private struct StoryBadgeIcon: View {
                     } else if phase.error != nil {
                         Image(systemName: "photo")
                             .font(.system(size: iconSize, weight: .semibold))
-                            .foregroundStyle(AppColor.secondary)
+                            .foregroundStyle(story.tint)
                     } else {
                         ProgressView()
                             .progressViewStyle(.circular)
@@ -144,11 +156,11 @@ private struct StoryBadgeIcon: View {
             } else if let systemImage = story.systemImage {
                 Image(systemName: systemImage)
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(AppColor.secondary)
+                    .foregroundStyle(story.tint)
             } else {
                 Image(systemName: "sparkles")
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(AppColor.secondary)
+                    .foregroundStyle(story.tint)
             }
         }
         .frame(width: iconSize, height: iconSize)

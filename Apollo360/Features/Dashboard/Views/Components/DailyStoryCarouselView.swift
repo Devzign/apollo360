@@ -155,35 +155,17 @@ private struct DailyStoryContentView: View {
     }
 
     private var storyBackground: some View {
-        Group {
-            if let imageName = story.imageName,
-               let uiImage = UIImage(named: imageName) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-            } else if let iconURL = story.iconURL {
-                KFImage(iconURL)
-                    .placeholder {
-                        RoundedRectangle(cornerRadius: 0)
-                            .fill(defaultGradient)
-                    }
-                    .fade(duration: 0.25)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-            } else {
-                RoundedRectangle(cornerRadius: 0)
-                    .fill(defaultGradient)
-            }
+        let tint = story.tint
+
+        return Group {
+            RoundedRectangle(cornerRadius: 0)
+                .fill(tintGradient(tint))
         }
         .overlay(
             LinearGradient(
                 colors: [
-                    Color.black.opacity(0.3),
-                    Color.black.opacity(0.7)
+                    tint.opacity(0.35),
+                    Color.black.opacity(0.35)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -193,12 +175,47 @@ private struct DailyStoryContentView: View {
         .ignoresSafeArea()
     }
 
-    private var defaultGradient: LinearGradient {
+    private func tintGradient(_ tint: Color) -> LinearGradient {
         LinearGradient(
-            colors: [Color(red: 0.18, green: 0.01, blue: 0.49), Color(red: 0.16, green: 0.06, blue: 0.43)],
-            startPoint: .top,
-            endPoint: .bottom
+            colors: [
+                tint.opacity(0.55),
+                tint.opacity(0.25)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
+    }
+
+    @ViewBuilder
+    private var profileIcon: some View {
+        if let iconURL = story.iconURL {
+            AsyncImage(url: iconURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    Circle()
+                        .fill(Color.white.opacity(0.18))
+                        .overlay(
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white)
+                        )
+                }
+            }
+            .frame(width: 32, height: 32)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.6), lineWidth: 1)
+            )
+        } else {
+            Circle()
+                .fill(story.tint.opacity(0.7))
+                .frame(width: 12, height: 12)
+        }
     }
 
     private var storyProgressBar: some View {
@@ -216,18 +233,7 @@ private struct DailyStoryContentView: View {
 
     private var storyInfoRow: some View {
         HStack(spacing: 12) {
-            Circle()
-                .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
-                .background(
-                    Circle()
-                        .fill(Color.white.opacity(0.15))
-                )
-                .overlay(
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color.white)
-                )
-                .frame(width: 40, height: 40)
+            profileIcon
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(story.title)
@@ -256,14 +262,15 @@ private struct DailyStoryContentView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let headline = story.headline {
                 Text(headline)
-                    .font(AppFont.display(size: 34, weight: .semibold))
+                    .font(AppFont.display(size: 28, weight: .semibold))
                     .foregroundStyle(Color.white)
             }
 
             if let recommendation = story.recommendation {
                 Text(recommendation)
-                    .font(AppFont.body(size: 15))
-                    .foregroundStyle(Color.white.opacity(0.8))
+                    .font(AppFont.body(size: 16, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                    .lineSpacing(4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
