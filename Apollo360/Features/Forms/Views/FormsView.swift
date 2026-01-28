@@ -282,18 +282,16 @@ private extension View {
     }
 }
 
-#Preview("iPhone") {
+#Preview("iPhone", traits: .sizeThatFitsLayout) {
     NavigationStack {
         FormsView(horizontalPadding: 20, session: SessionManager())
-            .previewLayout(.sizeThatFits)
             .environment(\.horizontalSizeClass, .compact)
     }
 }
 
-#Preview("iPad") {
+#Preview("iPad", traits: .sizeThatFitsLayout) {
     NavigationStack {
         FormsView(horizontalPadding: 50, session: SessionManager())
-            .previewLayout(.sizeThatFits)
             .environment(\.horizontalSizeClass, .regular)
     }
 }

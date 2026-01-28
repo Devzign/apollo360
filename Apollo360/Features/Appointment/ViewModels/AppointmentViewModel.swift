@@ -48,7 +48,7 @@ final class AppointmentViewModel: ObservableObject {
             self.isLoading = false
             switch result {
             case .success(let response):
-                self.appointments = response.appointments.map(Self.card(from:))
+                self.appointments = response.appointments.map { Self.card(from: $0) }
             case .failure(let error):
                 self.errorMessage = error.localizedDescription
                 self.appointments = []
@@ -110,4 +110,3 @@ final class AppointmentViewModel: ObservableObject {
         )
     }
 }
-

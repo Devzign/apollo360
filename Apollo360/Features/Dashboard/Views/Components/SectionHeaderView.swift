@@ -61,7 +61,6 @@ struct SectionHeaderView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     SectionHeaderView(title: "Library", onMenuTap: {}, onGridTap: {})
-        .previewLayout(.sizeThatFits)
 }

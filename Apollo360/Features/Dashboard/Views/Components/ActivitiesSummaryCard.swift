@@ -90,10 +90,9 @@ private struct ActivityBarChartView: View {
                     .animation(.spring(response: 0.6, dampingFraction: 0.85), value: animateBars)
             }
         }
-        .onAppear(perform: restartAnimation)
-        .onChange(of: days) { _ in
-            restartAnimation()
-        }
+        .onAppear { restartAnimation() }
+        .onBecomeVisible { restartAnimation() }
+        .onChange(of: days) { _, _ in restartAnimation() }
     }
 
     private func barHeight(for day: ActivityDay, maxSteps: Int) -> CGFloat {

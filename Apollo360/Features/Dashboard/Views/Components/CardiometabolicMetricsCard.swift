@@ -105,10 +105,9 @@ private struct MetricSparklineView: View {
                     .shadow(color: color.opacity(0.25), radius: 4, x: 0, y: 2)
             }
         }
-        .onAppear(perform: restartAnimation)
-        .onChange(of: values) { _ in
-            restartAnimation()
-        }
+        .onAppear { restartAnimation() }
+        .onBecomeVisible { restartAnimation() }
+        .onChange(of: values) { _, _ in restartAnimation() }
     }
 
     private func restartAnimation() {

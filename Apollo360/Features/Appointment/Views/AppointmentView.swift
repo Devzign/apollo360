@@ -17,21 +17,27 @@ struct AppointmentView: View {
             role: "Doctor",
             date: "07-03-2025",
             time: "09:30 am",
-            accentColor: AppColor.green.opacity(0.18)
+            accentColor: AppColor.green.opacity(0.18),
+            callType: "video",
+            isTelevisit: true
         ),
         AppointmentCard(
             name: "Dr. Nancy Gates",
             role: "Super Admin",
             date: "07-03-2025",
             time: "09:30 am",
-            accentColor: AppColor.green.opacity(0.14)
+            accentColor: AppColor.green.opacity(0.14),
+            callType: "video",
+            isTelevisit: true
         ),
         AppointmentCard(
             name: "Dr. Emily Johnson",
             role: "Therapist",
             date: "07-04-2025",
             time: "10:00 am",
-            accentColor: AppColor.green.opacity(0.12)
+            accentColor: AppColor.green.opacity(0.12),
+            callType: "in-person",
+            isTelevisit: false
         )
     ]
 
@@ -49,8 +55,7 @@ struct AppointmentView: View {
                         .offset(y: visibleAppointments.contains(appointment.id) ? 0 : 22)
                         .onAppear {
                             guard !visibleAppointments.contains(appointment.id) else { return }
-
-                            withAnimation(.easeOut(duration: 0.4).delay(Double(index) * 0.08)) {
+                            _ = withAnimation(.easeOut(duration: 0.4).delay(Double(index) * 0.08)) {
                                 visibleAppointments.insert(appointment.id)
                             }
                         }
@@ -64,15 +69,6 @@ struct AppointmentView: View {
         }
         .background(AppColor.secondary.ignoresSafeArea())
     }
-}
-
-private struct AppointmentCard: Identifiable {
-    let id = UUID()
-    let name: String
-    let role: String
-    let date: String
-    let time: String
-    let accentColor: Color
 }
 
 private struct AppointmentCardView: View {
@@ -152,9 +148,7 @@ private struct IconLeadingLabelStyle: LabelStyle {
     }
 }
 
-#Preview("iPhone") {
+#Preview("iPhone", traits: .sizeThatFitsLayout) {
     AppointmentView(horizontalPadding: 20)
-        .previewLayout(.sizeThatFits)
         .environment(\.horizontalSizeClass, .compact)
 }
-

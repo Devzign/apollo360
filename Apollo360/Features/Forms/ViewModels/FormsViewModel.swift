@@ -19,10 +19,14 @@ final class FormsViewModel: ObservableObject {
     private let service: FormsAPIService
 
     init(session: SessionManager,
-         service: FormsAPIService = .shared) {
+         service: FormsAPIService) {
         self.session = session
         self.service = service
         loadForms()
+    }
+
+    convenience init(session: SessionManager) {
+        self.init(session: session, service: .shared)
     }
 
     func refresh() {
