@@ -104,11 +104,17 @@ struct CardioMetric: Identifiable {
     let sparkline: [Double]
 }
 
-struct ActivityDay: Identifiable {
+struct ActivityDay: Identifiable, Equatable {
     let id = UUID()
     let label: String
     let steps: Int
     let isActive: Bool
+
+    static func == (lhs: ActivityDay, rhs: ActivityDay) -> Bool {
+        lhs.label == rhs.label &&
+        lhs.steps == rhs.steps &&
+        lhs.isActive == rhs.isActive
+    }
 }
 
 struct ActivityStat: Identifiable {

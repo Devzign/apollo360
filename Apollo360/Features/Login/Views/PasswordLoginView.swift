@@ -57,8 +57,9 @@ struct PasswordLoginView: View {
                     session.updateSession(
                         accessToken: response.accessToken,
                         refreshToken: response.refreshToken,
-                        patientId: "\(response.user.id)",
-                        username: "\(response.user.firstName) \(response.user.lastName)"
+                        patientId: response.patientId,
+                        a360Id: response.a360Id,
+                        username: response.displayName
                     )
                 }
             }

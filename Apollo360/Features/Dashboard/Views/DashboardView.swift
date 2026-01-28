@@ -128,17 +128,20 @@ struct DashboardView: View {
                             weeklyChangePercent: viewModel.weeklyChangePercent
                         )
                     }
+
+                    Color.clear
+                        .frame(height: bottomSafeArea + 180)
                 }
                 .padding(.horizontal, screenHorizontalPadding)
                 .padding(.top, 16)
-                .padding(.bottom, 140)
             }
+            .scrollIndicators(.hidden)
 
         case .metrics:
             MetricsView(horizontalPadding: screenHorizontalPadding)
 
         case .forms:
-            FormsView(horizontalPadding: screenHorizontalPadding)
+            FormsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .appointment:
             AppointmentView(horizontalPadding: screenHorizontalPadding)

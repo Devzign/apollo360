@@ -158,8 +158,3 @@ private struct IconLeadingLabelStyle: LabelStyle {
         .environment(\.horizontalSizeClass, .compact)
 }
 
-#Preview("iPad") {
-    AppointmentView(horizontalPadding: 50)
-        .previewLayout(.sizeThatFits)
-        .environment(\.horizontalSizeClass, .regular)
-}

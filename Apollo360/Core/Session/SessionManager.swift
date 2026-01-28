@@ -18,12 +18,14 @@ final class SessionManager: ObservableObject {
     @Published private(set) var accessToken: String?
     @Published private(set) var refreshToken: String?
     @Published private(set) var patientId: String?
+    @Published private(set) var a360Id: String?
     @Published private(set) var username: String?
     
     private enum StorageKeys {
         static let accessToken = "Apollo360.accessToken"
         static let refreshToken = "Apollo360.refreshToken"
         static let patientId = "Apollo360.patientId"
+        static let a360Id = "Apollo360.a360Id"
         static let username = "Apollo360.username"
     }
     
@@ -40,10 +42,12 @@ final class SessionManager: ObservableObject {
     func updateSession(accessToken: String?,
                        refreshToken: String?,
                        patientId: String?,
+                       a360Id: String?,
                        username: String?) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         self.patientId = patientId
+        self.a360Id = a360Id
         self.username = username
         self.isAuthenticated = accessToken != nil && patientId != nil
         persist()
@@ -54,12 +58,14 @@ final class SessionManager: ObservableObject {
             self.accessToken = nil
             self.refreshToken = nil
             self.patientId = nil
+            self.a360Id = nil
             self.username = nil
             self.isAuthenticated = false
             
             self.defaults.removeObject(forKey: StorageKeys.accessToken)
             self.defaults.removeObject(forKey: StorageKeys.refreshToken)
             self.defaults.removeObject(forKey: StorageKeys.patientId)
+            self.defaults.removeObject(forKey: StorageKeys.a360Id)
             self.defaults.removeObject(forKey: StorageKeys.username)
         }
     }
@@ -68,6 +74,7 @@ final class SessionManager: ObservableObject {
         accessToken = defaults.string(forKey: StorageKeys.accessToken)
         refreshToken = defaults.string(forKey: StorageKeys.refreshToken)
         patientId = defaults.string(forKey: StorageKeys.patientId)
+        a360Id = defaults.string(forKey: StorageKeys.a360Id)
         username = defaults.string(forKey: StorageKeys.username)
         isAuthenticated = accessToken != nil && patientId != nil
     }
@@ -76,6 +83,7 @@ final class SessionManager: ObservableObject {
         defaults.set(accessToken, forKey: StorageKeys.accessToken)
         defaults.set(refreshToken, forKey: StorageKeys.refreshToken)
         defaults.set(patientId, forKey: StorageKeys.patientId)
+        defaults.set(a360Id, forKey: StorageKeys.a360Id)
         defaults.set(username, forKey: StorageKeys.username)
     }
     
@@ -87,4 +95,3 @@ final class SessionManager: ObservableObject {
         NotificationCenter.default.removeObserver(self)
     }
 }
-

@@ -73,6 +73,7 @@ struct ActivitiesSummaryCard: View {
 
 private struct ActivityBarChartView: View {
     let days: [ActivityDay]
+    @State private var animateBars = false
 
     var body: some View {
         let maxSteps = max(days.map { $0.steps }.max() ?? 1, 1)
@@ -83,10 +84,27 @@ private struct ActivityBarChartView: View {
                     .fill(day.isActive ? AppColor.green : Color.black.opacity(0.08))
                     .frame(
                         width: 24,
-                        height: CGFloat(max(12.0, (Double(day.steps) / Double(maxSteps)) * 100.0))
+                        height: barHeight(for: day, maxSteps: maxSteps)
                     )
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.85), value: animateBars)
             }
+        }
+        .onAppear(perform: restartAnimation)
+        .onChange(of: days) { _ in
+            restartAnimation()
+        }
+    }
+
+    private func barHeight(for day: ActivityDay, maxSteps: Int) -> CGFloat {
+        let target = CGFloat(max(12.0, (Double(day.steps) / Double(maxSteps)) * 100.0))
+        return animateBars ? target : 8
+    }
+
+    private func restartAnimation() {
+        animateBars = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            animateBars = true
         }
     }
 }
