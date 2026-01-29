@@ -71,9 +71,8 @@ struct DailyStoryCarouselView: View {
                     ZStack {
                         ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
                             let position = index - currentIndex
-                            // Only render a small window for performance
                             if position >= 0 && position <= 3 {
-                                DailyStoryContentView(story: story, progress: $progress)
+                                DailyStoryContentView(story: story, progress: $progress, activeIndex: currentIndex)
                                     .frame(width: cardWidth, height: cardHeight)
                                     .background(
                                         RoundedRectangle(cornerRadius: 38, style: .continuous)
@@ -85,11 +84,9 @@ struct DailyStoryCarouselView: View {
                                         RoundedRectangle(cornerRadius: 38, style: .continuous)
                                             .stroke(Color.white.opacity(0.08), lineWidth: 1)
                                     )
-                                    // Stacked deck effect: scale and offset based on depth
                                     .scaleEffect(1.0 - CGFloat(position) * 0.06)
                                     .offset(y: CGFloat(position) * 24)
                                     .opacity(position == 0 ? 1 : 0.9 - CGFloat(position) * 0.1)
-                                    // Optional subtle 3D tilt for depth
                                     .rotation3DEffect(.degrees(Double(position) * -4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
                                     .offset(x: position == 0 && !isPresentingShare ? dragOffset.width : 0,
                                             y: position == 0 && !isPresentingShare ? dragOffset.height : 0)
@@ -245,7 +242,7 @@ struct DailyStoryCarouselView: View {
         guard stories.indices.contains(currentIndex) else { return nil }
         let story = stories[currentIndex]
         let renderer = ImageRenderer(
-            content: DailyStoryContentView(story: story, progress: .constant(progress))
+            content: DailyStoryContentView(story: story, progress: .constant(progress), activeIndex: currentIndex)
                 .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
         )
         renderer.scale = UIScreen.main.scale
@@ -256,6 +253,7 @@ struct DailyStoryCarouselView: View {
 private struct DailyStoryContentView: View {
     let story: DailyStory
     @Binding var progress: CGFloat
+    let activeIndex: Int
 
     var body: some View {
         ZStack {
@@ -401,20 +399,23 @@ private struct DailyStoryContentView: View {
 
     private var storyHeadline: some View {
         VStack(alignment: .leading, spacing: 10) {
+
             if let headline = story.headline {
                 TypewriterText(
                     text: headline,
                     speed: 0.02,
-                    font: AppFont.display(size: 22, weight: .semibold),
+                    font: AppFont.display(size: 22, weight: .semibold)
                 )
+                .id("\(story.id)-\(activeIndex)")
             }
 
             if let recommendation = story.recommendation {
                 TypewriterText(
                     text: recommendation,
                     speed: 0.02,
-                    font: AppFont.body(size: 14, weight: .medium),
+                    font: AppFont.body(size: 14, weight: .medium)
                 )
+                .id("\(story.id)-\(activeIndex)")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -442,9 +443,6 @@ private struct DailyStoryContentView: View {
         .clipShape(Capsule())
     }
     
-    private var headlineColor: Color {
-        story.tint.isDark() ? .white : .black
-    }
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {

@@ -47,12 +47,15 @@ private struct InsightRowView: View {
         let color = impactColor(item.impact)
 
         return HStack(alignment: .top, spacing: 12) {
+            
             Circle()
                 .fill(color.opacity(0.18))
-                .frame(width: 36, height: 36)
+                .frame(width: 60, height: 60)
                 .overlay(
                     InsightIconView(item: item, tint: color)
+                        .font(.system(size: 20, weight: .semibold))
                 )
+                .padding(.top, 4)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
@@ -76,6 +79,7 @@ private struct InsightRowView: View {
                 .stroke(color.opacity(0.25), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
     }
 
     private func impactColor(_ impact: InsightImpact) -> Color {
@@ -93,7 +97,7 @@ private struct InsightRowView: View {
 private struct InsightIconView: View {
     let item: InsightItem
     let tint: Color
-    private let iconSize: CGFloat = 16
+    private let iconSize: CGFloat = 36
 
     var body: some View {
         Group {

@@ -36,18 +36,18 @@ struct SectionHeaderView: View {
 
             Spacer()
 
-            Button(action: onGridTap) {
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        square(color: AppColor.black)
-                        square(color: AppColor.green.opacity(0.8))
-                    }
-                    HStack(spacing: 6) {
-                        square(color: AppColor.green.opacity(0.7))
-                        square(color: AppColor.black.opacity(0.8))
-                    }
-                }
-            }
+//            Button(action: onGridTap) {
+//                VStack(spacing: 6) {
+//                    HStack(spacing: 6) {
+//                        square(color: AppColor.black)
+//                        square(color: AppColor.green.opacity(0.8))
+//                    }
+//                    HStack(spacing: 6) {
+//                        square(color: AppColor.green.opacity(0.7))
+//                        square(color: AppColor.black.opacity(0.8))
+//                    }
+//                }
+//            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
