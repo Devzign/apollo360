@@ -10,6 +10,7 @@ import UIKit
 import Combine
 import Kingfisher
 
+
 struct DailyStoryCarouselView: View {
     let stories: [DailyStory]
     let initialIndex: Int
@@ -17,13 +18,13 @@ struct DailyStoryCarouselView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
     @State private var lastIndex: Int = 0
-    @State private var isAdvancing: Bool = false
     @State private var progress: CGFloat = 0
     @Namespace private var storyNamespace
 
     @State private var dragOffset: CGSize = .zero
     @State private var isDraggingTopCard: Bool = false
     @State private var isPresentingShare: Bool = false
+    @State private var shareItems: [Any] = []
 
     @State private var autoAdvanceTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     private let autoAdvanceDuration: TimeInterval = 5
@@ -90,11 +91,6 @@ struct DailyStoryCarouselView: View {
                                     .opacity(position == 0 ? 1 : 0.9 - CGFloat(position) * 0.1)
                                     // Optional subtle 3D tilt for depth
                                     .rotation3DEffect(.degrees(Double(position) * -4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-                                    // Overlap slide/peek transition
-                                    .offset(x: position == 0 && isAdvancing ? -cardWidth * 0.25 :
-                                                (position == 1 && isAdvancing && lastIndex < currentIndex ? cardWidth * 0.3 : 0))
-                                    .scaleEffect(position == 1 && isAdvancing && lastIndex < currentIndex ? 0.98 : 1.0)
-                                    .opacity(position == 0 && isAdvancing ? 0.95 : 1.0)
                                     .offset(x: position == 0 && !isPresentingShare ? dragOffset.width : 0,
                                             y: position == 0 && !isPresentingShare ? dragOffset.height : 0)
                                     .rotationEffect(.degrees(position == 0 && !isPresentingShare ? Double(dragOffset.width / 20) : 0))
@@ -121,12 +117,10 @@ struct DailyStoryCarouselView: View {
                                                             dragOffset = CGSize(width: -1000, height: dragOffset.height)
                                                         }
                                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                                            isAdvancing = true
                                                             goToNext()
                                                             dragOffset = .zero
                                                             isDraggingTopCard = false
                                                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                                                isAdvancing = false
                                                                 resumeProgress()
                                                             }
                                                         }
@@ -135,12 +129,10 @@ struct DailyStoryCarouselView: View {
                                                             dragOffset = CGSize(width: 1000, height: dragOffset.height)
                                                         }
                                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                                            isAdvancing = true
                                                             goToPrevious()
                                                             dragOffset = .zero
                                                             isDraggingTopCard = false
                                                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                                                isAdvancing = false
                                                                 resumeProgress()
                                                             }
                                                         }
@@ -156,7 +148,6 @@ struct DailyStoryCarouselView: View {
                                             }
                                         : nil
                                     )
-                                    .animation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0.2), value: currentIndex)
                             }
                         }
                     }
@@ -164,7 +155,6 @@ struct DailyStoryCarouselView: View {
                     .contentShape(Rectangle())
                 }
 
-                tapRegions
                 closeButton
             }
         }
@@ -173,56 +163,39 @@ struct DailyStoryCarouselView: View {
             guard !stories.isEmpty else { return }
             withAnimation(.easeInOut(duration: 0.2)) { progress = 0 }
             withAnimation(.linear(duration: autoAdvanceDuration)) { progress = 1 }
-            isAdvancing = true
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.85, blendDuration: 0.2)) {
-                goToNext()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                isAdvancing = false
-            }
+            goToNext(animated: false)
         }
         .onReceive(NotificationCenter.default.publisher(for: .requestShareStory)) { _ in
             pauseProgress()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                dragOffset = .zero
+                isDraggingTopCard = false
+            }
+            shareItems = captureCurrentStoryImage().map { [$0] } ?? [shareTextForCurrentStory()]
             isPresentingShare = true
         }
         .sheet(isPresented: $isPresentingShare, onDismiss: {
+            // Ensure the card returns to rest state after sharing
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                dragOffset = .zero
+                isDraggingTopCard = false
+            }
             resumeProgress()
         }) {
-            ShareSheet(items: [shareTextForCurrentStory()])
+            ShareSheet(items: shareItems.isEmpty ? [shareTextForCurrentStory()] : shareItems)
                 .presentationDetents([.medium, .large])
         }
     }
 
-    private var tapRegions: some View {
-        HStack(spacing: 0) {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    pauseProgress()
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0.2)) {
-                        goToPrevious()
-                    }
-                    resumeProgress()
-                }
-
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    pauseProgress()
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0.2)) {
-                        goToNext()
-                    }
-                    resumeProgress()
-                }
-        }
-        .ignoresSafeArea()
-    }
-
-    private func goToNext() {
+    private func goToNext(animated: Bool = true) {
         lastIndex = currentIndex
         guard !stories.isEmpty else { return }
         if currentIndex < stories.count - 1 {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            if animated {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    currentIndex += 1
+                }
+            } else {
                 currentIndex += 1
             }
         } else {
@@ -231,10 +204,14 @@ struct DailyStoryCarouselView: View {
         withAnimation(.easeInOut(duration: 0.2)) { progress = 0 }
     }
 
-    private func goToPrevious() {
+    private func goToPrevious(animated: Bool = true) {
         guard currentIndex > 0 else { return }
         lastIndex = currentIndex
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+        if animated {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                currentIndex -= 1
+            }
+        } else {
             currentIndex -= 1
         }
         withAnimation(.easeInOut(duration: 0.2)) { progress = 0 }
@@ -262,6 +239,17 @@ struct DailyStoryCarouselView: View {
         if let headline = story.headline { parts.append(headline) }
         if let recommendation = story.recommendation { parts.append(recommendation) }
         return parts.joined(separator: "\n\n")
+    }
+
+    private func captureCurrentStoryImage() -> UIImage? {
+        guard stories.indices.contains(currentIndex) else { return nil }
+        let story = stories[currentIndex]
+        let renderer = ImageRenderer(
+            content: DailyStoryContentView(story: story, progress: .constant(progress))
+                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+        )
+        renderer.scale = UIScreen.main.scale
+        return renderer.uiImage
     }
 }
 
@@ -318,7 +306,6 @@ private struct DailyStoryContentView: View {
             )
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
     }
 
     private func tintGradient(_ tint: Color) -> LinearGradient {
@@ -365,23 +352,24 @@ private struct DailyStoryContentView: View {
     }
 
     private var storyProgressBar: some View {
-        ZStack(alignment: .leading) {
-            Capsule()
-                .fill(Color.white.opacity(0.18))
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.4)],
-                        startPoint: .leading,
-                        endPoint: .trailing
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.18))
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.95), Color.white.opacity(0.4)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .frame(width: max(0, progress) * UIScreen.main.bounds.width, height: 4)
-                .animation(.linear(duration: 0.001), value: progress)
+                    .frame(width: geo.size.width * max(0, progress))
+            }
         }
         .frame(height: 4)
         .clipShape(Capsule())
-        .shadow(color: Color.white.opacity(0.4), radius: 4, x: 0, y: 1)
     }
 
     private var storyInfoRow: some View {
@@ -412,21 +400,26 @@ private struct DailyStoryContentView: View {
     }
 
     private var storyHeadline: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             if let headline = story.headline {
-                Text(headline)
-                    .font(AppFont.display(size: 28, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                TypewriterText(
+                    text: headline,
+                    speed: 0.02,
+                    font: AppFont.display(size: 22, weight: .semibold),
+                )
             }
 
             if let recommendation = story.recommendation {
-                Text(recommendation)
-                    .font(AppFont.body(size: 16, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.9))
-                    .lineSpacing(4)
+                TypewriterText(
+                    text: recommendation,
+                    speed: 0.02,
+                    font: AppFont.body(size: 14, weight: .medium),
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(nil, value: story.id)
+        .animation(nil, value: progress)
     }
 
     private var storyBottomBar: some View {
@@ -447,6 +440,10 @@ private struct DailyStoryContentView: View {
         .padding(.horizontal, 16)
         .background(Color.white.opacity(0.08))
         .clipShape(Capsule())
+    }
+    
+    private var headlineColor: Color {
+        story.tint.isDark() ? .white : .black
     }
 }
 
@@ -474,9 +471,20 @@ private extension Notification.Name {
             headline: "Good night 😴",
             detail: "Cozy Corners >",
             recommendation: "∞ Boomerang"
+        ),
+        
+        DailyStory(
+            title: "amitSinha",
+            systemImage: "waveform.path.ecg",
+            tint: AppColor.green,
+            hasUpdate: true,
+            isViewed: false,
+            imageName: "dailySnapRPM",
+            headline: "Good night 😴",
+            detail: "Cozy Corners >",
+            recommendation: "∞ Boomerang"
         )
     ]
 
     DailyStoryCarouselView(stories: stories, initialIndex: 0)
 }
-

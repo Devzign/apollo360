@@ -34,11 +34,7 @@ struct MessageListView: View {
                 }
                 List {
                     ForEach(filteredProviders) { provider in
-                        NavigationLink(
-                            destination: ConversationView(session: viewModel.session, provider: provider)
-                        ) {
-                            ProviderRow(provider: provider)
-                        }
+                        ProviderRow(provider: provider)
                     }
                 }
                 .listStyle(.plain)

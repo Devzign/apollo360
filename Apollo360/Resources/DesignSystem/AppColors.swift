@@ -19,3 +19,12 @@ enum AppColor {
     static let red = Color("AppRed")
     static let colorECF0F3 = Color("colorECF0F3")
 }
+
+extension Color {
+    func isDark() -> Bool {
+        let uiColor = UIColor(self)
+        var white: CGFloat = 0
+        uiColor.getWhite(&white, alpha: nil)
+        return white < 0.5
+    }
+}

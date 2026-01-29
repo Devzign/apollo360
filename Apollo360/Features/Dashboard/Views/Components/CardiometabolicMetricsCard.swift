@@ -79,6 +79,15 @@ private struct MetricSparklineView: View {
 
             ZStack {
                 Path { path in
+                    // Draw simple X & Y axes behind the sparkline
+                    path.move(to: CGPoint(x: 0, y: 0))           // Y axis top
+                    path.addLine(to: CGPoint(x: 0, y: height))   // Y axis bottom
+                    path.move(to: CGPoint(x: 0, y: height))      // X axis left
+                    path.addLine(to: CGPoint(x: width, y: height)) // X axis right
+                }
+                .stroke(Color.black.opacity(0.12), lineWidth: 1)
+
+                Path { path in
                     guard points.count > 1 else { return }
                     for index in points.indices {
                         let x = CGFloat(index) * step
