@@ -50,7 +50,7 @@ private struct InsightRowView: View {
             
             Circle()
                 .fill(color.opacity(0.18))
-                .frame(width: 60, height: 60)
+                .frame(width: 48, height: 48)
                 .overlay(
                     InsightIconView(item: item, tint: color)
                         .font(.system(size: 20, weight: .semibold))
@@ -58,9 +58,9 @@ private struct InsightRowView: View {
                 .padding(.top, 4)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(AppFont.body(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+//                Text(item.title)
+//                    .font(AppFont.body(size: 14, weight: .semibold))
+//                    .foregroundStyle(AppColor.black)
 
                 TypewriterText(
                     text: item.detail,
@@ -97,7 +97,7 @@ private struct InsightRowView: View {
 private struct InsightIconView: View {
     let item: InsightItem
     let tint: Color
-    private let iconSize: CGFloat = 36
+    private let iconSize: CGFloat = 30
 
     var body: some View {
         Group {

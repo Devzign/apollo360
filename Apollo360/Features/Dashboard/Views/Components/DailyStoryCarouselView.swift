@@ -20,7 +20,7 @@ struct DailyStoryCarouselView: View {
     @State private var lastIndex: Int = 0
     @State private var progress: CGFloat = 0
     @Namespace private var storyNamespace
-
+    @State private var isPaused: Bool = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDraggingTopCard: Bool = false
     @State private var isPresentingShare: Bool = false
@@ -42,7 +42,7 @@ struct DailyStoryCarouselView: View {
                 Spacer()
                 Button(action: handleDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(Color.white)
                         .padding(10)
                         .background(Circle().fill(Color.black.opacity(0.45)))
@@ -151,13 +151,13 @@ struct DailyStoryCarouselView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                 }
-
+                pauseButton
                 closeButton
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(autoAdvanceTimer) { _ in
-            guard !stories.isEmpty else { return }
+            guard !stories.isEmpty, !isPaused else { return }
             withAnimation(.easeInOut(duration: 0.2)) { progress = 0 }
             withAnimation(.linear(duration: autoAdvanceDuration)) { progress = 1 }
             goToNext(animated: false)
@@ -247,6 +247,37 @@ struct DailyStoryCarouselView: View {
         )
         renderer.scale = UIScreen.main.scale
         return renderer.uiImage
+    }
+
+    private var pauseButton: some View {
+        VStack {
+            HStack {
+                Button {
+                    togglePause()
+                } label: {
+                    Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .padding(10)
+                        .background(Circle().fill(Color.black.opacity(0.45)))
+                }
+
+                Spacer()
+            }
+            Spacer()
+        }
+        .padding(.top, 20)
+        .padding(.leading, 20)
+    }
+
+    private func togglePause() {
+        isPaused.toggle()
+
+        if isPaused {
+            pauseProgress()
+        } else {
+            resumeProgress()
+        }
     }
 }
 
@@ -401,19 +432,17 @@ private struct DailyStoryContentView: View {
         VStack(alignment: .leading, spacing: 10) {
 
             if let headline = story.headline {
-                TypewriterText(
-                    text: headline,
-                    speed: 0.02,
-                    font: AppFont.display(size: 22, weight: .semibold)
-                )
-                .id("\(story.id)-\(activeIndex)")
+                Text(headline)
+                    .font(AppFont.display(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.white)
             }
 
             if let recommendation = story.recommendation {
                 TypewriterText(
                     text: recommendation,
-                    speed: 0.02,
-                    font: AppFont.body(size: 14, weight: .medium)
+                    speed: 0.05,
+                    font: AppFont.body(size: 14, weight: .medium),
+                    color: Color.white
                 )
                 .id("\(story.id)-\(activeIndex)")
             }
@@ -422,7 +451,7 @@ private struct DailyStoryContentView: View {
         .animation(nil, value: story.id)
         .animation(nil, value: progress)
     }
-
+    
     private var storyBottomBar: some View {
         HStack(spacing: 16) {
             Spacer()
