@@ -12,8 +12,13 @@ struct ConversationView: View {
     let provider: MessageProvider
     @Environment(\.dismiss) private var dismiss
 
+    init(session: SessionManager, service: MessageAPIService, provider: MessageProvider) {
+        _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: service))
+        self.provider = provider
+    }
+    
     init(session: SessionManager, provider: MessageProvider) {
-        _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session))
+        _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: .shared))
         self.provider = provider
     }
 
@@ -40,7 +45,8 @@ struct ConversationView: View {
                             .padding(.vertical, 12)
                             .padding(.horizontal, 12)
                         }
-                        .onChange(of: viewModel.messages.count) { _ in
+                        .onChange(of: viewModel.messages.count) { oldValue, newValue in
+                            guard newValue != oldValue else { return }
                             if let lastId = viewModel.messages.last?.id {
                                 proxy.scrollTo(lastId, anchor: .bottom)
                             }

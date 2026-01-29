@@ -15,32 +15,35 @@ final class ConversationViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
     @Published var pendingMessageText: String = ""
-
     private let session: SessionManager
     private let service: MessageAPIService
     private var providerMemberId: Int?
-
+    
     init(session: SessionManager,
-         service: MessageAPIService = .shared) {
+         service: MessageAPIService) {
         self.session = session
         self.service = service
     }
-
+    
+    @MainActor
+    static func make(session: SessionManager, service: MessageAPIService? = nil) -> ConversationViewModel {
+        let resolvedService = service ?? MessageAPIService.shared
+        return ConversationViewModel(session: session, service: resolvedService)
+    }
+    
     func loadConversation(providerMemberId: Int) {
         self.providerMemberId = providerMemberId
-
+        
         guard let token = session.accessToken else {
             errorMessage = "Missing auth token."
             return
         }
-
-        // Fallbacks prevent "nan" in URL if session strings are empty/malformed.
+        
         let patientId = parseInt(session.patientId) ?? 36222
         let a360Id = parseInt(session.a360Id) ?? 626
-
+        
         isLoading = true
         errorMessage = nil
-
         service.fetchMessages(
             patientId: patientId,
             a360hId: a360Id,
@@ -62,7 +65,7 @@ final class ConversationViewModel: ObservableObject {
             }
         }
     }
-
+    
     func sendMessage() {
         guard !pendingMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard let providerMemberId = providerMemberId,
@@ -70,13 +73,13 @@ final class ConversationViewModel: ObservableObject {
             errorMessage = "Missing session details."
             return
         }
-
+        
         let patientId = parseInt(session.patientId) ?? 36222
         let a360Id = parseInt(session.a360Id) ?? 626
-
+        
         let text = pendingMessageText
         pendingMessageText = ""
-
+        
         // Optimistic append
         let optimistic = MessageEntry(
             entryId: Int.random(in: 100_000...999_999),
@@ -91,7 +94,7 @@ final class ConversationViewModel: ObservableObject {
             filePath: nil
         )
         messages.append(optimistic)
-
+        
         service.sendMessage(
             patientId: patientId,
             a360hId: a360Id,
@@ -129,3 +132,4 @@ private extension ConversationViewModel {
         return intVal
     }
 }
+
