@@ -8,7 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// Enables rounding specific corners of a view.
 struct RoundedCornersShape: Shape {
     let radius: CGFloat
     let corners: UIRectCorner

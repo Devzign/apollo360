@@ -2,7 +2,7 @@
 //  MessagesListViewModel.swift
 //  Apollo360
 //
-//  Created by Codex on 29/01/26.
+//  Created by Amit Sinha on 29/01/26.
 //
 
 import Foundation
@@ -18,9 +18,14 @@ final class MessagesListViewModel: ObservableObject {
     private let service: MessageAPIService
 
     init(session: SessionManager,
-         service: MessageAPIService = .shared) {
+         service: MessageAPIService) {
         self.session = session
         self.service = service
+    }
+
+    @MainActor
+    convenience init(session: SessionManager) {
+        self.init(session: session, service: .shared)
     }
 
     func loadProviders() {
@@ -59,3 +64,4 @@ private extension MessagesListViewModel {
         return intVal
     }
 }
+

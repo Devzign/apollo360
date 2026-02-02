@@ -38,7 +38,9 @@ struct DashboardView: View {
                         onMenuTap: {
                             isSideMenuVisible = true
                         },
-                        onGridTap: {}
+                        onSettingsTap: {
+                            selectedTab = .settings
+                        }
                     )
                     .padding(.horizontal, headerHorizontalPadding)
                     }
@@ -136,6 +138,9 @@ struct DashboardView: View {
         case .message:
             MessageListView(session: session)
                 .padding(.horizontal, screenHorizontalPadding / 2)
+
+        case .settings:
+            SettingsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         default:
             DashboardTabPlaceholderView(

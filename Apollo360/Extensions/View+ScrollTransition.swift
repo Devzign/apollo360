@@ -2,13 +2,12 @@
 //  View+ScrollTransition.swift
 //  Apollo360
 //
-//  Created by Codex on 28/01/26.
+//  Created by Amit Sinha on 28/01/26.
 //
 
 import SwiftUI
 
 extension View {
-    /// Fades and scales content based on scroll position without mutating state.
     @ViewBuilder
     func scrollFadeScale() -> some View {
         if #available(iOS 17.0, *) {

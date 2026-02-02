@@ -31,7 +31,7 @@ struct SideMenuView: View {
         SideMenuOption(title: "Assessments", icon: "doc.text.magnifyingglass", tab: .metrics, badge: 2),
         SideMenuOption(title: "Records", icon: "folder", tab: nil, badge: nil),
         SideMenuOption(title: "Appointments", icon: "calendar.badge.clock", tab: .appointment, badge: nil),
-        SideMenuOption(title: "Settings", icon: "gearshape", tab: nil, badge: nil)
+        SideMenuOption(title: "Settings", icon: "gearshape", tab: .settings, badge: nil)
     ]
 
     var body: some View {

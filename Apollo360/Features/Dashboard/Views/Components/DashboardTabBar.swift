@@ -14,6 +14,7 @@ enum DashboardTab: String, CaseIterable {
     case message
     case appointment
     case forms
+    case settings
 }
 
 struct DashboardTabBar: View {
@@ -179,6 +180,8 @@ struct DashboardTabBar: View {
             return ("home", "Home")
         case .forms:
             return ("metrics", "Forms")
+        case .settings:
+            return ("library", "Settings")
         }
     }
 }

@@ -10,7 +10,7 @@ import SwiftUI
 struct SectionHeaderView: View {
     let title: String
     let onMenuTap: () -> Void
-    let onGridTap: () -> Void
+    let onSettingsTap: () -> Void
 
     var body: some View {
         HStack {
@@ -36,18 +36,9 @@ struct SectionHeaderView: View {
 
             Spacer()
 
-//            Button(action: onGridTap) {
-//                VStack(spacing: 6) {
-//                    HStack(spacing: 6) {
-//                        square(color: AppColor.black)
-//                        square(color: AppColor.green.opacity(0.8))
-//                    }
-//                    HStack(spacing: 6) {
-//                        square(color: AppColor.green.opacity(0.7))
-//                        square(color: AppColor.black.opacity(0.8))
-//                    }
-//                }
-//            }
+            Button(action: onSettingsTap) {
+                HeaderIconButton(systemImage: "gearshape.fill", showsBadge: false)
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -61,6 +52,33 @@ struct SectionHeaderView: View {
     }
 }
 
+private struct HeaderIconButton: View {
+    let systemImage: String
+    let showsBadge: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(AppColor.colorECF0F3)
+                .frame(width: 40, height: 40)
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(AppColor.black)
+            if showsBadge {
+                Circle()
+                    .fill(AppColor.red)
+                    .frame(width: 10, height: 10)
+                    .overlay(
+                        Circle()
+                            .stroke(AppColor.secondary, lineWidth: 2)
+                    )
+                    .offset(x: 12, y: -12)
+            }
+        }
+        .frame(width: 40, height: 40)
+    }
+}
+
 #Preview(traits: .sizeThatFitsLayout) {
-    SectionHeaderView(title: "Library", onMenuTap: {}, onGridTap: {})
+    SectionHeaderView(title: "Library", onMenuTap: {}, onSettingsTap: {})
 }
