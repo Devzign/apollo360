@@ -18,6 +18,7 @@ enum AppColor {
     static let green = Color("AppGreen")
     static let red = Color("AppRed")
     static let colorECF0F3 = Color("colorECF0F3")
+    static let color414141 = Color("color414141")
 }
 
 extension Color {

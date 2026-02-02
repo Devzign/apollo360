@@ -1,13 +1,7 @@
-//
-//  BillingView.swift
-//  Apollo360
-//
-//  Created by Amit Sinha on 02/02/26.
-//
-
 import SwiftUI
 
 struct BillingView: View {
+
     @StateObject private var viewModel: BillingViewModel
 
     init(session: SessionManager) {
@@ -15,69 +9,66 @@ struct BillingView: View {
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [AppColor.white, AppColor.green.opacity(0.18)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 22) {
-                    header
-                    totalsCard
-                    invoicesSection
-                    spacerBottom
+                LinearGradient(
+                    colors: [
+                        AppColor.white,
+                        AppColor.primary,
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 320)
+                .ignoresSafeArea(edges: .top)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+
+                        headerSection
+
+                        billingCard
+                            .padding(.top, -28)
+                            .frame(
+                                minHeight: geo.size.height
+                                    - 320
+                                    + 28
+                            )
+                    }
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 10)
-                .padding(.bottom, 24)
             }
         }
         .navigationTitle("Billing Statement")
         .navigationBarTitleDisplayMode(.inline)
-        .overlay(alignment: .top) {
-            if viewModel.isLoading {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .padding(.top, 12)
-            }
-        }
-        .alert("Error", isPresented: Binding(get: { viewModel.errorMessage != nil }, set: { _ in viewModel.errorMessage = nil })) {
-            Button("Retry", action: viewModel.load)
-            Button("Dismiss", role: .cancel) { }
-        } message: {
-            Text(viewModel.errorMessage ?? "")
-        }
     }
+}
 
-    private var header: some View {
-        VStack(spacing: 6) {
+// MARK: - Header
+private extension BillingView {
+    var headerSection: some View {
+        VStack(spacing: 10) {
             Text("Your Total Balance")
-                .font(AppFont.body(size: 15, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.85))
+                .font(AppFont.body(size: 18, weight: .medium))
+                .foregroundColor(.white)
+
             Text(viewModel.formatted(viewModel.displayTotals.total_io_patient_balance))
-                .font(AppFont.display(size: 38, weight: .bold))
-                .foregroundStyle(.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 6, y: 2)
+                .font(AppFont.display(size: 40, weight: .bold))
+                .foregroundColor(.white)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .padding(.top, 30)
+        .padding(.bottom, 70)
     }
+}
 
-    private var totalsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Total Billed Amount")
-                    .font(AppFont.body(size: 17, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
-                Spacer()
-                Text(viewModel.formatted(viewModel.displayTotals.total_billed))
-                    .font(AppFont.body(size: 17, weight: .bold))
-                    .foregroundStyle(AppColor.green)
-            }
-            .padding(.bottom, 6)
+// MARK: - Billing Card
+private extension BillingView {
+
+    var billingCard: some View {
+        VStack(spacing: 20) {
+
+            totalBilledPill
 
             billRow(title: "Billed", value: viewModel.displayTotals.total_ptm)
             billRow(title: "Adjust", value: viewModel.displayTotals.total_adjustment)
@@ -89,58 +80,93 @@ struct BillingView: View {
             billRow(title: "Write-off", value: viewModel.displayTotals.total_writeoff)
 
             Divider()
-                .padding(.vertical, 4)
+                .background(AppColor.green.opacity(0.3))
 
-            HStack {
-                Text("Your Balance")
-                    .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
-                Spacer()
-                Text(viewModel.formatted(viewModel.displayTotals.total_io_patient_balance))
-                    .font(AppFont.body(size: 18, weight: .bold))
-                    .foregroundStyle(AppColor.green)
+            balanceRow
+        }
+        .padding(20)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(Color.white)
+
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(Color.clear)
+                    .shadow(
+                        color: .black.opacity(0.18),
+                        radius: 16,
+                        x: 0,
+                        y: -10
+                    )
+                    .mask(
+                        VStack(spacing: 0) {
+                            Rectangle()
+                                .frame(height: 80)
+                            Spacer()
+                        }
+                    )
             }
-        }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
-        )
-        .padding(.horizontal, 6)
-    }
-
-    private var invoicesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Invoices")
-                .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black.opacity(0.8))
-
-            Text("No invoices available.")
-                .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 6)
-    }
-
-    private var spacerBottom: some View {
-        Color.clear.frame(height: 40)
-    }
-
-    private func billRow(title: String, value: Double) -> some View {
-        HStack {
-            Text(title)
-                .font(AppFont.body(size: 15, weight: .medium))
-                .foregroundStyle(AppColor.black)
-            Spacer()
-            Text(viewModel.formatted(value))
-                .font(AppFont.body(size: 15, weight: .semibold))
-                .foregroundStyle(AppColor.black)
         }
     }
 }
 
+// MARK: - Total Billed Pill
+private extension BillingView {
+
+    var totalBilledPill: some View {
+        HStack {
+            Text("Total Billed Amount")
+                .font(AppFont.body(size: 18, weight: .semibold))
+                .foregroundColor(AppColor.color414141)
+
+            Spacer()
+
+            Text(viewModel.formatted(viewModel.displayTotals.total_billed))
+                .font(AppFont.body(size: 18, weight: .bold))
+                .foregroundColor(AppColor.primary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(AppColor.grey.opacity(0.12))
+        )
+    }
+}
+
+// MARK: - Rows
+private extension BillingView {
+
+    func billRow(title: String, value: Double) -> some View {
+        HStack {
+            Text(title)
+                .font(AppFont.body(size: 18, weight: .medium))
+                .foregroundColor(AppColor.color414141)
+
+            Spacer()
+
+            Text(viewModel.formatted(value))
+                .font(AppFont.body(size: 18, weight: .semibold))
+                .foregroundColor(AppColor.color414141)
+        }
+    }
+
+    var balanceRow: some View {
+        HStack {
+            Text("Your Balance")
+                .font(AppFont.body(size: 20, weight: .semibold))
+                .foregroundColor(AppColor.color414141)
+
+            Spacer()
+
+            Text(viewModel.formatted(viewModel.displayTotals.total_io_patient_balance))
+                .font(AppFont.body(size: 20, weight: .bold))
+                .foregroundColor(AppColor.primary)
+        }
+    }
+}
+
+// MARK: - Preview
 #Preview {
     NavigationStack {
         BillingView(session: SessionManager())

@@ -73,6 +73,12 @@ final class BillingViewModel: ObservableObject {
     private let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
+
+        formatter.currencySymbol = "$"
+        formatter.currencyCode = "USD"
+
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter
