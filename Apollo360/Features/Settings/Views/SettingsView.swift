@@ -11,6 +11,7 @@ struct SettingsView: View {
     let horizontalPadding: CGFloat
     private let session: SessionManager
     @StateObject private var viewModel: SettingsViewModel
+    @State private var isShowingLogoutConfirmation = false
 
     init(horizontalPadding: CGFloat, session: SessionManager) {
         self.horizontalPadding = horizontalPadding
@@ -59,12 +60,29 @@ struct SettingsView: View {
             }
             VStack(spacing: 16) {
                 ForEach(section.items) { item in
-                    NavigationLink {
-                        destination(for: item)
-                    } label: {
-                        SettingRow(item: item)
+                    if case .logout = item.kind {
+                        Button {
+                            isShowingLogoutConfirmation = true
+                        } label: {
+                            SettingRow(item: item)
+                        }
+                        .buttonStyle(.plain)
+                        .alert("Log out", isPresented: $isShowingLogoutConfirmation) {
+                            Button("Cancel", role: .cancel) {}
+                            Button("Logout", role: .destructive) {
+                                viewModel.logout()
+                            }
+                        } message: {
+                            Text("Logging out will end your session and require signing in again.")
+                        }
+                    } else {
+                        NavigationLink {
+                            destination(for: item)
+                        } label: {
+                            SettingRow(item: item)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -114,6 +132,7 @@ struct SettingsView: View {
         SettingsView(horizontalPadding: 20, session: SessionManager())
             .environment(\.horizontalSizeClass, .compact)
     }
+    .toolbar(.hidden, for: .tabBar)
 }
 
 #Preview("Settings - iPad", traits: .sizeThatFitsLayout) {
@@ -121,4 +140,5 @@ struct SettingsView: View {
         SettingsView(horizontalPadding: 50, session: SessionManager())
             .environment(\.horizontalSizeClass, .regular)
     }
+    .toolbar(.hidden, for: .tabBar)
 }

@@ -19,6 +19,9 @@ struct CaregiversView: View {
     @State private var providerAddress = ""
     @State private var providerPhone = ""
 
+    @State private var isCaregiverExpanded = true
+    @State private var isProviderExpanded = true
+
     init(session: SessionManager) {
         self.session = session
         _viewModel = StateObject(wrappedValue: CaregiversViewModel(session: session))
@@ -88,9 +91,17 @@ struct CaregiversView: View {
     }
 
     private var caregiverSection: some View {
-        sectionContainer(title: "My Contacts", icon: "person.2.fill", action: {
-            isPresentingAddCaregiver = true
-        }, actionTitle: "Add Contact") {
+        sectionContainer(
+            title: "My Contacts",
+            icon: "person.2.fill",
+            isExpanded: isCaregiverExpanded,
+            toggleExpansion: { withAnimation { isCaregiverExpanded.toggle() } },
+            collapsedInfo: countDescription(viewModel.caregivers.count, singular: "contact"),
+            action: {
+                isPresentingAddCaregiver = true
+            },
+            actionTitle: "Add Contact"
+        ) {
             if viewModel.caregivers.isEmpty {
                 Text("No caregivers yet.")
                     .font(AppFont.body(size: 14))
@@ -110,9 +121,17 @@ struct CaregiversView: View {
     }
 
     private var providerSection: some View {
-        sectionContainer(title: "Healthcare Providers", icon: "cross.case.fill", action: {
-            isPresentingAddProvider = true
-        }, actionTitle: "Add Provider") {
+        sectionContainer(
+            title: "Healthcare Providers",
+            icon: "cross.case.fill",
+            isExpanded: isProviderExpanded,
+            toggleExpansion: { withAnimation { isProviderExpanded.toggle() } },
+            collapsedInfo: countDescription(viewModel.providers.count, singular: "provider"),
+            action: {
+                isPresentingAddProvider = true
+            },
+            actionTitle: "Add Provider"
+        ) {
             if viewModel.providers.isEmpty {
                 Text("No providers yet.")
                     .font(AppFont.body(size: 14))
@@ -141,15 +160,26 @@ struct CaregiversView: View {
     private func sectionContainer<Content: View>(
         title: String,
         icon: String,
+        isExpanded: Bool,
+        toggleExpansion: @escaping () -> Void,
+        collapsedInfo: String?,
         action: @escaping () -> Void,
         actionTitle: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label(title, systemImage: icon)
-                    .font(AppFont.body(size: 17, weight: .semibold))
-                    .foregroundStyle(AppColor.color414141)
+                Button(action: toggleExpansion) {
+                    HStack(spacing: 6) {
+                        Label(title, systemImage: icon)
+                            .font(AppFont.body(size: 17, weight: .semibold))
+                            .foregroundStyle(AppColor.color414141)
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(AppFont.body(size: 12, weight: .semibold))
+                            .foregroundStyle(AppColor.grey)
+                    }
+                }
+                .buttonStyle(.plain)
                 Spacer()
                 Button(action: action) {
                     HStack(spacing: 6) {
@@ -165,7 +195,13 @@ struct CaregiversView: View {
                 }
             }
 
-            content()
+            if isExpanded {
+                content()
+            } else if let collapsedInfo {
+                Text(collapsedInfo)
+                    .font(AppFont.body(size: 14))
+                    .foregroundStyle(AppColor.grey)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,6 +239,10 @@ struct CaregiversView: View {
                 .offset(y: 0.5),
             alignment: .bottom
         )
+    }
+
+    private func countDescription(_ count: Int, singular: String) -> String {
+        "\(count) \(singular)\(count == 1 ? "" : "s")"
     }
 
     private var addCaregiverSheet: some View {

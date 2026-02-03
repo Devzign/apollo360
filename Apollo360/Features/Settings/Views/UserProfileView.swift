@@ -45,8 +45,8 @@ struct UserProfileView: View {
             guard let profile else { return }
             updateFields(with: profile)
         }
-        .onChange(of: photoPickerItem) { item in
-            guard let item else { return }
+        .onChange(of: photoPickerItem) { oldValue, newValue in
+            guard let item = newValue else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {

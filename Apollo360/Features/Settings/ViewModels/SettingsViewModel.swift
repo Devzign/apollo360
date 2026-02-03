@@ -168,10 +168,6 @@ final class SettingsViewModel: ObservableObject {
             SettingItem(title: "Team", kind: .team),
             SettingItem(title: "My Caregivers, Doctors & Health Facilities", kind: .caregivers),
             SettingItem(title: "Notification Settings", kind: .notifications),
-            SettingItem(
-                title: "Assignment of Benefits and Releases",
-                kind: .staticItem(id: "benefits")
-            )
         ]
 
         let accountItems: [SettingItem] = [

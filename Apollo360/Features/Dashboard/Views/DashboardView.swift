@@ -45,11 +45,13 @@ struct DashboardView: View {
                     .padding(.horizontal, headerHorizontalPadding)
                     }
                 
-                DashboardTabBar(
-                    selectedTab: $selectedTab,
-                    bottomInset: bottomSafeArea
-                )
-                .padding(.horizontal, 5)
+                if selectedTab != .settings {
+                    DashboardTabBar(
+                        selectedTab: $selectedTab,
+                        bottomInset: bottomSafeArea
+                    )
+                    .padding(.horizontal, 5)
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
