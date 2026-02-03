@@ -47,7 +47,14 @@ enum APIEndpoint {
     static let patientForms = "v1/patient-forms"
     static let termsOfUse = "v1/terms-of-use"
     static let privacyPolicy = "v1/privacy-policy"
+    static let profile = "v1/profile"
     static let appointments = "v1/appointments"
+    static func billingCards(for patientId: String) -> String {
+        "v1/billing/cards/\(patientId)"
+    }
+    static func billingCard(for patientId: String, cardId: String) -> String {
+        "v1/billing/cards/\(patientId)/\(cardId)"
+    }
     static func billingInfo(for patientId: String) -> String {
         "v1/get-billing-info/\(patientId)"
     }
@@ -72,6 +79,17 @@ enum APIEndpoint {
     static func messagesConversation(for patientId: Int, a360hId: Int, providerMemberId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)&providerMemberId=\(providerMemberId)"
     }
+    static let team = "v1/team"
+    static let myContacts = "v1/my-contacts"
+    static let myContactsCaregiver = "v1/my-contacts/caregiver"
+    static let myContactsHealthcareProvider = "v1/my-contacts/healthcare-provider"
+    static func myContactsContact(key: String) -> String {
+        "v1/my-contacts/\(key)"
+    }
+    static func myContactsConsentForm(key: String, type: String, formType: String, contactType: String) -> String {
+        "v1/my-contacts/\(key)/consent-form?type=\(type)&formType=\(formType)&contactType=\(contactType)"
+    }
+
     static func providers(for patientId: Int) -> String {
         "v1/list-of-providers/\(patientId)"
     }

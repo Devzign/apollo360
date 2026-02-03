@@ -13,37 +13,62 @@ enum SettingKind: Hashable {
     case privacy
     case billing
     case staticItem(id: String)
+    case forms
+    case contact
+    case creditCard
+    case team
+    case caregivers
+    case notifications
+    case profile
+    case logout
 }
 
 struct SettingItem: Identifiable {
     let id = UUID()
     let title: String
-    let summary: String
     let kind: SettingKind
-    let fallbackDetails: String
+}
+
+struct SettingSection: Identifiable {
+    let id = UUID()
+    let title: String?
+    let items: [SettingItem]
 }
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
-    @Published private(set) var items: [SettingItem] = []
+    @Published private(set) var sections: [SettingSection] = []
     @Published private(set) var isLoadingLegal: Bool = false
+    @Published private(set) var isLoadingTeam: Bool = false
     @Published var errorMessage: String?
 
     @Published private(set) var termsHTML: String?
     @Published private(set) var privacyHTML: String?
+    @Published private(set) var teamHTML: String?
 
     private let session: SessionManager
     private let service: LegalAPIService
+    private let teamService: TeamAPIService
 
-    init(session: SessionManager, service: LegalAPIService = .shared) {
+    init(
+        session: SessionManager,
+        service: LegalAPIService = .shared,
+        teamService: TeamAPIService = .shared
+    ) {
         self.session = session
         self.service = service
-        self.items = Self.buildItems()
+        self.teamService = teamService
+        self.sections = Self.buildSections()
         loadLegalContent()
+        loadTeamContent()
     }
 
     func refreshLegal() {
         loadLegalContent(force: true)
+    }
+
+    func refreshTeam() {
+        loadTeamContent(force: true)
     }
 
     private func loadLegalContent(force: Bool = false) {
@@ -102,37 +127,61 @@ final class SettingsViewModel: ObservableObject {
             return nil
         case .staticItem:
             return nil
+        case .team:
+            return teamHTML
+        default:
+            return nil
         }
     }
 
-    private static func buildItems() -> [SettingItem] {
-        [
-            SettingItem(
-                title: "Terms, Conditions and Consent",
-                summary: "Review the terms that guide care delivery, signatures, and digital consent.",
-                kind: .terms,
-                fallbackDetails: "Terms of use are currently unavailable. Please try again later."
-            ),
-            SettingItem(
-                title: "Privacy",
-                summary: "Understand how your personal health information is collected, used, and shared.",
-                kind: .privacy,
-                fallbackDetails: "Privacy policy is currently unavailable. Please try again later."
-            ),
-            SettingItem(
-                title: "Billing Statement",
-                summary: "View your total balance, billed amounts, and insurance payments.",
-                kind: .billing,
-                fallbackDetails: "Billing data unavailable. Please try again later."
-            ),
+    private func loadTeamContent(force: Bool = false) {
+        guard !isLoadingTeam else { return }
+        guard force || teamHTML == nil else { return }
+        guard let token = session.accessToken else {
+            errorMessage = "You're not signed in."
+            return
+        }
+
+        isLoadingTeam = true
+        teamService.fetchTeamPage(bearerToken: token) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                self.isLoadingTeam = false
+                switch result {
+                case .success(let html):
+                    self.teamHTML = html
+                case .failure(let error):
+                    self.errorMessage = Self.prettyMessage(for: error)
+                }
+            }
+        }
+    }
+
+    private static func buildSections() -> [SettingSection] {
+        let settingsItems: [SettingItem] = [
+            SettingItem(title: "Privacy policy", kind: .privacy),
+            SettingItem(title: "Forms", kind: .forms),
+            SettingItem(title: "Terms of Use", kind: .terms),
+            SettingItem(title: "Contact Us", kind: .contact),
+            SettingItem(title: "Billing", kind: .billing),
+            SettingItem(title: "My Credit Card", kind: .creditCard),
+            SettingItem(title: "Team", kind: .team),
+            SettingItem(title: "My Caregivers, Doctors & Health Facilities", kind: .caregivers),
+            SettingItem(title: "Notification Settings", kind: .notifications),
             SettingItem(
                 title: "Assignment of Benefits and Releases",
-                summary: "Allow Apollo360 to bill insurance and share records for care coordination.",
-                kind: .staticItem(id: "benefits"),
-                fallbackDetails: """
-                By assigning benefits, you permit Apollo360 to submit claims directly to your insurer and receive payment on your behalf. The release also allows sharing of pertinent records with specialists and care partners strictly for treatment, payment, and healthcare operations.
-                """
+                kind: .staticItem(id: "benefits")
             )
+        ]
+
+        let accountItems: [SettingItem] = [
+            SettingItem(title: "Profile Settings", kind: .profile),
+            SettingItem(title: "Logout", kind: .logout)
+        ]
+
+        return [
+            SettingSection(title: "Settings", items: settingsItems),
+            SettingSection(title: "Account", items: accountItems)
         ]
     }
 
@@ -150,6 +199,43 @@ final class SettingsViewModel: ObservableObject {
             return "Server error (\(code)). Please try again."
         case .noData:
             return "No data received."
+        }
+    }
+
+    func logout() {
+        session.clearSession()
+    }
+}
+
+extension SettingKind {
+    var fallbackDetails: String {
+        switch self {
+        case .terms:
+            return "Terms of use are currently unavailable. Please try again later."
+        case .privacy:
+            return "Privacy policy is currently unavailable. Please try again later."
+        case .billing:
+            return "Billing data unavailable. Please try again later."
+        case .staticItem:
+            return """
+            By assigning benefits, you permit Apollo360 to submit claims directly to your insurer and receive payment on your behalf. The release also allows sharing of pertinent records with specialists and care partners strictly for treatment, payment, and healthcare operations.
+            """
+        case .forms:
+            return "Forms are coming soon. Please check back later."
+        case .contact:
+            return "Contact details and availability are currently unavailable."
+        case .creditCard:
+            return "We are working to support saved credit card management."
+        case .team:
+            return "Team information is still loading. Please try again shortly."
+        case .caregivers:
+            return "Your caregivers, doctors, and facilities will appear here once configured."
+        case .notifications:
+            return "Control the alerts you receive from Apollo360."
+        case .profile:
+            return "Update your name, DOB, and contact details from this screen."
+        case .logout:
+            return "Logging out clears your session and requires signing back in."
         }
     }
 }
