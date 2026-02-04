@@ -48,6 +48,7 @@ enum APIEndpoint {
     static let termsOfUse = "v1/terms-of-use"
     static let privacyPolicy = "v1/privacy-policy"
     static let profile = "v1/profile"
+    static let profilePicture = "v1/profile/picture"
     static let appointments = "v1/appointments"
     static func billingCards(for patientId: String) -> String {
         "v1/billing/cards/\(patientId)"

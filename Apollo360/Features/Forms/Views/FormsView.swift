@@ -276,7 +276,7 @@ private struct ShimmerModifier: ViewModifier {
     }
 }
 
-private extension View {
+public extension View {
     func shimmer() -> some View {
         modifier(ShimmerModifier())
     }

@@ -15,6 +15,8 @@ final class UserProfileViewModel: ObservableObject {
     @Published private(set) var profile: Profile?
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var isUploadingPhoto: Bool = false
+    @Published var uploadError: String?
 
     private let session: SessionManager
     private let service: ProfileAPIService
@@ -66,6 +68,29 @@ final class UserProfileViewModel: ObservableObject {
 
     var displayPhone: String {
         profile?.phone ?? ""
+    }
+
+    func uploadProfilePhoto(imageData: Data, mimeType: String) {
+        guard !isUploadingPhoto else { return }
+        guard let token = session.accessToken else {
+            uploadError = "You're not signed in."
+            return
+        }
+        isUploadingPhoto = true
+        uploadError = nil
+
+        service.uploadProfilePicture(bearerToken: token, imageData: imageData, mimeType: mimeType) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                self.isUploadingPhoto = false
+                switch result {
+                case .success:
+                    self.loadProfile(force: true)
+                case .failure(let error):
+                    self.uploadError = Self.prettyMessage(for: error)
+                }
+            }
+        }
     }
 
     private static func prettyMessage(for error: APIError) -> String {

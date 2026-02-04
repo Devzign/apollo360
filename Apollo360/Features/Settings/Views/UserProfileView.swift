@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct UserProfileView: View {
     @StateObject private var viewModel: UserProfileViewModel
@@ -17,43 +18,57 @@ struct UserProfileView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
-                profileHeader
-
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else if let error = viewModel.errorMessage {
-                    errorView(message: error)
-                } else {
-                    profileCard
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 24)
+            contentView
         }
         .background(AppColor.secondary.ignoresSafeArea())
         .navigationTitle("User Profile")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            if let profile = viewModel.profile {
-                updateFields(with: profile)
+            viewModel.loadProfile(force: true)
+        }
+        .onReceive(viewModel.$profile) { handleProfileChange($0) }
+        .onChange(of: photoPickerItem?.itemIdentifier) { newValue, _ in
+            handlePhotoPickerChange(newValue)
+        }
+    }
+
+    private var contentView: some View {
+        VStack(spacing: 16) {
+            profileHeader
+
+            if viewModel.isLoading {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else if let error = viewModel.errorMessage {
+                errorView(message: error)
+            } else {
+                profileCard
             }
         }
-        .onReceive(viewModel.$profile) { profile in
-            guard let profile else { return }
-            updateFields(with: profile)
-        }
-        .onChange(of: photoPickerItem) { oldValue, newValue in
-            guard let item = newValue else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let uiImage = UIImage(data: data) {
+        .padding(.horizontal, 20)
+        .padding(.vertical, 24)
+    }
+
+    private func handlePhotoPickerChange(_ _: String?) {
+        guard let item = photoPickerItem else { return }
+        Task {
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                if let uiImage = UIImage(data: data) {
                     avatarImage = Image(uiImage: uiImage)
                 }
+                let mimeType = UTType.jpeg.preferredMIMEType ?? "image/jpeg"
+                viewModel.uploadProfilePhoto(imageData: data, mimeType: mimeType)
             }
         }
+    }
+
+    private func handleProfileChange(_ profile: Profile?) {
+        guard let profile = profile else { return }
+        name = profile.displayName
+        dob = profile.dateOfBirth ?? ""
+        email = profile.email
+        phone = profile.phone ?? ""
     }
 
     private var profileHeader: some View {
@@ -93,6 +108,13 @@ struct UserProfileView: View {
                     .fill(Color.white)
                     .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 2)
             )
+            if let uploadError = viewModel.uploadError {
+                Text(uploadError)
+                    .font(AppFont.body(size: 13))
+                    .foregroundStyle(AppColor.red)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             VStack(spacing: 16) {
                 ProfileField(label: "Name", value: name)
@@ -111,7 +133,7 @@ struct UserProfileView: View {
     }
 
     private var avatarView: some View {
-        Group {
+        ZStack {
             if let avatarImage {
                 avatarImage
                     .resizable()
@@ -120,17 +142,31 @@ struct UserProfileView: View {
                     .clipShape(Circle())
             } else if let urlString = viewModel.profile?.avatarUrl,
                       let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } placeholder: {
-                    placeholderAvatar
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        placeholderAvatar
+                            .shimmer()
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        placeholderAvatar
+                    }
                 }
                 .frame(width: 110, height: 110)
                 .clipShape(Circle())
             } else {
                 placeholderAvatar
+            }
+            if viewModel.isUploadingPhoto {
+                Circle()
+                    .fill(Color.black.opacity(0.35))
+                    .frame(width: 110, height: 110)
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .foregroundStyle(.white)
             }
         }
     }
@@ -167,12 +203,6 @@ struct UserProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func updateFields(with profile: Profile) {
-        name = profile.displayName
-        dob = profile.dateOfBirth ?? ""
-        email = profile.email
-        phone = profile.phone ?? ""
-    }
 }
 
 private struct ProfileField: View {
