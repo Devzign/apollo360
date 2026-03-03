@@ -12,6 +12,7 @@ struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject private var session: SessionManager
     @State private var isDatePickerPresented: Bool = false
+    @State private var didAttemptBiometricUnlock: Bool = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -96,6 +97,11 @@ struct LoginView: View {
                     )
                 }
             }
+            viewModel.configureFaceIDSelection(for: session.patientId)
+            if session.requiresBiometricUnlock && !didAttemptBiometricUnlock {
+                didAttemptBiometricUnlock = true
+                attemptBiometricLogin()
+            }
         }
     }
 
@@ -115,9 +121,14 @@ struct LoginView: View {
 
             if viewModel.isOTPSent {
                 otpInput
+                faceIDPreferenceCheckbox
             }
 
             actionButton
+
+            if session.requiresBiometricUnlock {
+                faceIDLoginButton
+            }
 
             NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
                 HStack(spacing: 2) {
@@ -216,6 +227,20 @@ struct LoginView: View {
         .padding(.top, 6)
     }
 
+    private var faceIDPreferenceCheckbox: some View {
+        Group {
+            if viewModel.canUseBiometrics {
+                Toggle(isOn: $viewModel.faceIdEnabled) {
+                    Text("Enable Face ID on this device")
+                        .font(AppFont.body(size: 14))
+                        .foregroundStyle(AppColor.black)
+                }
+                .toggleStyle(FaceIDCheckboxToggleStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
     private var actionButton: some View {
         Button {
             if viewModel.isOTPSent {
@@ -237,6 +262,43 @@ struct LoginView: View {
             .frame(height: 56)
         }
         .disabled(viewModel.isLoading)
+    }
+
+    private var faceIDLoginButton: some View {
+        Button(action: attemptBiometricLogin) {
+            Label("Login with Face ID", systemImage: "faceid")
+                .font(AppFont.body(size: 16, weight: .semibold))
+                .foregroundStyle(AppColor.green)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(AppColor.green, lineWidth: 1.2)
+                )
+        }
+        .padding(.top, 4)
+    }
+
+    private func attemptBiometricLogin() {
+        session.unlockWithBiometrics { result in
+            if case .failure(let error) = result {
+                viewModel.showBiometricError(error.localizedDescription)
+            }
+        }
+    }
+}
+
+private struct FaceIDCheckboxToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(configuration.isOn ? AppColor.green : Color.gray)
+                configuration.label
+            }
+        }
     }
 }
 

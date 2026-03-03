@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct MessageProvider: Decodable, Identifiable {
+struct MessageProvider: Decodable, Identifiable, Hashable {
     let memberId: Int
     let patientId: Int
     let name: String

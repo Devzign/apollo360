@@ -18,9 +18,9 @@ final class BillingViewModel: ObservableObject {
     private let session: SessionManager
     private let service: BillingAPIService
 
-    init(session: SessionManager, service: BillingAPIService = .shared) {
+    init(session: SessionManager, service: BillingAPIService? = nil) {
         self.session = session
-        self.service = service
+        self.service = service ?? BillingAPIService.shared
         load()
     }
 

@@ -14,6 +14,7 @@ final class AppointmentViewModel: ObservableObject {
     @Published private(set) var appointments: [AppointmentCard] = []
     @Published private(set) var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var joinErrorMessage: String?
 
     private let session: SessionManager
     private let service: AppointmentAPIService
@@ -48,12 +49,41 @@ final class AppointmentViewModel: ObservableObject {
             self.isLoading = false
             switch result {
             case .success(let response):
-                self.appointments = response.appointments.map { Self.card(from: $0) }
+                self.appointments = response.appointments.map { Self.card(from: $0, acsId: response.acsId, acsToken: response.acsToken) }
             case .failure(let error):
                 self.errorMessage = error.localizedDescription
                 self.appointments = []
             }
         }
+    }
+
+    func teamsJoinURL(for appointment: AppointmentCard) -> URL? {
+        guard let acsId = appointment.acsId?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let acsToken = appointment.acsToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let acsRoomId = appointment.acsRoomId?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !acsId.isEmpty,
+              !acsToken.isEmpty,
+              !acsRoomId.isEmpty else {
+            joinErrorMessage = "Meeting details are missing for this appointment."
+            return nil
+        }
+
+        if let directURL = URL(string: acsRoomId),
+           let scheme = directURL.scheme,
+           !scheme.isEmpty {
+            return directURL
+        }
+
+        let encodedRoom = acsRoomId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? acsRoomId
+        let encodedAcsId = acsId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? acsId
+        let encodedToken = acsToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? acsToken
+
+        let candidate = "https://teams.microsoft.com/l/meetup-join/\(encodedRoom)?acsId=\(encodedAcsId)&acsToken=\(encodedToken)"
+        guard let url = URL(string: candidate) else {
+            joinErrorMessage = "Unable to create Teams join link for this appointment."
+            return nil
+        }
+        return url
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -72,7 +102,7 @@ final class AppointmentViewModel: ObservableObject {
         return formatter
     }()
 
-    private static func card(from apiModel: AppointmentAPIModel) -> AppointmentCard {
+    private static func card(from apiModel: AppointmentAPIModel, acsId: String?, acsToken: String?) -> AppointmentCard {
         let dateText: String
         if let date = apiModel.date {
             dateText = dateFormatter.string(from: date)
@@ -106,7 +136,10 @@ final class AppointmentViewModel: ObservableObject {
             time: timeText,
             accentColor: accent,
             callType: apiModel.callType,
-            isTelevisit: apiModel.isTelevisit
+            isTelevisit: apiModel.isTelevisit,
+            acsId: acsId,
+            acsToken: acsToken,
+            acsRoomId: apiModel.acsRoomId
         )
     }
 }

@@ -42,6 +42,7 @@ enum APIConfiguration {
 enum APIEndpoint {
     static let patientLogin = "v1/auth/patient-login"
     static let verifyOTP = "v1/auth/verify-otp"
+    static let patientFaceID = "patient-faceId"
     static let passwordLogin = "v1/auth/login"
     static let logout = "v1/auth/logout"
     static let patientForms = "v1/patient-forms"
@@ -50,6 +51,36 @@ enum APIEndpoint {
     static let profile = "v1/profile"
     static let profilePicture = "v1/profile/picture"
     static let appointments = "v1/appointments"
+    static func rpmFolderMetrics(for patientId: String) -> String {
+        "v1/rpm-folders/metrics/\(patientId)"
+    }
+    static func userMetricString(metricId: String, patientId: String) -> String {
+        "v1/usermetric/string/\(metricId)/\(patientId)"
+    }
+    static func labAvailableMetricList(for patientId: String) -> String {
+        "v1/lab-available-metric-list/\(patientId)"
+    }
+    static func metricDescription(metricId: String, patientId: String, range: String) -> String {
+        "v1/metric-description/\(metricId)/\(patientId)/\(range)"
+    }
+    static func compareUserMetric(patientId: String,
+                                  primaryMetricId: String,
+                                  secondaryMetricId: String,
+                                  tertiaryMetricId: String,
+                                  compareMode: String) -> String {
+        "v1/compare-user-metric/\(patientId)/\(primaryMetricId)/\(secondaryMetricId)/\(tertiaryMetricId)/\(compareMode)"
+    }
+    static func checkMetric(patientId: String,
+                            metricId: String,
+                            compareMetricId: String) -> String {
+        "v1/check-metric/\(patientId)/\(metricId)/\(compareMetricId)"
+    }
+    static func showAllRPMMetrics(for patientId: String) -> String {
+        "v1/show-all-rpm-metrics/\(patientId)"
+    }
+    static func saveUserMetrics(patientId: String, metricGroupId: String) -> String {
+        "v1/save-user-metrics/\(patientId)/\(metricGroupId)"
+    }
     static func billingCards(for patientId: String) -> String {
         "v1/billing/cards/\(patientId)"
     }

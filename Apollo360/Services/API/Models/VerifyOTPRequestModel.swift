@@ -13,3 +13,12 @@ struct VerifyOTPRequest: Encodable {
     let deviceId: String
     let rememberDevice: Bool
 }
+
+struct PatientFaceIDRequest: Encodable {
+    let patientId: String
+    let faceIdEnabled: Bool
+}
+
+struct PatientFaceIDResponse: Decodable {
+    let message: String?
+}

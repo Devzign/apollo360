@@ -25,6 +25,12 @@
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Apollo360 reads your Health data to show relevant wellness insights and trends.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Apollo360 writes Health data when you choose to sync your health information.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Apollo360 uses Face ID to securely sign you in on this device.</string>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
 </dict>

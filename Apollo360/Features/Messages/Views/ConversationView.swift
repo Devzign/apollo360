@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     let provider: MessageProvider
     @Environment(\.dismiss) private var dismiss
+    @State private var isFileImporterPresented = false
 
     init(session: SessionManager, service: MessageAPIService, provider: MessageProvider) {
         _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: service))
@@ -30,9 +32,19 @@ struct ConversationView: View {
                 topBar
 
                 if viewModel.isLoading {
-                    ProgressView().padding()
+                    VStack {
+                        Spacer()
+                        ProgressView().padding()
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error = viewModel.errorMessage {
-                    Text(error).foregroundStyle(.red).padding()
+                    VStack {
+                        Spacer()
+                        Text(error).foregroundStyle(.red).padding()
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollViewReader { proxy in
                         ScrollView {
@@ -45,6 +57,7 @@ struct ConversationView: View {
                             .padding(.vertical, 12)
                             .padding(.horizontal, 12)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .onChange(of: viewModel.messages.count) { oldValue, newValue in
                             guard newValue != oldValue else { return }
                             if let lastId = viewModel.messages.last?.id {
@@ -52,16 +65,32 @@ struct ConversationView: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
                 inputBar
                     .padding()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .navigationBarHidden(true)
         .navigationBarBackButtonHidden(true)
         .onAppear {
             viewModel.loadConversation(providerMemberId: provider.memberId)
+        }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let first = urls.first {
+                    viewModel.attachFile(from: first)
+                }
+            case .failure:
+                viewModel.errorMessage = "Unable to select file."
+            }
         }
     }
 
@@ -102,20 +131,53 @@ struct ConversationView: View {
     }
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Type your message...", text: $viewModel.pendingMessageText, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(12)
+        VStack(spacing: 8) {
+            if let selectedAttachment = viewModel.selectedAttachmentName {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.fill")
+                        .foregroundStyle(AppColor.green)
+                    Text(selectedAttachment)
+                        .font(AppFont.body(size: 12, weight: .medium))
+                        .lineLimit(1)
+                    Spacer()
+                    Button {
+                        viewModel.clearAttachment()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(AppColor.grey)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(Color.black.opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
 
-            Button(action: viewModel.sendMessage) {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
+            HStack(spacing: 10) {
+                Button {
+                    isFileImporterPresented = true
+                } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppColor.green)
+                }
+
+                TextField("Type your message...", text: $viewModel.pendingMessageText, axis: .vertical)
+                    .lineLimit(1...4)
                     .padding(12)
-                    .background(AppColor.green)
-                    .clipShape(Circle())
+                    .background(Color.black.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Button(action: viewModel.sendMessage) {
+                    Image(systemName: viewModel.isSending ? "hourglass" : "paperplane.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .background(AppColor.green)
+                        .clipShape(Circle())
+                }
+                .disabled(viewModel.isSending)
             }
         }
     }
@@ -124,6 +186,7 @@ struct ConversationView: View {
 private struct MessageBubble: View {
     let message: MessageEntry
     let isMine: Bool
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -135,6 +198,11 @@ private struct MessageBubble: View {
                 Text(message.message)
                     .font(AppFont.body(size: 15))
                     .foregroundStyle(isMine ? .white : AppColor.black)
+
+                if let filePath = message.filePath,
+                   !filePath.isEmpty {
+                    fileView(filePath: filePath)
+                }
 
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
@@ -153,6 +221,32 @@ private struct MessageBubble: View {
                 AvatarView(urlString: nil, placeholderText: message.name)
                     .frame(width: 32, height: 32)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func fileView(filePath: String) -> some View {
+        if let url = URL(string: filePath), url.scheme != nil {
+            Button {
+                openURL(url)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "paperclip")
+                    Text(url.lastPathComponent)
+                        .lineLimit(1)
+                }
+                .font(AppFont.body(size: 12, weight: .medium))
+                .foregroundStyle(isMine ? .white : AppColor.green)
+            }
+            .buttonStyle(.plain)
+        } else {
+            HStack(spacing: 6) {
+                Image(systemName: "paperclip")
+                Text(filePath)
+                    .lineLimit(1)
+            }
+            .font(AppFont.body(size: 12, weight: .medium))
+            .foregroundStyle(isMine ? .white : AppColor.green)
         }
     }
 

@@ -16,6 +16,9 @@ struct AppointmentCard: Identifiable {
     let accentColor: Color
     let callType: String?
     let isTelevisit: Bool
+    let acsId: String?
+    let acsToken: String?
+    let acsRoomId: String?
 
     init(
         id: UUID = UUID(),
@@ -25,7 +28,10 @@ struct AppointmentCard: Identifiable {
         time: String,
         accentColor: Color,
         callType: String? = nil,
-        isTelevisit: Bool = false
+        isTelevisit: Bool = false,
+        acsId: String? = nil,
+        acsToken: String? = nil,
+        acsRoomId: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -35,5 +41,8 @@ struct AppointmentCard: Identifiable {
         self.accentColor = accentColor
         self.callType = callType
         self.isTelevisit = isTelevisit
+        self.acsId = acsId
+        self.acsToken = acsToken
+        self.acsRoomId = acsRoomId
     }
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 
 @MainActor
 final class ConversationViewModel: ObservableObject {
@@ -15,9 +16,13 @@ final class ConversationViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
     @Published var pendingMessageText: String = ""
+    @Published private(set) var selectedAttachmentName: String?
+    @Published private(set) var isSending = false
     private let session: SessionManager
     private let service: MessageAPIService
     private var providerMemberId: Int?
+    private var selectedAttachmentData: Data?
+    private var selectedAttachmentMimeType: String?
     
     init(session: SessionManager,
          service: MessageAPIService) {
@@ -67,7 +72,12 @@ final class ConversationViewModel: ObservableObject {
     }
     
     func sendMessage() {
-        guard !pendingMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !isSending else { return }
+        let text = pendingMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasText = !text.isEmpty
+        let hasAttachment = selectedAttachmentData != nil
+        guard hasText || hasAttachment else { return }
+
         guard let providerMemberId = providerMemberId,
               let token = session.accessToken else {
             errorMessage = "Missing session details."
@@ -77,8 +87,12 @@ final class ConversationViewModel: ObservableObject {
         let patientId = parseInt(session.patientId) ?? 36222
         let a360Id = parseInt(session.a360Id) ?? 626
         
-        let text = pendingMessageText
         pendingMessageText = ""
+        let attachmentData = selectedAttachmentData
+        let attachmentName = selectedAttachmentName
+        let attachmentMimeType = selectedAttachmentMimeType
+        clearAttachment()
+        isSending = true
         
         // Optimistic append
         let optimistic = MessageEntry(
@@ -86,12 +100,12 @@ final class ConversationViewModel: ObservableObject {
             messageType: 1,
             name: session.username ?? "You",
             timestamp: Date(),
-            message: text,
+            message: hasText ? text : (attachmentName ?? "Attachment"),
             urgent: "0",
             topicId: nil,
             topicTitle: nil,
             isUnread: false,
-            filePath: nil
+            filePath: hasAttachment ? attachmentName : nil
         )
         messages.append(optimistic)
         
@@ -100,15 +114,16 @@ final class ConversationViewModel: ObservableObject {
             a360hId: a360Id,
             providerMemberId: providerMemberId,
             messageType: 1,
-            message: text,
+            message: hasText ? text : "",
             urgent: 0,
-            fileData: nil,
-            fileName: nil,
-            mimeType: nil,
+            fileData: attachmentData,
+            fileName: attachmentName,
+            mimeType: attachmentMimeType,
             token: token
         ) { [weak self] result in
             guard let self else { return }
             DispatchQueue.main.async {
+                self.isSending = false
                 switch result {
                 case .success:
                     // refresh to get canonical list
@@ -118,6 +133,37 @@ final class ConversationViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func attachFile(from url: URL) {
+        do {
+            let didStartAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data = try Data(contentsOf: url)
+            selectedAttachmentData = data
+            selectedAttachmentName = url.lastPathComponent
+
+            let ext = url.pathExtension
+            if let type = UTType(filenameExtension: ext),
+               let mimeType = type.preferredMIMEType {
+                selectedAttachmentMimeType = mimeType
+            } else {
+                selectedAttachmentMimeType = "application/octet-stream"
+            }
+        } catch {
+            errorMessage = "Unable to read selected file."
+        }
+    }
+
+    func clearAttachment() {
+        selectedAttachmentData = nil
+        selectedAttachmentName = nil
+        selectedAttachmentMimeType = nil
     }
 }
 
@@ -132,4 +178,3 @@ private extension ConversationViewModel {
         return intVal
     }
 }
-

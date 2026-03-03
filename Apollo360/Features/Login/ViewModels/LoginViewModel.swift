@@ -18,6 +18,8 @@ final class LoginViewModel: ObservableObject {
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
     @Published var alertStyle: AlertStyle = .standard
+    @Published var faceIdEnabled: Bool = false
+    @Published private(set) var canUseBiometrics: Bool = false
 
     private var phoneDigits: String = ""
 
@@ -50,6 +52,10 @@ final class LoginViewModel: ObservableObject {
     }()
 
     private static let dobDigitsLength = 8
+
+    init() {
+        canUseBiometrics = FaceIDPreferenceStore.canUseBiometrics()
+    }
 
     var isFormValid: Bool {
         phoneDigits.count == 10 && selectedDateOfBirth != nil
@@ -114,16 +120,38 @@ final class LoginViewModel: ObservableObject {
             self.isLoading = false
             switch result {
             case .success(let response):
-                self.onVerifySuccess?(response)
-                if let user = response.user {
-                    self.showAlert(title: "Welcome \(user.firstName)", message: "Logged in as \(user.username).")
-                } else {
-                    self.showAlert(title: "Verified", message: response.message ?? "OTP verified successfully.")
+                self.syncFaceIDPreference(using: response) { warning in
+                    self.onVerifySuccess?(response)
+                    let title: String
+                    let baseMessage: String
+                    if let user = response.user {
+                        title = "Welcome \(user.firstName)"
+                        baseMessage = "Logged in as \(user.username)."
+                    } else {
+                        title = "Verified"
+                        baseMessage = response.message ?? "OTP verified successfully."
+                    }
+                    let finalMessage: String
+                    if let warning, !warning.isEmpty {
+                        finalMessage = "\(baseMessage)\n\n\(warning)"
+                    } else {
+                        finalMessage = baseMessage
+                    }
+                    self.showAlert(title: title, message: finalMessage, style: warning == nil ? .standard : .error)
                 }
             case .failure(let error):
                 self.showAlert(title: "Verification failed", message: error.localizedDescription, style: .error)
             }
         }
+    }
+
+    func configureFaceIDSelection(for patientId: String?) {
+        canUseBiometrics = FaceIDPreferenceStore.canUseBiometrics()
+        faceIdEnabled = FaceIDPreferenceStore.isEnabled(for: patientId)
+    }
+
+    func showBiometricError(_ message: String) {
+        showAlert(title: "Face ID", message: message, style: .error)
     }
 
     func updatePhoneNumber(_ raw: String) {
@@ -245,5 +273,24 @@ final class LoginViewModel: ObservableObject {
         alertMessage = message
         alertStyle = style
         showAlert = true
+    }
+
+    private func syncFaceIDPreference(using response: PatientLoginResponse,
+                                      completion: @escaping (String?) -> Void) {
+        guard let patientId = response.patientIdentifier, !patientId.isEmpty else {
+            completion(nil)
+            return
+        }
+
+        let payload = PatientFaceIDRequest(patientId: patientId, faceIdEnabled: faceIdEnabled)
+        APIClient.shared.updatePatientFaceID(with: payload) { result in
+            switch result {
+            case .success:
+                FaceIDPreferenceStore.setPreference(enabled: self.faceIdEnabled, patientId: patientId)
+                completion(nil)
+            case .failure(let error):
+                completion("Logged in, but Face ID preference was not updated. \(error.localizedDescription)")
+            }
+        }
     }
 }

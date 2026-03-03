@@ -8,38 +8,15 @@
 import SwiftUI
 
 struct AppointmentView: View {
+    @StateObject private var viewModel: AppointmentViewModel
+    @Environment(\.openURL) private var openURL
     let horizontalPadding: CGFloat
     @State private var visibleAppointments: Set<UUID> = []
 
-    private let appointments: [AppointmentCard] = [
-        AppointmentCard(
-            name: "Dr. Michael Ghalchi",
-            role: "Doctor",
-            date: "07-03-2025",
-            time: "09:30 am",
-            accentColor: AppColor.green.opacity(0.18),
-            callType: "video",
-            isTelevisit: true
-        ),
-        AppointmentCard(
-            name: "Dr. Nancy Gates",
-            role: "Super Admin",
-            date: "07-03-2025",
-            time: "09:30 am",
-            accentColor: AppColor.green.opacity(0.14),
-            callType: "video",
-            isTelevisit: true
-        ),
-        AppointmentCard(
-            name: "Dr. Emily Johnson",
-            role: "Therapist",
-            date: "07-04-2025",
-            time: "10:00 am",
-            accentColor: AppColor.green.opacity(0.12),
-            callType: "in-person",
-            isTelevisit: false
-        )
-    ]
+    init(horizontalPadding: CGFloat, session: SessionManager) {
+        self.horizontalPadding = horizontalPadding
+        _viewModel = StateObject(wrappedValue: AppointmentViewModel(session: session))
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -49,8 +26,32 @@ struct AppointmentView: View {
                     .foregroundStyle(AppColor.black)
                     .padding(.top, 6)
 
-                ForEach(Array(appointments.enumerated()), id: \.element.id) { index, appointment in
-                    AppointmentCardView(appointment: appointment)
+                if viewModel.isLoading {
+                    ProgressView("Loading appointments...")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundStyle(AppColor.grey)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if let error = viewModel.errorMessage, !error.isEmpty {
+                    Text(error)
+                        .font(AppFont.body(size: 13, weight: .medium))
+                        .foregroundStyle(AppColor.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if !viewModel.isLoading && viewModel.appointments.isEmpty {
+                    Text("No upcoming appointments found.")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundStyle(AppColor.grey)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ForEach(Array(viewModel.appointments.enumerated()), id: \.element.id) { index, appointment in
+                    AppointmentCardView(appointment: appointment) {
+                        guard let joinURL = viewModel.teamsJoinURL(for: appointment) else { return }
+                        openURL(joinURL)
+                    }
                         .opacity(visibleAppointments.contains(appointment.id) ? 1 : 0)
                         .offset(y: visibleAppointments.contains(appointment.id) ? 0 : 22)
                         .onAppear {
@@ -68,11 +69,29 @@ struct AppointmentView: View {
             .padding(.bottom, 140)
         }
         .background(AppColor.secondary.ignoresSafeArea())
+        .onAppear {
+            viewModel.refresh()
+        }
+        .alert("Unable to Join Meeting", isPresented: Binding(
+            get: { (viewModel.joinErrorMessage ?? "").isEmpty == false },
+            set: { newValue in
+                if !newValue {
+                    viewModel.joinErrorMessage = nil
+                }
+            }
+        )) {
+            Button("OK", role: .cancel) {
+                viewModel.joinErrorMessage = nil
+            }
+        } message: {
+            Text(viewModel.joinErrorMessage ?? "")
+        }
     }
 }
 
 private struct AppointmentCardView: View {
     let appointment: AppointmentCard
+    let onJoin: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -111,7 +130,7 @@ private struct AppointmentCardView: View {
             }
             .labelStyle(IconLeadingLabelStyle())
 
-            Button(action: {}) {
+            Button(action: onJoin) {
                 HStack {
                     Text("Join Video Call")
                         .font(AppFont.body(size: 17, weight: .semibold))
@@ -149,6 +168,6 @@ private struct IconLeadingLabelStyle: LabelStyle {
 }
 
 #Preview("iPhone", traits: .sizeThatFitsLayout) {
-    AppointmentView(horizontalPadding: 20)
+    AppointmentView(horizontalPadding: 20, session: SessionManager())
         .environment(\.horizontalSizeClass, .compact)
 }

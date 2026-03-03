@@ -10,6 +10,7 @@ import SwiftUI
 struct SectionHeaderView: View {
     let title: String
     let onMenuTap: () -> Void
+    let onSyncTap: () -> Void
     let onSettingsTap: () -> Void
 
     var body: some View {
@@ -36,8 +37,13 @@ struct SectionHeaderView: View {
 
             Spacer()
 
-            Button(action: onSettingsTap) {
-                HeaderIconButton(systemImage: "gearshape.fill", showsBadge: false)
+            HStack(spacing: 10) {
+                Button(action: onSyncTap) {
+                    HeaderIconButton(systemImage: "arrow.triangle.2.circlepath", showsBadge: false)
+                }
+                Button(action: onSettingsTap) {
+                    HeaderIconButton(systemImage: "gearshape.fill", showsBadge: false)
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -80,5 +86,5 @@ private struct HeaderIconButton: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    SectionHeaderView(title: "Library", onMenuTap: {}, onSettingsTap: {})
+    SectionHeaderView(title: "Library", onMenuTap: {}, onSyncTap: {}, onSettingsTap: {})
 }

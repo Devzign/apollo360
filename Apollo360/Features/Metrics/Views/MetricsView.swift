@@ -10,33 +10,17 @@ import SwiftUI
 struct MetricsView: View {
     @State private var selectedRange = "1D"
     @State private var isFeeling = false
+    @State private var compareBaseMetric: MetricCardDisplay?
+    @State private var selectedCompareMetricId: String = ""
+    @StateObject private var viewModel: MetricsViewModel
     let horizontalPadding: CGFloat
 
-    private let cards: [MetricCard] = [
-        MetricCard(
-            title: "Active Duration",
-            lastValue: "28.00 minutes",
-            averageValue: "28.00",
-            dateRange: "Dec 27 2024 → Jan 03 2025",
-            points: [18, 26, 34, 20, 46, 58, 45, 64, 52]
-        ),
-        MetricCard(
-            title: "Active Energy Burned",
-            lastValue: "35.04 kcal",
-            averageValue: "69.08",
-            dateRange: "Jul 08 2025 → Jul 15 2025",
-            points: [14, 28, 38, 24, 55, 62, 48, 54, 60]
-        ),
-        MetricCard(
-            title: "Avg Speed",
-            lastValue: "4.47 mph",
-            averageValue: "4.47",
-            dateRange: "Jan 03 2025 → Jan 03 2025",
-            points: [10, 22, 40, 32, 65, 70, 60, 48, 55]
-        )
-    ]
-
     private let ranges = ["1D", "1W", "1M", "3M", "1Y", "All"]
+
+    init(horizontalPadding: CGFloat, session: SessionManager) {
+        self.horizontalPadding = horizontalPadding
+        _viewModel = StateObject(wrappedValue: MetricsViewModel(session: session))
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -57,7 +41,34 @@ struct MetricsView: View {
                 .padding(.horizontal, 12)
 
                 VStack(spacing: 20) {
-                    ForEach(cards) { card in
+                    if viewModel.isLoading {
+                        ProgressView("Loading metrics...")
+                            .font(AppFont.body(size: 14, weight: .medium))
+                            .foregroundStyle(AppColor.grey)
+                    }
+
+                    if let error = viewModel.errorMessage, !error.isEmpty {
+                        Text(error)
+                            .font(AppFont.body(size: 13, weight: .medium))
+                            .foregroundStyle(AppColor.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if let status = viewModel.compareStatusMessage, !status.isEmpty {
+                        Text(status)
+                            .font(AppFont.body(size: 13, weight: .medium))
+                            .foregroundStyle(AppColor.green)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if !viewModel.isLoading && viewModel.cards.isEmpty {
+                        Text("No metrics available yet.")
+                            .font(AppFont.body(size: 14, weight: .medium))
+                            .foregroundStyle(AppColor.grey)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    ForEach(viewModel.cards) { card in
                         MetricCardView(
                             metric: card,
                             selectedRange: selectedRange,
@@ -66,6 +77,12 @@ struct MetricsView: View {
                                 withAnimation {
                                     selectedRange = range
                                 }
+                            },
+                            onCompareTap: {
+                                compareBaseMetric = card
+                                selectedCompareMetricId = viewModel.compareOptions
+                                    .first(where: { $0.id != card.id })?
+                                    .id ?? ""
                             }
                         )
                     }
@@ -78,6 +95,25 @@ struct MetricsView: View {
             .padding(.bottom, 140)
         }
         .background(AppColor.secondary.ignoresSafeArea())
+        .onAppear {
+            viewModel.loadIfNeeded()
+        }
+        .sheet(item: $compareBaseMetric) { baseMetric in
+            CompareMetricSheet(
+                baseMetric: baseMetric,
+                compareOptions: viewModel.compareOptions.filter { $0.id != baseMetric.id },
+                selectedCompareMetricId: $selectedCompareMetricId,
+                isSaving: viewModel.isSavingCompare,
+                onCancel: {
+                    compareBaseMetric = nil
+                },
+                onSave: {
+                    guard !selectedCompareMetricId.isEmpty else { return }
+                    viewModel.compareMetric(baseMetricId: baseMetric.id, compareMetricId: selectedCompareMetricId)
+                    compareBaseMetric = nil
+                }
+            )
+        }
     }
 
     @ViewBuilder
@@ -110,20 +146,12 @@ struct MetricsView: View {
     }
 }
 
-private struct MetricCard: Identifiable {
-    let id = UUID()
-    let title: String
-    let lastValue: String
-    let averageValue: String
-    let dateRange: String
-    let points: [Double]
-}
-
 private struct MetricCardView: View {
-    let metric: MetricCard
+    let metric: MetricCardDisplay
     let selectedRange: String
     let ranges: [String]
     let onRangeChange: (String) -> Void
+    let onCompareTap: () -> Void
 
     var body: some View {
         VStack(spacing: 14) {
@@ -149,7 +177,16 @@ private struct MetricCardView: View {
 
                 Spacer()
 
-                Button(action: {}) {
+                if metric.isLabAvailable {
+                    Text("Lab")
+                        .font(AppFont.body(size: 12, weight: .semibold))
+                        .foregroundStyle(AppColor.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(AppColor.green.opacity(0.16)))
+                }
+
+                Button(action: onCompareTap) {
                     HStack(spacing: 6) {
                         Text("Compare")
                             .font(AppFont.body(size: 14))
@@ -164,9 +201,83 @@ private struct MetricCardView: View {
                 .buttonStyle(.plain)
             }
 
+            if let detail = metric.detailText, !detail.isEmpty {
+                Text(detail)
+                    .font(AppFont.body(size: 12))
+                    .foregroundStyle(AppColor.grey)
+                    .lineLimit(2)
+            }
+
             Text("Last: \(metric.lastValue)  Average: \(metric.averageValue)")
                 .font(AppFont.body(size: 14))
                 .foregroundStyle(AppColor.black.opacity(0.7))
+
+            if let comparedWith = metric.comparedWith {
+                Text("Compared with: \(comparedWith)")
+                    .font(AppFont.body(size: 12, weight: .medium))
+                    .foregroundStyle(AppColor.green)
+            }
+        }
+    }
+}
+
+private struct CompareMetricSheet: View {
+    let baseMetric: MetricCardDisplay
+    let compareOptions: [MetricFolderItem]
+    @Binding var selectedCompareMetricId: String
+    let isSaving: Bool
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Compare \(baseMetric.title) with")
+                    .font(AppFont.body(size: 16, weight: .semibold))
+                    .foregroundStyle(AppColor.black)
+
+                if compareOptions.isEmpty {
+                    Text("No compare metrics available.")
+                        .font(AppFont.body(size: 14))
+                        .foregroundStyle(AppColor.grey)
+                } else {
+                    Picker("Compare Metric", selection: $selectedCompareMetricId) {
+                        ForEach(compareOptions, id: \.id) { option in
+                            Text(option.title).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(maxHeight: 180)
+                }
+
+                Button(action: onSave) {
+                    Text(isSaving ? "Saving..." : "Save Comparison")
+                        .font(AppFont.body(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(AppColor.green)
+                        )
+                }
+                .disabled(compareOptions.isEmpty || selectedCompareMetricId.isEmpty || isSaving)
+
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle("Compare Metric")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+            }
+        }
+        .presentationDetents([.fraction(0.45), .medium])
+        .onAppear {
+            if selectedCompareMetricId.isEmpty {
+                selectedCompareMetricId = compareOptions.first?.id ?? ""
+            }
         }
     }
 }
@@ -263,11 +374,11 @@ private struct RangeSelector: View {
 }
 
 #Preview("iPhone") {
-    MetricsView(horizontalPadding: 20)
+    MetricsView(horizontalPadding: 20, session: SessionManager())
         .environment(\.horizontalSizeClass, .compact)
 }
 
 #Preview("iPad") {
-    MetricsView(horizontalPadding: 50)
+    MetricsView(horizontalPadding: 50, session: SessionManager())
         .environment(\.horizontalSizeClass, .regular)
 }

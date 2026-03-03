@@ -11,6 +11,7 @@ struct MessageListView: View {
     @StateObject private var viewModel: MessagesListViewModel
     @State private var searchText: String = ""
     @State private var selectedProvider: MessageProvider?
+    private let session: SessionManager
 
     private var filteredProviders: [MessageProvider] {
         guard !searchText.isEmpty else { return viewModel.providers }
@@ -18,11 +19,11 @@ struct MessageListView: View {
     }
 
     init(session: SessionManager) {
+        self.session = session
         _viewModel = StateObject(wrappedValue: MessagesListViewModel(session: session))
     }
 
     var body: some View {
-        NavigationStack {
             VStack(spacing: 0) {
                 header
                 searchBar
@@ -34,14 +35,23 @@ struct MessageListView: View {
                 }
                 List {
                     ForEach(filteredProviders) { provider in
-                        ProviderRow(provider: provider)
+                        Button {
+                            selectedProvider = provider
+                        } label: {
+                            ProviderRow(provider: provider)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)
             }
+ 
             .navigationBarHidden(true)
             .onAppear { viewModel.loadProviders() }
-        }
+            .fullScreenCover(item: $selectedProvider) { provider in
+                ConversationView(session: session, provider: provider)
+            }
     }
 
     private var header: some View {

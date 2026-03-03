@@ -81,6 +81,7 @@ final class MessageAPIService {
         appendField(name: "urgent", value: "\(urgent)")
 
         if let fileData = fileData, let fileName = fileName, let mimeType = mimeType {
+            appendField(name: "file", value: fileName)
             body.append("--\(boundary)\r\n")
             body.append("Content-Disposition: form-data; name=\"file_upload\"; filename=\"\(fileName)\"\r\n")
             body.append("Content-Type: \(mimeType)\r\n\r\n")
@@ -91,7 +92,7 @@ final class MessageAPIService {
         body.append("--\(boundary)--\r\n")
         request.httpBody = body
 
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(.requestFailed(error)))
                 return
@@ -103,7 +104,7 @@ final class MessageAPIService {
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                completion(.failure(.serverError(statusCode: httpResponse.statusCode, data: nil)))
+                completion(.failure(.serverError(statusCode: httpResponse.statusCode, data: data)))
                 return
             }
 

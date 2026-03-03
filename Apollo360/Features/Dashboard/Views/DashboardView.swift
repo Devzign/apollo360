@@ -14,6 +14,7 @@ struct DashboardView: View {
     @State private var selectedTab: DashboardTab = .home
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
+    @State private var isSyncDevicesVisible = false
     @State private var bottomSafeArea: CGFloat = 0
     private let session: SessionManager
     private var screenHorizontalPadding: CGFloat { isiPad() ? 100 : 20 }
@@ -37,6 +38,9 @@ struct DashboardView: View {
                         title: selectedTab.displayTitle,
                         onMenuTap: {
                             isSideMenuVisible = true
+                        },
+                        onSyncTap: {
+                            isSyncDevicesVisible = true
                         },
                         onSettingsTap: {
                             selectedTab = .settings
@@ -69,6 +73,9 @@ struct DashboardView: View {
                 }
             } message: {
                 Text("Are you sure you want to log out of Apollo360?")
+            }
+            .navigationDestination(isPresented: $isSyncDevicesVisible) {
+                DeviceSyncView(session: session)
             }
         }
         .background(
@@ -129,13 +136,13 @@ struct DashboardView: View {
             .scrollIndicators(.hidden)
 
         case .metrics:
-            MetricsView(horizontalPadding: screenHorizontalPadding)
+            MetricsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .forms:
             FormsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .appointment:
-            AppointmentView(horizontalPadding: screenHorizontalPadding)
+            AppointmentView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .message:
             MessageListView(session: session)

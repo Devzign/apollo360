@@ -78,7 +78,10 @@ final class APIClient {
                                              body: Body? = nil,
                                              headers: [String: String]? = nil,
                                              completion: @escaping (Result<Data, APIError>) -> Void) {
-        let url = baseURL.appendingPathComponent(endpoint)
+        guard let url = buildURL(from: endpoint) else {
+            completeOnMain(completion, .failure(.invalidURL))
+            return
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -147,6 +150,31 @@ final class APIClient {
         }
         .resume()
     }
+
+    private func buildURL(from endpoint: String) -> URL? {
+        guard !endpoint.isEmpty else { return nil }
+
+        let fragments = endpoint.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        var pathPart = String(fragments[0])
+        if pathPart.hasPrefix("/") {
+            pathPart.removeFirst()
+        }
+
+        if fragments.count == 1 {
+            return baseURL.appendingPathComponent(pathPart)
+        }
+
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+        var normalizedBasePath = components.path
+        if normalizedBasePath.hasSuffix("/") {
+            normalizedBasePath.removeLast()
+        }
+        components.path = normalizedBasePath + "/" + pathPart
+        components.percentEncodedQuery = String(fragments[1])
+        return components.url
+    }
     
     private func completeOnMain<T>(_ completion: @escaping (Result<T, APIError>) -> Void,
                                    _ result: Result<T, APIError>) {
@@ -179,6 +207,27 @@ final class APIClient {
                 body: payload,
                 responseType: PatientLoginResponse.self,
                 completion: completion)
+    }
+
+    func updatePatientFaceID(with payload: PatientFaceIDRequest,
+                             completion: @escaping (Result<PatientFaceIDResponse, APIError>) -> Void) {
+        performDataRequest(endpoint: APIEndpoint.patientFaceID,
+                           method: .post,
+                           body: payload) { result in
+            switch result {
+            case .success(let data):
+                do {
+                    let decoded = try JSONDecoder().decode(PatientFaceIDResponse.self, from: data)
+                    self.completeOnMain(completion, .success(decoded))
+                } catch {
+                    self.completeOnMain(completion, .failure(.decodingFailed(error)))
+                }
+            case .failure(.noData):
+                self.completeOnMain(completion, .success(PatientFaceIDResponse(message: nil)))
+            case .failure(let error):
+                self.completeOnMain(completion, .failure(error))
+            }
+        }
     }
     
     func loginWithPassword(with payload: PasswordLoginRequest,
