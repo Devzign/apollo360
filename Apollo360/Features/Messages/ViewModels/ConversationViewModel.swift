@@ -84,8 +84,8 @@ final class ConversationViewModel: ObservableObject {
             return
         }
         
-        let patientId = parseInt(session.patientId) ?? 36222
-        let a360Id = parseInt(session.a360Id) ?? 626
+        let patientId = parseInt(session.patientId) ?? 0
+        let a360Id = parseInt(session.a360Id) ?? 0
         
         pendingMessageText = ""
         let attachmentData = selectedAttachmentData

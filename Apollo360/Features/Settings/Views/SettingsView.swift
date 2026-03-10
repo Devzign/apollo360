@@ -106,7 +106,7 @@ struct SettingsView: View {
         case .creditCard:
             CreditCardView(session: session)
         case .notifications:
-            NotificationsView()
+            NotificationsView(session: session)
         case .caregivers:
             CaregiversView(session: session)
         case .team:

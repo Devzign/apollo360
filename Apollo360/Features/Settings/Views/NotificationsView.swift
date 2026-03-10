@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct NotificationsView: View {
-    @AppStorage("notifications.trackingUpdates") private var trackingUpdates = true
-    @AppStorage("notifications.stock") private var stockNotifications = true
+    @StateObject private var viewModel: NotificationsViewModel
+
+    init(session: SessionManager) {
+        _viewModel = StateObject(
+            wrappedValue: NotificationsViewModel(session: session)
+        )
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -13,14 +18,28 @@ struct NotificationsView: View {
 
                 VStack(spacing: 16) {
                     notificationRow(
-                        title: "Tracking Updates",
-                        description: "Get updates on your order.",
-                        isOn: $trackingUpdates
+                        title: "Push Notifications",
+                        description: "Receive instant app notifications.",
+                        isOn: Binding(
+                            get: { viewModel.pushNotifications },
+                            set: { viewModel.updatePushNotifications($0) }
+                        )
                     )
                     notificationRow(
-                        title: "Appointment Alerts",
-                        description: "Receive reminders before visits.",
-                        isOn: $stockNotifications
+                        title: "Text Messages",
+                        description: "Receive updates by SMS.",
+                        isOn: Binding(
+                            get: { viewModel.textMessages },
+                            set: { viewModel.updateTextMessages($0) }
+                        )
+                    )
+                    notificationRow(
+                        title: "Emails",
+                        description: "Receive updates by email.",
+                        isOn: Binding(
+                            get: { viewModel.emails },
+                            set: { viewModel.updateEmails($0) }
+                        )
                     )
                 }
                 .padding(.horizontal, 4)
@@ -30,9 +49,38 @@ struct NotificationsView: View {
             .padding(.horizontal, 20)
             .padding(.top, 16)
         }
+        .overlay {
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.08).ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                }
+            }
+        }
         .background(AppColor.secondary.ignoresSafeArea())
         .navigationTitle("Notification Setting")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            viewModel.loadSettings()
+        }
+        .alert(
+            viewModel.alertTitle,
+            isPresented: Binding(
+                get: { viewModel.alertMessage != nil },
+                set: { newValue in
+                    if !newValue {
+                        viewModel.clearAlert()
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                viewModel.clearAlert()
+            }
+        } message: {
+            Text(viewModel.alertMessage ?? "")
+        }
     }
 
     private func notificationRow(title: String, description: String, isOn: Binding<Bool>) -> some View {
@@ -50,6 +98,7 @@ struct NotificationsView: View {
 
             Toggle("", isOn: isOn)
                 .toggleStyle(.switch)
+                .tint(AppColor.green)
         }
         .padding(18)
         .background(
@@ -62,6 +111,6 @@ struct NotificationsView: View {
 
 #Preview("Notification Settings") {
     NavigationStack {
-        NotificationsView()
+        NotificationsView(session: SessionManager())
     }
 }
