@@ -92,10 +92,12 @@ final class AppointmentViewModel: ObservableObject {
         do {
             isJoiningCall = true
             joinErrorMessage = nil
+            AppDelegate.lockOrientation(.portrait, rotateTo: .portrait)
 
             let credential = try CommunicationTokenCredential(token: token)
 #if canImport(AzureCommunicationUICalling)
             let options = CallCompositeOptions(
+                theme: ApolloCallThemeOptions(),
                 enableMultitasking: true,
                 enableSystemPictureInPictureWhenMultitasking: true,
                 displayName: safeName
@@ -106,12 +108,15 @@ final class AppointmentViewModel: ObservableObject {
             composite.events.onDismissed = { [weak self] _ in
                 DispatchQueue.main.async {
                     self?.isJoiningCall = false
+                    AppDelegate.lockOrientation(.allButUpsideDown)
                 }
             }
             composite.events.onError = { [weak self] error in
                 DispatchQueue.main.async {
                     self?.isJoiningCall = false
                     self?.joinErrorMessage = Self.mapJoinError("\(error)")
+                    self?.refresh()
+                    AppDelegate.lockOrientation(.allButUpsideDown)
                 }
             }
 
@@ -129,11 +134,13 @@ final class AppointmentViewModel: ObservableObject {
                     if let agentError {
                         self.isJoiningCall = false
                         self.joinErrorMessage = agentError.localizedDescription
+                        AppDelegate.lockOrientation(.allButUpsideDown)
                         return
                     }
                     guard let agent else {
                         self.isJoiningCall = false
                         self.joinErrorMessage = "Unable to create call agent."
+                        AppDelegate.lockOrientation(.allButUpsideDown)
                         return
                     }
                     let locator = RoomCallLocator(roomId: roomId)
@@ -143,7 +150,9 @@ final class AppointmentViewModel: ObservableObject {
                         DispatchQueue.main.async {
                             self.isJoiningCall = false
                             if let joinError {
-                                self.joinErrorMessage = joinError.localizedDescription
+                                self.joinErrorMessage = Self.mapJoinError(joinError.localizedDescription)
+                                self.refresh()
+                                AppDelegate.lockOrientation(.allButUpsideDown)
                             }
                         }
                     }
@@ -153,6 +162,7 @@ final class AppointmentViewModel: ObservableObject {
         } catch {
             isJoiningCall = false
             joinErrorMessage = Self.mapJoinError(error.localizedDescription)
+            AppDelegate.lockOrientation(.allButUpsideDown)
         }
     }
 
@@ -161,6 +171,7 @@ final class AppointmentViewModel: ObservableObject {
         callComposite?.dismiss()
         #endif
         isJoiningCall = false
+        AppDelegate.lockOrientation(.allButUpsideDown)
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -181,8 +192,12 @@ final class AppointmentViewModel: ObservableObject {
 
     private static func mapJoinError(_ raw: String) -> String {
         let lower = raw.lowercased()
-        if lower.contains("calljoinfailed") || lower.contains("408") || lower.contains("timed out") {
-            return "Unable to join right now. Meeting may be expired/unavailable or network is unstable. Please try again."
+        if lower.contains("calljoinfailed")
+            || lower.contains("408")
+            || lower.contains("timed out")
+            || lower.contains("not found")
+            || lower.contains("room") {
+            return "Doctor has not started this appointment call yet. Please wait and try again in a moment."
         }
         if lower.contains("token") || lower.contains("credential") || lower.contains("unauthorized") {
             return "Session expired. Please sign in again and retry joining the meeting."
@@ -231,3 +246,27 @@ final class AppointmentViewModel: ObservableObject {
         )
     }
 }
+
+#if canImport(AzureCommunicationUICalling)
+private struct ApolloCallThemeOptions: ThemeOptions {
+    private var appGreen: UIColor {
+        UIColor(named: "AppGreen") ?? UIColor.systemGreen
+    }
+
+    var primaryColor: UIColor {
+        appGreen
+    }
+
+    var primaryColorTint10: UIColor {
+        appGreen.withAlphaComponent(0.90)
+    }
+
+    var primaryColorTint20: UIColor {
+        appGreen.withAlphaComponent(0.78)
+    }
+
+    var primaryColorTint30: UIColor {
+        appGreen.withAlphaComponent(0.65)
+    }
+}
+#endif

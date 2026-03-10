@@ -217,7 +217,7 @@ private struct AppointmentCardView: View {
                 .padding(.horizontal, 18)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(canJoin ? AppColor.green : AppColor.grey)
+                        .fill(AppColor.green.opacity(canJoin ? 1 : 0.45))
                 )
             }
             .buttonStyle(.plain)
