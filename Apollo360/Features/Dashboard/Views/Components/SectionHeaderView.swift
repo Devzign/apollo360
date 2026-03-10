@@ -36,15 +36,9 @@ struct SectionHeaderView: View {
                 .foregroundStyle(AppColor.black)
 
             Spacer()
-
-            HStack(spacing: 10) {
                 Button(action: onSyncTap) {
                     HeaderIconButton(systemImage: "arrow.triangle.2.circlepath", showsBadge: false)
                 }
-                Button(action: onSettingsTap) {
-                    HeaderIconButton(systemImage: "gearshape.fill", showsBadge: false)
-                }
-            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

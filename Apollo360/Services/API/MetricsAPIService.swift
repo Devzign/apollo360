@@ -8,8 +8,17 @@
 import Foundation
 
 struct MetricFolderItem: Identifiable, Hashable {
+    enum SourceSection: String {
+        case careTeam
+        case myMetrics
+    }
+
     let id: String
     let title: String
+    let metricField: String
+    let unit: String?
+    let metricType: String
+    let sourceSection: SourceSection
 }
 
 struct UserMetricSeriesPayload {
@@ -63,12 +72,13 @@ final class MetricsAPIService {
         }
     }
 
-    func fetchUserMetricSeries(metricId: String,
+    func fetchUserMetricSeries(metricField: String,
                                patientId: String,
+                               selectedRange: String,
                                bearerToken: String,
                                completion: @escaping (Result<UserMetricSeriesPayload, APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.userMetricString(metricId: metricId, patientId: patientId),
+            endpoint: APIEndpoint.userMetric(metricField: metricField, patientId: patientId, selectedRange: selectedRange),
             method: .get,
             headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
@@ -131,13 +141,15 @@ final class MetricsAPIService {
         }
     }
 
-    func fetchMetricDescription(metricId: String,
+    func fetchMetricDescription(metricField: String,
                                 patientId: String,
-                                range: String,
+                                memberId: String,
+                                bearerToken: String,
                                 completion: @escaping (Result<MetricFullDetailPayload, APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.metricDescription(metricId: metricId, patientId: patientId, range: range),
-            method: .get
+            endpoint: APIEndpoint.metricDescription(metricField: metricField, patientId: patientId, memberId: memberId),
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
             switch result {
             case .success(let data):
@@ -153,13 +165,13 @@ final class MetricsAPIService {
         }
     }
 
-    func checkMetric(patientId: String,
-                     metricId: String,
-                     compareMetricId: String,
+    func checkMetric(metricId: String,
+                     patientId: String,
+                     memberId: String,
                      bearerToken: String,
                      completion: @escaping (Result<Void, APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.checkMetric(patientId: patientId, metricId: metricId, compareMetricId: compareMetricId),
+            endpoint: APIEndpoint.checkMetric(metricId: metricId, patientId: patientId, memberId: memberId),
             method: .put,
             headers: [
                 "Authorization": "Bearer \(bearerToken)",
@@ -177,20 +189,20 @@ final class MetricsAPIService {
         }
     }
 
-    func fetchCompareUserMetric(patientId: String,
-                                primaryMetricId: String,
-                                secondaryMetricId: String,
-                                tertiaryMetricId: String,
-                                compareMode: String,
+    func fetchCompareUserMetric(metricId: String,
+                                compMetricId: String,
+                                patientId: String,
+                                memberId: String,
+                                metricType: String,
                                 bearerToken: String,
                                 completion: @escaping (Result<CompareMetricPayload, APIError>) -> Void) {
         APIClient.shared.performDataRequest(
             endpoint: APIEndpoint.compareUserMetric(
+                metricId: metricId,
+                compMetricId: compMetricId,
                 patientId: patientId,
-                primaryMetricId: primaryMetricId,
-                secondaryMetricId: secondaryMetricId,
-                tertiaryMetricId: tertiaryMetricId,
-                compareMode: compareMode
+                memberId: memberId,
+                metricType: metricType
             ),
             method: .put,
             headers: [
@@ -240,15 +252,34 @@ final class MetricsAPIService {
 
 private extension MetricsAPIService {
     static func parseMetricFolders(from json: Any) -> [MetricFolderItem] {
+        if let dict = json as? [String: Any],
+           let data = dict["data"] as? [[String: Any]],
+           let first = data.first {
+            let careTeam = parseMetricMap(first["careTeamMetrics"], metricType: "rpm", sourceSection: .careTeam)
+            let mine = parseMetricMap(first["myMetrics"], metricType: "rpm", sourceSection: .myMetrics)
+            if !careTeam.isEmpty || !mine.isEmpty {
+                return (careTeam + mine)
+            }
+        }
+
         let array = extractPrimaryArray(from: json)
         return array.compactMap { item in
             guard let dict = item as? [String: Any] else { return nil }
             let id = stringValue(in: dict, keys: ["id", "metricId", "metric_id", "folderMetricId", "folder_metric_id"])
                 ?? stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name"])
+            let metricField = stringValue(in: dict, keys: ["current_metric_field", "metric_field", "field"])
             let title = stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name", "label"])
+                ?? stringValue(in: dict, keys: ["current_description", "description"])
                 ?? "Metric"
             guard let resolvedId = id else { return nil }
-            return MetricFolderItem(id: resolvedId, title: title)
+            return MetricFolderItem(
+                id: resolvedId,
+                title: title,
+                metricField: metricField ?? title.lowercased().replacingOccurrences(of: " ", with: "_"),
+                unit: stringValue(in: dict, keys: ["current_default_unit", "unit"]),
+                metricType: stringValue(in: dict, keys: ["compare_metric_type", "metric_type"]) ?? "rpm",
+                sourceSection: .myMetrics
+            )
         }
     }
 
@@ -337,6 +368,29 @@ private extension MetricsAPIService {
             return CompareMetricPayload(points: base.points, lastValueText: lastValue, averageValueText: averageValue)
         }
         return CompareMetricPayload(points: base.points, lastValueText: base.lastValueText, averageValueText: base.averageValueText)
+    }
+
+    static func parseMetricMap(_ raw: Any?, metricType: String, sourceSection: MetricFolderItem.SourceSection) -> [MetricFolderItem] {
+        guard let dict = raw as? [String: Any] else { return [] }
+        return dict.compactMap { key, value in
+            guard let metric = value as? [String: Any] else { return nil }
+            let id = stringValue(in: metric, keys: ["current_metric_id", "metric_id", "id"]) ?? key
+            let field = stringValue(in: metric, keys: ["current_metric_field", "metric_field"]) ?? key
+            let title = stringValue(in: metric, keys: ["current_description", "description", "title"]) ?? field
+            let unit = stringValue(in: metric, keys: ["current_default_unit", "unit"])
+            let compareType = (metric["compare_metric"] as? [String: Any]).flatMap {
+                stringValue(in: $0, keys: ["compare_metric_type"])
+            } ?? metricType
+
+            return MetricFolderItem(
+                id: id,
+                title: title,
+                metricField: field,
+                unit: unit,
+                metricType: compareType,
+                sourceSection: sourceSection
+            )
+        }
     }
 
     static func extractPrimaryArray(from json: Any) -> [Any] {

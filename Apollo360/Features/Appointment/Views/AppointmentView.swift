@@ -6,12 +6,16 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct AppointmentView: View {
-    @StateObject private var viewModel: AppointmentViewModel
     @Environment(\.openURL) private var openURL
+    @StateObject private var viewModel: AppointmentViewModel
     let horizontalPadding: CGFloat
     @State private var visibleAppointments: Set<UUID> = []
+    @State private var pendingJoinAppointment: AppointmentCard?
+    @State private var showPermissionPrompt = false
+    @State private var showSettingsPrompt = false
 
     init(horizontalPadding: CGFloat, session: SessionManager) {
         self.horizontalPadding = horizontalPadding
@@ -48,9 +52,9 @@ struct AppointmentView: View {
                 }
 
                 ForEach(Array(viewModel.appointments.enumerated()), id: \.element.id) { index, appointment in
-                    AppointmentCardView(appointment: appointment) {
-                        guard let joinURL = viewModel.teamsJoinURL(for: appointment) else { return }
-                        openURL(joinURL)
+                    AppointmentCardView(appointment: appointment,
+                                        canJoin: viewModel.canJoinCall(for: appointment)) {
+                        handleJoinTap(for: appointment)
                     }
                         .opacity(visibleAppointments.contains(appointment.id) ? 1 : 0)
                         .offset(y: visibleAppointments.contains(appointment.id) ? 0 : 22)
@@ -86,11 +90,81 @@ struct AppointmentView: View {
         } message: {
             Text(viewModel.joinErrorMessage ?? "")
         }
+        .alert("Camera & Microphone Access", isPresented: $showPermissionPrompt) {
+            Button("Not Now", role: .cancel) {
+                pendingJoinAppointment = nil
+            }
+            Button("Continue") {
+                requestPermissionsAndJoin()
+            }
+        } message: {
+            Text("To join the meeting, allow camera and microphone access.")
+        }
+        .alert("Permission Required", isPresented: $showSettingsPrompt) {
+            Button("Cancel", role: .cancel) {
+                pendingJoinAppointment = nil
+            }
+            Button("Open Settings") {
+                guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+                openURL(settingsURL)
+            }
+        } message: {
+            Text("Camera or microphone access is disabled. Please enable both in Settings to join the meeting.")
+        }
+    }
+
+    private func handleJoinTap(for appointment: AppointmentCard) {
+        pendingJoinAppointment = appointment
+
+        if hasRequiredPermissions {
+            viewModel.joinNativeCall(for: appointment)
+            pendingJoinAppointment = nil
+            return
+        }
+
+        if hasDeniedPermissions {
+            showSettingsPrompt = true
+            return
+        }
+
+        showPermissionPrompt = true
+    }
+
+    private var hasRequiredPermissions: Bool {
+        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        let micPermission = AVAudioSession.sharedInstance().recordPermission
+        return cameraStatus == .authorized && micPermission == .granted
+    }
+
+    private var hasDeniedPermissions: Bool {
+        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        let micPermission = AVAudioSession.sharedInstance().recordPermission
+        let cameraDenied = cameraStatus == .denied || cameraStatus == .restricted
+        let micDenied = micPermission == .denied
+        return cameraDenied || micDenied
+    }
+
+    private func requestPermissionsAndJoin() {
+        guard let appointment = pendingJoinAppointment else { return }
+
+        AVCaptureDevice.requestAccess(for: .video) { _ in
+            AVAudioSession.sharedInstance().requestRecordPermission { _ in
+                DispatchQueue.main.async {
+                    if hasRequiredPermissions {
+                        viewModel.joinNativeCall(for: appointment)
+                        pendingJoinAppointment = nil
+                    } else {
+                        showSettingsPrompt = true
+                    }
+                }
+            }
+        }
     }
 }
 
 private struct AppointmentCardView: View {
     let appointment: AppointmentCard
+    let canJoin: Bool
     let onJoin: () -> Void
 
     var body: some View {
@@ -132,7 +206,7 @@ private struct AppointmentCardView: View {
 
             Button(action: onJoin) {
                 HStack {
-                    Text("Join Video Call")
+                    Text(canJoin ? "Join Video Call" : "Meeting Not Available")
                         .font(AppFont.body(size: 17, weight: .semibold))
                     Spacer()
                     Image(systemName: "video")
@@ -143,10 +217,11 @@ private struct AppointmentCardView: View {
                 .padding(.horizontal, 18)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(AppColor.green)
+                        .fill(canJoin ? AppColor.green : AppColor.grey)
                 )
             }
             .buttonStyle(.plain)
+            .disabled(!canJoin)
         }
         .padding(18)
         .background(

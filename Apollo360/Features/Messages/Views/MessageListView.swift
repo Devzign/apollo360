@@ -25,7 +25,6 @@ struct MessageListView: View {
 
     var body: some View {
             VStack(spacing: 0) {
-                header
                 searchBar
                 if viewModel.isLoading {
                     ProgressView().padding()
@@ -42,9 +41,12 @@ struct MessageListView: View {
                         }
                         .buttonStyle(.plain)
                         .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
  
             .navigationBarHidden(true)
@@ -52,19 +54,6 @@ struct MessageListView: View {
             .fullScreenCover(item: $selectedProvider) { provider in
                 ConversationView(session: session, provider: provider)
             }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Messages")
-                .font(AppFont.display(size: 22, weight: .bold))
-            Spacer()
-            Image(systemName: "square.grid.2x2")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(AppColor.green)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
     }
 
     private var searchBar: some View {
@@ -100,16 +89,23 @@ private struct ProviderRow: View {
                 Text(provider.name)
                     .font(AppFont.body(size: 16, weight: .semibold))
                     .foregroundStyle(AppColor.black)
-                Text("Hope you are doing good!")
-                    .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
             }
             Spacer()
-            Text("5 mins")
-                .font(AppFont.body(size: 12, weight: .medium))
-                .foregroundStyle(AppColor.grey)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColor.grey.opacity(0.7))
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
+        )
     }
 }
 

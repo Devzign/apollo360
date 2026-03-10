@@ -22,13 +22,25 @@ struct CardiometabolicMetricsCard: View {
                         .foregroundStyle(AppColor.grey)
                 }
 
-                VStack(spacing: 16) {
-                    ForEach(metrics) { metric in
-                        CardioMetricRowView(metric: metric)
+                if metrics.isEmpty {
+                    Text("Cardiometabolic data is currently unavailable.")
+                        .font(AppFont.body(size: 13))
+                        .foregroundStyle(AppColor.grey)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.black.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else {
+                    VStack(spacing: 16) {
+                        ForEach(metrics) { metric in
+                            CardioMetricRowView(metric: metric)
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

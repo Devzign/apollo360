@@ -26,6 +26,11 @@ enum APIError: Error {
 }
 
 private struct EmptyRequestBody: Encodable {}
+private struct RefreshTokenResponse: Decodable {
+    let accessToken: String
+    let expiresIn: Int?
+    let refreshToken: String?
+}
 
 final class APIClient {
     static let shared = APIClient()
@@ -43,9 +48,14 @@ final class APIClient {
                                                 method: HTTPMethod = .post,
                                                 body: Body? = nil,
                                                 headers: [String: String]? = nil,
+                                                timeoutInterval: TimeInterval? = nil,
                                                 responseType: T.Type,
                                                 completion: @escaping (Result<T, APIError>) -> Void) {
-        performDataRequest(endpoint: endpoint, method: method, body: body, headers: headers) { result in
+        performDataRequest(endpoint: endpoint,
+                           method: method,
+                           body: body,
+                           headers: headers,
+                           timeoutInterval: timeoutInterval) { result in
             switch result {
             case .success(let data):
                 do {
@@ -63,12 +73,14 @@ final class APIClient {
     func request<T: Decodable>(endpoint: String,
                                method: HTTPMethod = .post,
                                headers: [String: String]? = nil,
+                               timeoutInterval: TimeInterval? = nil,
                                responseType: T.Type,
                                completion: @escaping (Result<T, APIError>) -> Void) {
         request(endpoint: endpoint,
                 method: method,
                 body: Optional<EmptyRequestBody>.none,
                 headers: headers,
+                timeoutInterval: timeoutInterval,
                 responseType: responseType,
                 completion: completion)
     }
@@ -77,6 +89,7 @@ final class APIClient {
                                              method: HTTPMethod = .post,
                                              body: Body? = nil,
                                              headers: [String: String]? = nil,
+                                             timeoutInterval: TimeInterval? = nil,
                                              completion: @escaping (Result<Data, APIError>) -> Void) {
         guard let url = buildURL(from: endpoint) else {
             completeOnMain(completion, .failure(.invalidURL))
@@ -84,6 +97,9 @@ final class APIClient {
         }
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
+        if let timeoutInterval {
+            request.timeoutInterval = timeoutInterval
+        }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if method != .get {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -103,15 +119,46 @@ final class APIClient {
             }
         }
 
+        executeDataRequest(request: request, endpoint: endpoint, canRetryAfterRefresh: true, completion: completion)
+    }
+
+    private func executeDataRequest(request: URLRequest,
+                                    endpoint: String,
+                                    canRetryAfterRefresh: Bool,
+                                    completion: @escaping (Result<Data, APIError>) -> Void) {
+        if canRetryAfterRefresh,
+           endpoint != APIEndpoint.refreshToken,
+           let authorization = request.value(forHTTPHeaderField: "Authorization"),
+           let token = Self.bearerToken(from: authorization),
+           Self.isTokenNearExpiry(token) {
+            refreshAccessToken { result in
+                switch result {
+                case .success(let refreshed):
+                    var retried = request
+                    retried.setValue("Bearer \(refreshed.accessToken)", forHTTPHeaderField: "Authorization")
+                    self.executeDataRequest(
+                        request: retried,
+                        endpoint: endpoint,
+                        canRetryAfterRefresh: true,
+                        completion: completion
+                    )
+                case .failure:
+                    NotificationCenter.default.post(name: .sessionInvalidated, object: nil)
+                    self.completeOnMain(completion, .failure(.invalidResponse))
+                }
+            }
+            return
+        }
+
         #if DEBUG
         APILogger.logRequest(
             endpoint: endpoint,
-            method: method.rawValue,
+            method: request.httpMethod ?? "GET",
             headers: request.allHTTPHeaderFields,
             body: request.httpBody
         )
         #endif
-        
+
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 #if DEBUG
@@ -134,7 +181,28 @@ final class APIClient {
             APILogger.logResponse(endpoint: endpoint, statusCode: statusCode, data: data)
             #endif
             guard (200...299).contains(statusCode) else {
-                if statusCode == 401 {
+                if statusCode == 401,
+                   canRetryAfterRefresh,
+                   request.value(forHTTPHeaderField: "Authorization") != nil,
+                   endpoint != APIEndpoint.refreshToken {
+                    self.refreshAccessToken { result in
+                        switch result {
+                        case .success(let refreshed):
+                            var retried = request
+                            retried.setValue("Bearer \(refreshed.accessToken)", forHTTPHeaderField: "Authorization")
+                            self.executeDataRequest(
+                                request: retried,
+                                endpoint: endpoint,
+                                canRetryAfterRefresh: false,
+                                completion: completion
+                            )
+                        case .failure:
+                            NotificationCenter.default.post(name: .sessionInvalidated, object: nil)
+                            self.completeOnMain(completion, .failure(.serverError(statusCode: statusCode, data: data)))
+                        }
+                    }
+                    return
+                } else if statusCode == 401 {
                     NotificationCenter.default.post(name: .sessionInvalidated, object: nil)
                 }
                 self.completeOnMain(completion, .failure(.serverError(statusCode: statusCode, data: data)))
@@ -149,6 +217,82 @@ final class APIClient {
             self.completeOnMain(completion, .success(data))
         }
         .resume()
+    }
+
+    private func refreshAccessToken(completion: @escaping (Result<RefreshTokenResponse, APIError>) -> Void) {
+        guard let refreshToken = UserDefaults.standard.string(forKey: "Apollo360.refreshToken"),
+              !refreshToken.isEmpty else {
+            completion(.failure(.invalidResponse))
+            return
+        }
+        guard let url = buildURL(from: APIEndpoint.refreshToken) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = HTTPMethod.post.rawValue
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(refreshToken, forHTTPHeaderField: "x-refresh-token")
+        request.httpBody = Data("{}".utf8)
+
+        session.dataTask(with: request) { data, response, error in
+            if let error {
+                completion(.failure(.requestFailed(error)))
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                completion(.failure(.invalidResponse))
+                return
+            }
+            guard (200...299).contains(httpResponse.statusCode), let data, !data.isEmpty else {
+                completion(.failure(.serverError(statusCode: httpResponse.statusCode, data: data)))
+                return
+            }
+
+            do {
+                let payload = try JSONDecoder().decode(RefreshTokenResponse.self, from: data)
+                var userInfo: [AnyHashable: Any] = ["accessToken": payload.accessToken]
+                if let newRefreshToken = payload.refreshToken, !newRefreshToken.isEmpty {
+                    userInfo["refreshToken"] = newRefreshToken
+                    UserDefaults.standard.set(newRefreshToken, forKey: "Apollo360.refreshToken")
+                }
+                UserDefaults.standard.set(payload.accessToken, forKey: "Apollo360.accessToken")
+                NotificationCenter.default.post(name: .sessionTokensRefreshed, object: nil, userInfo: userInfo)
+                completion(.success(payload))
+            } catch {
+                completion(.failure(.decodingFailed(error)))
+            }
+        }
+        .resume()
+    }
+
+    private static func bearerToken(from header: String) -> String? {
+        let prefix = "Bearer "
+        guard header.hasPrefix(prefix) else { return nil }
+        let token = String(header.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        return token.isEmpty ? nil : token
+    }
+
+    private static func isTokenNearExpiry(_ jwt: String, thresholdSeconds: TimeInterval = 60) -> Bool {
+        let parts = jwt.split(separator: ".")
+        guard parts.count > 1 else { return false }
+        var payload = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = payload.count % 4
+        if remainder > 0 {
+            payload += String(repeating: "=", count: 4 - remainder)
+        }
+        guard let data = Data(base64Encoded: payload),
+              let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let dict = object as? [String: Any] else {
+            return false
+        }
+        guard let exp = dict["exp"] as? TimeInterval else { return false }
+        let expiresAt = Date(timeIntervalSince1970: exp)
+        return expiresAt.timeIntervalSinceNow <= thresholdSeconds
     }
 
     private func buildURL(from endpoint: String) -> URL? {
@@ -187,11 +331,13 @@ final class APIClient {
     func performDataRequest(endpoint: String,
                             method: HTTPMethod = .post,
                             headers: [String: String]? = nil,
+                            timeoutInterval: TimeInterval? = nil,
                             completion: @escaping (Result<Data, APIError>) -> Void) {
         performDataRequest(endpoint: endpoint,
                            method: method,
                            body: Optional<EmptyRequestBody>.none,
                            headers: headers,
+                           timeoutInterval: timeoutInterval,
                            completion: completion)
     }
     
@@ -263,11 +409,29 @@ extension APIClient {
         if let payload = try? JSONDecoder().decode(ServerErrorPayload.self, from: data),
            let message = payload.message?.trimmingCharacters(in: .whitespacesAndNewlines),
            !message.isEmpty {
-            return message
+            return sanitizeServerMessage(message)
         }
         let raw = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return raw?.isEmpty == false ? raw : nil
+        guard let raw, !raw.isEmpty else { return nil }
+        return sanitizeServerMessage(raw)
+    }
+
+    fileprivate static func sanitizeServerMessage(_ message: String) -> String? {
+        let cleaned = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        if isLikelyHTML(cleaned) {
+            return nil
+        }
+        if cleaned.count > 180 {
+            return nil
+        }
+        return cleaned
+    }
+
+    fileprivate static func isLikelyHTML(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("<html") || lower.contains("<head") || lower.contains("<body") || lower.contains("</")
     }
 }
 
@@ -285,6 +449,12 @@ extension APIError: LocalizedError {
         case .serverError(let statusCode, let data):
             if let backendMessage = APIClient.serverErrorMessage(from: data) {
                 return backendMessage
+            }
+            if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+                return "Server is temporarily unavailable. Please try again."
+            }
+            if statusCode >= 500 {
+                return "Something went wrong on server. Please try again."
             }
             return HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
         case .decodingFailed(let error):

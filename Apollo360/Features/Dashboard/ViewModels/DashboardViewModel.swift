@@ -62,6 +62,7 @@ final class DashboardViewModel: ObservableObject {
 
     init(session: SessionManager) {
         self.session = session
+        self.cardioMetrics = Self.defaultCardioMetrics()
         fetchDailyStories()
         fetchWellnessOverview()
         fetchApolloInsights()
@@ -147,9 +148,7 @@ final class DashboardViewModel: ObservableObject {
         guard let patientId = session.patientId,
               let token = session.accessToken else { return }
 
-        beginLoading()
         DashboardAPIService.shared.fetchCardiometabolicMetrics(patientId: patientId, bearerToken: token) { [weak self] result in
-            defer { self?.endLoading() }
             guard let self = self else { return }
             switch result {
             case .success(let payload):
@@ -165,7 +164,7 @@ final class DashboardViewModel: ObservableObject {
                 }
                 self.cardioMetrics = mapped.isEmpty ? Self.defaultCardioMetrics() : mapped
             case .failure:
-                break
+                self.cardioMetrics = Self.defaultCardioMetrics()
             }
         }
     }

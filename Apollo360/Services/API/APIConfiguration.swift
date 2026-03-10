@@ -42,6 +42,7 @@ enum APIConfiguration {
 enum APIEndpoint {
     static let patientLogin = "v1/auth/patient-login"
     static let verifyOTP = "v1/auth/verify-otp"
+    static let refreshToken = "v1/auth/refresh"
     static let patientFaceID = "patient-faceId"
     static let passwordLogin = "v1/auth/login"
     static let logout = "v1/auth/logout"
@@ -51,29 +52,45 @@ enum APIEndpoint {
     static let profile = "v1/profile"
     static let profilePicture = "v1/profile/picture"
     static let appointments = "v1/appointments"
+    static func articles(type: String,
+                         search: String,
+                         filter: String,
+                         page: Int,
+                         limit: Int) -> String {
+        let encType = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? type
+        let encSearch = search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search
+        let encFilter = filter.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? filter
+        return "v1/articles?type=\(encType)&search=\(encSearch)&filter=\(encFilter)&page=\(page)&limit=\(limit)"
+    }
+    static func articleDetails(id: Int) -> String {
+        "v1/articles/\(id)"
+    }
+    static func articleSave(id: Int) -> String {
+        "v1/articles/\(id)/save"
+    }
     static func rpmFolderMetrics(for patientId: String) -> String {
         "v1/rpm-folders/metrics/\(patientId)"
     }
-    static func userMetricString(metricId: String, patientId: String) -> String {
-        "v1/usermetric/string/\(metricId)/\(patientId)"
+    static func userMetric(metricField: String, patientId: String, selectedRange: String) -> String {
+        "v1/usermetric/\(metricField)/\(patientId)/\(selectedRange)"
     }
     static func labAvailableMetricList(for patientId: String) -> String {
         "v1/lab-available-metric-list/\(patientId)"
     }
-    static func metricDescription(metricId: String, patientId: String, range: String) -> String {
-        "v1/metric-description/\(metricId)/\(patientId)/\(range)"
+    static func metricDescription(metricField: String, patientId: String, memberId: String) -> String {
+        "v1/metric-description/\(metricField)/\(patientId)/\(memberId)"
     }
-    static func compareUserMetric(patientId: String,
-                                  primaryMetricId: String,
-                                  secondaryMetricId: String,
-                                  tertiaryMetricId: String,
-                                  compareMode: String) -> String {
-        "v1/compare-user-metric/\(patientId)/\(primaryMetricId)/\(secondaryMetricId)/\(tertiaryMetricId)/\(compareMode)"
+    static func compareUserMetric(metricId: String,
+                                  compMetricId: String,
+                                  patientId: String,
+                                  memberId: String,
+                                  metricType: String) -> String {
+        "v1/compare-user-metric/\(metricId)/\(compMetricId)/\(patientId)/\(memberId)/\(metricType)"
     }
-    static func checkMetric(patientId: String,
-                            metricId: String,
-                            compareMetricId: String) -> String {
-        "v1/check-metric/\(patientId)/\(metricId)/\(compareMetricId)"
+    static func checkMetric(metricId: String,
+                            patientId: String,
+                            memberId: String) -> String {
+        "v1/check-metric/\(metricId)/\(patientId)/\(memberId)"
     }
     static func showAllRPMMetrics(for patientId: String) -> String {
         "v1/show-all-rpm-metrics/\(patientId)"
@@ -111,6 +128,7 @@ enum APIEndpoint {
     static func messagesConversation(for patientId: Int, a360hId: Int, providerMemberId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)&providerMemberId=\(providerMemberId)"
     }
+    static let validicUser = "v1/validic/user"
     static let team = "v1/team"
     static let myContacts = "v1/my-contacts"
     static let myContactsCaregiver = "v1/my-contacts/caregiver"

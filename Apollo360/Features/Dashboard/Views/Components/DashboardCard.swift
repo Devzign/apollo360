@@ -17,6 +17,7 @@ struct DashboardCard<Content: View>: View {
     var body: some View {
         content
             .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(AppColor.secondary)

@@ -8,16 +8,26 @@
 import Foundation
 import SwiftUI
 import Combine
+import AzureCommunicationCalling
+import AzureCommunicationCommon
+#if canImport(AzureCommunicationUICalling)
+import AzureCommunicationUICalling
+#endif
+import UIKit
 
 @MainActor
 final class AppointmentViewModel: ObservableObject {
     @Published private(set) var appointments: [AppointmentCard] = []
     @Published private(set) var isLoading: Bool = false
+    @Published private(set) var isJoiningCall: Bool = false
     @Published var errorMessage: String?
     @Published var joinErrorMessage: String?
 
     private let session: SessionManager
     private let service: AppointmentAPIService
+#if canImport(AzureCommunicationUICalling)
+    private var callComposite: CallComposite?
+#endif
 
     init(session: SessionManager, service: AppointmentAPIService) {
         self.session = session
@@ -57,33 +67,100 @@ final class AppointmentViewModel: ObservableObject {
         }
     }
 
-    func teamsJoinURL(for appointment: AppointmentCard) -> URL? {
-        guard let acsId = appointment.acsId?.trimmingCharacters(in: .whitespacesAndNewlines),
-              let acsToken = appointment.acsToken?.trimmingCharacters(in: .whitespacesAndNewlines),
-              let acsRoomId = appointment.acsRoomId?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !acsId.isEmpty,
-              !acsToken.isEmpty,
-              !acsRoomId.isEmpty else {
+    func canJoinCall(for appointment: AppointmentCard) -> Bool {
+        let room = appointment.acsRoomId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let acsToken = appointment.acsToken?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return !room.isEmpty && !acsToken.isEmpty
+    }
+
+    func joinNativeCall(for appointment: AppointmentCard) {
+        guard !isJoiningCall else { return }
+        guard canJoinCall(for: appointment) else {
             joinErrorMessage = "Meeting details are missing for this appointment."
-            return nil
+            return
+        }
+        guard UIApplication.shared.applicationState == .active else {
+            joinErrorMessage = "Please open Apollo360 and try joining again."
+            return
         }
 
-        if let directURL = URL(string: acsRoomId),
-           let scheme = directURL.scheme,
-           !scheme.isEmpty {
-            return directURL
-        }
+        let roomId = (appointment.acsRoomId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = (appointment.acsToken ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = (session.username ?? "Guest").trimmingCharacters(in: .whitespacesAndNewlines)
+        let safeName = displayName.isEmpty ? "Guest" : displayName
 
-        let encodedRoom = acsRoomId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? acsRoomId
-        let encodedAcsId = acsId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? acsId
-        let encodedToken = acsToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? acsToken
+        do {
+            isJoiningCall = true
+            joinErrorMessage = nil
 
-        let candidate = "https://teams.microsoft.com/l/meetup-join/\(encodedRoom)?acsId=\(encodedAcsId)&acsToken=\(encodedToken)"
-        guard let url = URL(string: candidate) else {
-            joinErrorMessage = "Unable to create Teams join link for this appointment."
-            return nil
+            let credential = try CommunicationTokenCredential(token: token)
+#if canImport(AzureCommunicationUICalling)
+            let options = CallCompositeOptions(
+                enableMultitasking: true,
+                enableSystemPictureInPictureWhenMultitasking: true,
+                displayName: safeName
+            )
+            let composite = callComposite ?? CallComposite(credential: credential, withOptions: options)
+            callComposite = composite
+
+            composite.events.onDismissed = { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.isJoiningCall = false
+                }
+            }
+            composite.events.onError = { [weak self] error in
+                DispatchQueue.main.async {
+                    self?.isJoiningCall = false
+                    self?.joinErrorMessage = Self.mapJoinError("\(error)")
+                }
+            }
+
+            let localOptions = LocalOptions()
+            composite.launch(locator: .roomCall(roomId: roomId), localOptions: localOptions)
+            isJoiningCall = false
+#else
+            // Fallback when UI Calling package is not linked to target.
+            let client = CallClient()
+            let callAgentOptions = CallAgentOptions()
+            callAgentOptions.displayName = safeName
+            client.createCallAgent(userCredential: credential, options: callAgentOptions) { [weak self] agent, agentError in
+                guard let self else { return }
+                DispatchQueue.main.async {
+                    if let agentError {
+                        self.isJoiningCall = false
+                        self.joinErrorMessage = agentError.localizedDescription
+                        return
+                    }
+                    guard let agent else {
+                        self.isJoiningCall = false
+                        self.joinErrorMessage = "Unable to create call agent."
+                        return
+                    }
+                    let locator = RoomCallLocator(roomId: roomId)
+                    let joinOptions = JoinCallOptions()
+                    agent.join(with: locator, joinCallOptions: joinOptions) { [weak self] _, joinError in
+                        guard let self else { return }
+                        DispatchQueue.main.async {
+                            self.isJoiningCall = false
+                            if let joinError {
+                                self.joinErrorMessage = joinError.localizedDescription
+                            }
+                        }
+                    }
+                }
+            }
+#endif
+        } catch {
+            isJoiningCall = false
+            joinErrorMessage = Self.mapJoinError(error.localizedDescription)
         }
-        return url
+    }
+
+    func leaveCurrentCall() {
+        #if canImport(AzureCommunicationUICalling)
+        callComposite?.dismiss()
+        #endif
+        isJoiningCall = false
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -101,6 +178,17 @@ final class AppointmentViewModel: ObservableObject {
         formatter.locale = .current
         return formatter
     }()
+
+    private static func mapJoinError(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower.contains("calljoinfailed") || lower.contains("408") || lower.contains("timed out") {
+            return "Unable to join right now. Meeting may be expired/unavailable or network is unstable. Please try again."
+        }
+        if lower.contains("token") || lower.contains("credential") || lower.contains("unauthorized") {
+            return "Session expired. Please sign in again and retry joining the meeting."
+        }
+        return raw
+    }
 
     private static func card(from apiModel: AppointmentAPIModel, acsId: String?, acsToken: String?) -> AppointmentCard {
         let dateText: String

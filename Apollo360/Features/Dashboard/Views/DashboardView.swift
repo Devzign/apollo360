@@ -138,8 +138,23 @@ struct DashboardView: View {
         case .metrics:
             MetricsView(horizontalPadding: screenHorizontalPadding, session: session)
 
+        case .library:
+            LibraryView(horizontalPadding: screenHorizontalPadding, session: session)
+
         case .forms:
             FormsView(horizontalPadding: screenHorizontalPadding, session: session)
+
+        case .assessments:
+            DashboardTabPlaceholderView(
+                title: selectedTab.displayTitle
+            )
+            .padding(.horizontal, screenHorizontalPadding)
+
+        case .records:
+            DashboardTabPlaceholderView(
+                title: selectedTab.displayTitle
+            )
+            .padding(.horizontal, screenHorizontalPadding)
 
         case .appointment:
             AppointmentView(horizontalPadding: screenHorizontalPadding, session: session)
@@ -150,12 +165,6 @@ struct DashboardView: View {
 
         case .settings:
             SettingsView(horizontalPadding: screenHorizontalPadding, session: session)
-
-        default:
-            DashboardTabPlaceholderView(
-                title: selectedTab.displayTitle
-            )
-            .padding(.horizontal, screenHorizontalPadding)
         }
     }
     

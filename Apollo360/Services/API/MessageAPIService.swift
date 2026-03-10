@@ -53,6 +53,7 @@ final class MessageAPIService {
                      mimeType: String?,
                      token: String,
                      completion: @escaping (Result<Void, APIError>) -> Void) {
+        let endpoint = APIEndpoint.sendMessage
 
         guard let url = URL(string: APIConfiguration.baseURL.appendingPathComponent("v1/messages").absoluteString) else {
             completion(.failure(.invalidURL))
@@ -92,17 +93,34 @@ final class MessageAPIService {
         body.append("--\(boundary)--\r\n")
         request.httpBody = body
 
+#if DEBUG
+        APILogger.logRequest(
+            endpoint: endpoint,
+            method: request.httpMethod ?? "POST",
+            headers: request.allHTTPHeaderFields,
+            body: request.httpBody
+        )
+#endif
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
+#if DEBUG
+                APILogger.logError(endpoint: endpoint, error: error)
+#endif
                 completion(.failure(.requestFailed(error)))
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
+#if DEBUG
+                APILogger.logError(endpoint: endpoint, error: APIError.invalidResponse)
+#endif
                 completion(.failure(.invalidResponse))
                 return
             }
 
+#if DEBUG
+            APILogger.logResponse(endpoint: endpoint, statusCode: httpResponse.statusCode, data: data ?? Data())
+#endif
             guard (200...299).contains(httpResponse.statusCode) else {
                 completion(.failure(.serverError(statusCode: httpResponse.statusCode, data: data)))
                 return

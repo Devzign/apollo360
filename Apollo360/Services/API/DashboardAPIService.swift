@@ -79,6 +79,7 @@ final class DashboardAPIService {
         APIClient.shared.request(endpoint: APIEndpoint.cardiometabolicMetrics(for: patientId),
                                  method: .get,
                                  headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 timeoutInterval: 12,
                                  responseType: CardiometabolicMetricsAPIResponse.self) { result in
             switch result {
             case .success(let response):

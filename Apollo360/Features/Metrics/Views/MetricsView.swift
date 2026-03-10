@@ -27,18 +27,7 @@ struct MetricsView: View {
             VStack(spacing: 20) {
                 InfoCard()
 
-                HStack {
-                    Text("Added by Care Team")
-                        .font(AppFont.body(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.black.opacity(0.7))
-
-                    Spacer()
-
-                    Toggle("I'm Feeling", isOn: $isFeeling)
-                        .toggleStyle(SwitchToggleStyle(tint: AppColor.green))
-                        .labelsHidden()
-                }
-                .padding(.horizontal, 12)
+                sectionHeader(title: "Added by Care Team", showToggle: true)
 
                 VStack(spacing: 20) {
                     if viewModel.isLoading {
@@ -68,7 +57,7 @@ struct MetricsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    ForEach(viewModel.cards) { card in
+                    ForEach(careTeamCards) { card in
                         MetricCardView(
                             metric: card,
                             selectedRange: selectedRange,
@@ -77,6 +66,7 @@ struct MetricsView: View {
                                 withAnimation {
                                     selectedRange = range
                                 }
+                                viewModel.updateRange(range)
                             },
                             onCompareTap: {
                                 compareBaseMetric = card
@@ -88,6 +78,32 @@ struct MetricsView: View {
                     }
                 }
 
+                if !myMetricCards.isEmpty {
+                    sectionHeader(title: "Added by Me", showToggle: false)
+
+                    VStack(spacing: 20) {
+                        ForEach(myMetricCards) { card in
+                            MetricCardView(
+                                metric: card,
+                                selectedRange: selectedRange,
+                                ranges: ranges,
+                                onRangeChange: { range in
+                                    withAnimation {
+                                        selectedRange = range
+                                    }
+                                    viewModel.updateRange(range)
+                                },
+                                onCompareTap: {
+                                    compareBaseMetric = card
+                                    selectedCompareMetricId = viewModel.compareOptions
+                                        .first(where: { $0.id != card.id })?
+                                        .id ?? ""
+                                }
+                            )
+                        }
+                    }
+                }
+
                 Spacer()
             }
             .padding(.horizontal, horizontalPadding)
@@ -96,6 +112,7 @@ struct MetricsView: View {
         }
         .background(AppColor.secondary.ignoresSafeArea())
         .onAppear {
+            selectedRange = viewModel.selectedRange
             viewModel.loadIfNeeded()
         }
         .sheet(item: $compareBaseMetric) { baseMetric in
@@ -114,6 +131,32 @@ struct MetricsView: View {
                 }
             )
         }
+    }
+
+    private var careTeamCards: [MetricCardDisplay] {
+        viewModel.cards.filter { $0.sourceSection == .careTeam }
+    }
+
+    private var myMetricCards: [MetricCardDisplay] {
+        viewModel.cards.filter { $0.sourceSection == .myMetrics }
+    }
+
+    @ViewBuilder
+    private func sectionHeader(title: String, showToggle: Bool) -> some View {
+        HStack {
+            Text(title)
+                .font(AppFont.body(size: 16, weight: .semibold))
+                .foregroundStyle(AppColor.black.opacity(0.7))
+
+            Spacer()
+
+            if showToggle {
+                Toggle("I'm Feeling", isOn: $isFeeling)
+                    .toggleStyle(SwitchToggleStyle(tint: AppColor.green))
+                    .labelsHidden()
+            }
+        }
+        .padding(.horizontal, 12)
     }
 
     @ViewBuilder
@@ -208,7 +251,7 @@ private struct MetricCardView: View {
                     .lineLimit(2)
             }
 
-            Text("Last: \(metric.lastValue)  Average: \(metric.averageValue)")
+            Text("Last: \(metric.lastValue)\(unitSuffix)  Average: \(metric.averageValue)\(unitSuffix)")
                 .font(AppFont.body(size: 14))
                 .foregroundStyle(AppColor.black.opacity(0.7))
 
@@ -218,6 +261,11 @@ private struct MetricCardView: View {
                     .foregroundStyle(AppColor.green)
             }
         }
+    }
+
+    private var unitSuffix: String {
+        guard let unit = metric.unit, !unit.isEmpty else { return "" }
+        return " \(unit)"
     }
 }
 

@@ -11,6 +11,7 @@ import LocalAuthentication
 
 extension Notification.Name {
     static let sessionInvalidated = Notification.Name("sessionInvalidated")
+    static let sessionTokensRefreshed = Notification.Name("sessionTokensRefreshed")
 }
 
 @MainActor
@@ -38,6 +39,10 @@ final class SessionManager: ObservableObject {
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleSessionInvalidation),
                                                name: .sessionInvalidated,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleSessionTokensRefreshed(_:)),
+                                               name: .sessionTokensRefreshed,
                                                object: nil)
     }
     
@@ -115,6 +120,20 @@ final class SessionManager: ObservableObject {
     @objc private func handleSessionInvalidation() {
         clearSession()
     }
+
+    @objc private func handleSessionTokensRefreshed(_ notification: Notification) {
+            guard let userInfo = notification.userInfo else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                if let token = userInfo["accessToken"] as? String, !token.isEmpty {
+                    self.accessToken = token
+                }
+                if let token = userInfo["refreshToken"] as? String, !token.isEmpty {
+                    self.refreshToken = token
+                }
+                self.persist()
+            }
+    }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
@@ -187,3 +206,4 @@ enum BiometricAuthError: LocalizedError {
         }
     }
 }
+

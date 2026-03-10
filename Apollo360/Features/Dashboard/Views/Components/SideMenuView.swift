@@ -28,8 +28,8 @@ struct SideMenuView: View {
         SideMenuOption(title: "Library", icon: "books.vertical", tab: .library, badge: nil),
         SideMenuOption(title: "Metrics", icon: "waveform.path.ecg", tab: .metrics, badge: nil),
         SideMenuOption(title: "Forms", icon: "waveform.path.ecg.text.clipboard", tab: .forms, badge: nil),
-        SideMenuOption(title: "Assessments", icon: "doc.text.magnifyingglass", tab: .metrics, badge: 2),
-        SideMenuOption(title: "Records", icon: "folder", tab: nil, badge: nil),
+        SideMenuOption(title: "Assessments", icon: "doc.text.magnifyingglass", tab: .assessments, badge: 2),
+        SideMenuOption(title: "Records", icon: "folder", tab: .records, badge: nil),
         SideMenuOption(title: "Appointments", icon: "calendar.badge.clock", tab: .appointment, badge: nil),
         SideMenuOption(title: "Settings", icon: "gearshape", tab: .settings, badge: nil)
     ]

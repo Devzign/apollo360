@@ -22,6 +22,10 @@ extension DashboardTab {
             return "Appointments"
         case .forms:
             return "Forms"
+        case .assessments:
+            return "Assessments"
+        case .records:
+            return "Records"
         case .settings:
             return "Settings"
         }

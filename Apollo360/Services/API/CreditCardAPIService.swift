@@ -75,6 +75,8 @@ final class CreditCardAPIService {
             switch result {
             case .success:
                 completion(.success(()))
+            case .failure(.noData):
+                completion(.success(()))
             case .failure(let error):
                 completion(.failure(error))
             }
