@@ -43,11 +43,9 @@ final class MessageAPIService {
     }
 
     func sendMessage(patientId: Int,
-                     a360hId: Int,
                      providerMemberId: Int,
                      messageType: Int,
                      message: String,
-                     urgent: Int,
                      fileData: Data?,
                      fileName: String?,
                      mimeType: String?,
@@ -75,16 +73,13 @@ final class MessageAPIService {
         }
 
         appendField(name: "patient_id", value: "\(patientId)")
-        appendField(name: "a360h_id", value: "\(a360hId)")
-        appendField(name: "providerMemberId", value: "\(providerMemberId)")
+        appendField(name: "provider_member_id", value: "\(providerMemberId)")
         appendField(name: "message_type", value: "\(messageType)")
         appendField(name: "message", value: message)
-        appendField(name: "urgent", value: "\(urgent)")
 
         if let fileData = fileData, let fileName = fileName, let mimeType = mimeType {
-            appendField(name: "file", value: fileName)
             body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"file_upload\"; filename=\"\(fileName)\"\r\n")
+            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n")
             body.append("Content-Type: \(mimeType)\r\n\r\n")
             body.append(fileData)
             body.append("\r\n")

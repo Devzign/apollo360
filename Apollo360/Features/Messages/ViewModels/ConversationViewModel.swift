@@ -85,12 +85,11 @@ final class ConversationViewModel: ObservableObject {
         }
         
         let patientId = parseInt(session.patientId) ?? 0
-        let a360Id = parseInt(session.a360Id) ?? 0
-        
         pendingMessageText = ""
         let attachmentData = selectedAttachmentData
         let attachmentName = selectedAttachmentName
         let attachmentMimeType = selectedAttachmentMimeType
+        let messageToSend = hasText ? text : (attachmentName ?? "Attachment")
         clearAttachment()
         isSending = true
         
@@ -111,11 +110,9 @@ final class ConversationViewModel: ObservableObject {
         
         service.sendMessage(
             patientId: patientId,
-            a360hId: a360Id,
             providerMemberId: providerMemberId,
-            messageType: 1,
-            message: hasText ? text : "",
-            urgent: 0,
+            messageType: 0,
+            message: messageToSend,
             fileData: attachmentData,
             fileName: attachmentName,
             mimeType: attachmentMimeType,

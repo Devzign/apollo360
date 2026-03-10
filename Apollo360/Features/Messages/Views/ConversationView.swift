@@ -7,12 +7,14 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import WebKit
 
 struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     let provider: MessageProvider
     @Environment(\.dismiss) private var dismiss
     @State private var isFileImporterPresented = false
+    @State private var previewURL: URL?
 
     init(session: SessionManager, service: MessageAPIService, provider: MessageProvider) {
         _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: service))
@@ -50,7 +52,13 @@ struct ConversationView: View {
                         ScrollView {
                             VStack(spacing: 14) {
                                 ForEach(viewModel.messages) { message in
-                                    MessageBubble(message: message, isMine: isMine(message))
+                                    MessageBubble(
+                                        message: message,
+                                        isMine: isMine(message),
+                                        onOpenFile: { url in
+                                            previewURL = url
+                                        }
+                                    )
                                         .id(message.id)
                                 }
                             }
@@ -75,6 +83,22 @@ struct ConversationView: View {
         }
         .navigationBarHidden(true)
         .navigationBarBackButtonHidden(true)
+        .sheet(
+            isPresented: Binding(
+                get: { previewURL != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        previewURL = nil
+                    }
+                }
+            )
+        ) {
+            if let url = previewURL {
+                NavigationStack {
+                    AttachmentPreviewView(url: url)
+                }
+            }
+        }
         .onAppear {
             viewModel.loadConversation(providerMemberId: provider.memberId)
         }
@@ -186,7 +210,7 @@ struct ConversationView: View {
 private struct MessageBubble: View {
     let message: MessageEntry
     let isMine: Bool
-    @Environment(\.openURL) private var openURL
+    let onOpenFile: (URL) -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -228,7 +252,7 @@ private struct MessageBubble: View {
     private func fileView(filePath: String) -> some View {
         if let url = URL(string: filePath), url.scheme != nil {
             Button {
-                openURL(url)
+                onOpenFile(url)
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "paperclip")
@@ -255,6 +279,36 @@ private struct MessageBubble: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+private struct AttachmentPreviewView: View {
+    let url: URL
+
+    var body: some View {
+        VStack(spacing: 0) {
+            WebContentView(url: url)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .navigationTitle("File Preview")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct WebContentView: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.allowsBackForwardNavigationGestures = true
+        webView.scrollView.alwaysBounceVertical = true
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if webView.url != url {
+            webView.load(URLRequest(url: url))
+        }
     }
 }
 
