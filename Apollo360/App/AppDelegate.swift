@@ -39,7 +39,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     static func lockOrientation(_ orientation: UIInterfaceOrientationMask, rotateTo rotateOrientation: UIInterfaceOrientation) {
         orientationLock = orientation
-        UIDevice.current.setValue(rotateOrientation.rawValue, forKey: "orientation")
-        UINavigationController.attemptRotationToDeviceOrientation()
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
+            return
+        }
+
+        let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: orientation)
+        windowScene.requestGeometryUpdate(preferences) { _ in }
     }
 }

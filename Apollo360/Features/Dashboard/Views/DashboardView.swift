@@ -145,10 +145,7 @@ struct DashboardView: View {
             FormsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .assessments:
-            DashboardTabPlaceholderView(
-                title: selectedTab.displayTitle
-            )
-            .padding(.horizontal, screenHorizontalPadding)
+            AssessmentsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .records:
             DashboardTabPlaceholderView(

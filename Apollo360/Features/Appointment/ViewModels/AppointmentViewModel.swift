@@ -92,12 +92,13 @@ final class AppointmentViewModel: ObservableObject {
         do {
             isJoiningCall = true
             joinErrorMessage = nil
-            AppDelegate.lockOrientation(.portrait, rotateTo: .portrait)
 
             let credential = try CommunicationTokenCredential(token: token)
 #if canImport(AzureCommunicationUICalling)
             let options = CallCompositeOptions(
                 theme: ApolloCallThemeOptions(),
+                setupScreenOrientation: .portrait,
+                callingScreenOrientation: .portrait,
                 enableMultitasking: true,
                 enableSystemPictureInPictureWhenMultitasking: true,
                 displayName: safeName
@@ -108,7 +109,6 @@ final class AppointmentViewModel: ObservableObject {
             composite.events.onDismissed = { [weak self] _ in
                 DispatchQueue.main.async {
                     self?.isJoiningCall = false
-                    AppDelegate.lockOrientation(.allButUpsideDown)
                 }
             }
             composite.events.onError = { [weak self] error in
@@ -116,7 +116,6 @@ final class AppointmentViewModel: ObservableObject {
                     self?.isJoiningCall = false
                     self?.joinErrorMessage = Self.mapJoinError("\(error)")
                     self?.refresh()
-                    AppDelegate.lockOrientation(.allButUpsideDown)
                 }
             }
 
@@ -133,14 +132,12 @@ final class AppointmentViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     if let agentError {
                         self.isJoiningCall = false
-                        self.joinErrorMessage = agentError.localizedDescription
-                        AppDelegate.lockOrientation(.allButUpsideDown)
+                        self.joinErrorMessage = Self.mapJoinError(agentError.localizedDescription)
                         return
                     }
                     guard let agent else {
                         self.isJoiningCall = false
                         self.joinErrorMessage = "Unable to create call agent."
-                        AppDelegate.lockOrientation(.allButUpsideDown)
                         return
                     }
                     let locator = RoomCallLocator(roomId: roomId)
@@ -152,7 +149,6 @@ final class AppointmentViewModel: ObservableObject {
                             if let joinError {
                                 self.joinErrorMessage = Self.mapJoinError(joinError.localizedDescription)
                                 self.refresh()
-                                AppDelegate.lockOrientation(.allButUpsideDown)
                             }
                         }
                     }
@@ -162,7 +158,6 @@ final class AppointmentViewModel: ObservableObject {
         } catch {
             isJoiningCall = false
             joinErrorMessage = Self.mapJoinError(error.localizedDescription)
-            AppDelegate.lockOrientation(.allButUpsideDown)
         }
     }
 
@@ -171,7 +166,6 @@ final class AppointmentViewModel: ObservableObject {
         callComposite?.dismiss()
         #endif
         isJoiningCall = false
-        AppDelegate.lockOrientation(.allButUpsideDown)
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -196,7 +190,10 @@ final class AppointmentViewModel: ObservableObject {
             || lower.contains("408")
             || lower.contains("timed out")
             || lower.contains("not found")
-            || lower.contains("room") {
+            || lower.contains("room")
+            || lower.contains("calljoin")
+            || lower.contains("callcompositeerror")
+            || lower.contains("code: \"calljoin\"") {
             return "Doctor has not started this appointment call yet. Please wait and try again in a moment."
         }
         if lower.contains("token") || lower.contains("credential") || lower.contains("unauthorized") {

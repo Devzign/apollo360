@@ -47,6 +47,10 @@ enum APIEndpoint {
     static let passwordLogin = "v1/auth/login"
     static let logout = "v1/auth/logout"
     static let patientForms = "v1/patient-forms"
+    static let surveys = "v1/surveys"
+    static func survey(id: Int) -> String {
+        "v1/surveys/\(id)"
+    }
     static let termsOfUse = "v1/terms-of-use"
     static let privacyPolicy = "v1/privacy-policy"
     static let profile = "v1/profile"

@@ -26,4 +26,35 @@ final class FormsAPIService {
             }
         }
     }
+
+    func fetchSurveys(bearerToken: String,
+                      completion: @escaping (Result<[SurveyListItemResponse], APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.surveys,
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: [SurveyListItemResponse].self,
+                                 completion: completion)
+    }
+
+    func fetchSurveyDetails(id: Int,
+                            bearerToken: String,
+                            completion: @escaping (Result<SurveyDetailResponse, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.survey(id: id),
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: SurveyDetailResponse.self,
+                                 completion: completion)
+    }
+
+    func saveSurveyResponse(surveyId: Int,
+                            request: SurveySaveRequest,
+                            bearerToken: String,
+                            completion: @escaping (Result<SurveySaveResponse, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.survey(id: surveyId),
+                                 method: .patch,
+                                 body: request,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: SurveySaveResponse.self,
+                                 completion: completion)
+    }
 }
