@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct NotificationSettingsResponse: Codable {
     let pushNotifications: Bool

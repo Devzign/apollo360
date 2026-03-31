@@ -41,10 +41,10 @@ struct DashboardTabPlaceholderView: View {
             Spacer()
             Text(title)
                 .font(AppFont.display(size: 28, weight: .bold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Text("Content coming soon.")
                 .font(AppFont.body(size: 16))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

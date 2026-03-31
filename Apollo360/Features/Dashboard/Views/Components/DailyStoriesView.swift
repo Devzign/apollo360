@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct DailyStoriesView: View {
     let title: String
@@ -73,10 +75,10 @@ struct DailyStoriesView: View {
         VStack(spacing: 4) {
             Text(title)
                 .font(AppFont.display(size: 22, weight: .bold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Text(subtitle)
                 .font(AppFont.body(size: 13))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
         }
@@ -136,7 +138,7 @@ private struct StoryBadgeView: View {
             VStack(spacing: 8) {
                 ZStack {
                     Circle()
-                        .strokeBorder(ringStyle, lineWidth: 2)
+                        .strokeBorder(story.hasUpdate ? story.tint : Color.black.opacity(0.08), lineWidth: 2)
                         .frame(width: ringSize, height: ringSize)
                         .opacity(story.isViewed ? 0.6 : 1.0)
                         .overlay(
@@ -149,41 +151,43 @@ private struct StoryBadgeView: View {
                                 .fill(story.tint)
                                 .padding(5)
                         )
-                        .overlay {
+                        .overlay(
                             StoryBadgeIcon(story: story, iconSize: iconSize)
-                        }
+                        )
                         .matchedGeometryEffect(id: story.id, in: namespace)
                         .opacity(isHidden ? 0 : 1)
                 }
                 .frame(width: outerSize, height: outerSize)
-                .overlay(alignment: .topTrailing) {
-                    if story.hasUpdate {
-                        Circle()
-                            .fill(AppColor.primary)
-                            .frame(width: 10, height: 10)
-                            .overlay(
-                                Circle()
-                                    .stroke(AppColor.secondary, lineWidth: 2)
-                            )
-                            .offset(x: -2, y: 2)
+                .overlay(
+                    Group {
+                        if story.hasUpdate {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    Circle()
+                                        .fill(AppColor.primary)
+                                        .frame(width: 10, height: 10)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(AppColor.secondary, lineWidth: 2)
+                                        )
+                                        .offset(x: -2, y: 2)
+                                }
+                                Spacer()
+                            }
+                        }
                     }
-                }
+                )
 
                 Text(story.title)
                     .font(AppFont.body(size: 14, weight: .medium))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .frame(width: 80)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
         }
         .buttonStyle(.plain)
-    }
-
-    private var ringStyle: AnyShapeStyle {
-        story.hasUpdate
-        ? AnyShapeStyle(ringGradient)
-        : AnyShapeStyle(Color.black.opacity(0.08))
     }
 
     private var ringGradient: LinearGradient {
@@ -202,31 +206,68 @@ private struct StoryBadgeIcon: View {
     var body: some View {
         Group {
             if let url = story.iconURL {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    } else if phase.error != nil {
-                        Image(systemName: "photo")
-                            .font(.system(size: iconSize, weight: .semibold))
-                            .foregroundStyle(story.tint)
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                    }
+                RemoteStoryIcon(url: url) {
+                    Image(systemName: "photo")
+                        .font(.system(size: iconSize, weight: .semibold))
+                        .foregroundColor(story.tint)
                 }
             } else if let systemImage = story.systemImage {
                 Image(systemName: systemImage)
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(story.tint)
+                    .foregroundColor(story.tint)
             } else {
                 Image(systemName: "sparkles")
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(story.tint)
+                    .foregroundColor(story.tint)
             }
         }
         .frame(width: iconSize, height: iconSize)
+    }
+}
+
+private struct RemoteStoryIcon<Placeholder: View>: View {
+    @StateObject private var loader: StoryIconLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: StoryIconLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class StoryIconLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }
 

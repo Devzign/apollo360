@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct ArticlesAPIResponse: Decodable {
     let type: String?

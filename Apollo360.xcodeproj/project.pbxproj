@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		40480A5A62984A60ADD69E26 /* Pods_Apollo360.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DDA9E59838AECC0A36F1DF4C /* Pods_Apollo360.framework */; };
+		038B799B5322A214838BB983 /* Pods_Apollo360.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 11930E998C5835DC263FC873 /* Pods_Apollo360.framework */; };
 		62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 62124B012F155CD300A0AA28 /* IQKeyboardManagerSwift */; };
 		626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 626BD2F82F16536B00D4DD11 /* Kingfisher */; };
 		62F033802F1F1BFF00763ECB /* SwiftUIDragMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 62F0337F2F1F1BFF00763ECB /* SwiftUIDragMenu */; };
@@ -15,11 +15,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		11930E998C5835DC263FC873 /* Pods_Apollo360.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Apollo360.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		30717DD174B9985A67CF3436 /* Pods-Apollo360.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.debug.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.debug.xcconfig"; sourceTree = "<group>"; };
 		628A3D852F1087B30037BE39 /* Apollo360.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apollo360.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62D30D5B2F5FB07700C00E88 /* CallingWithChat.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CallingWithChat.xcodeproj; sourceTree = "<group>"; };
-		B3E8D16FB8DF497D9645A555 /* Pods-Apollo360.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.release.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.release.xcconfig"; sourceTree = "<group>"; };
-		C71DECFD8995A3F96265C417 /* Pods-Apollo360.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.debug.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.debug.xcconfig"; sourceTree = "<group>"; };
-		DDA9E59838AECC0A36F1DF4C /* Pods_Apollo360.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Apollo360.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		704FD36CD22955517C33DD8C /* Pods-Apollo360.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Apollo360.release.xcconfig"; path = "Target Support Files/Pods-Apollo360/Pods-Apollo360.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,7 +52,7 @@
 				626BD2F92F16536B00D4DD11 /* Kingfisher in Frameworks */,
 				62124B022F155CD300A0AA28 /* IQKeyboardManagerSwift in Frameworks */,
 				62F033802F1F1BFF00763ECB /* SwiftUIDragMenu in Frameworks */,
-				40480A5A62984A60ADD69E26 /* Pods_Apollo360.framework in Frameworks */,
+				038B799B5322A214838BB983 /* Pods_Apollo360.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,7 +65,7 @@
 				628A3D872F1087B30037BE39 /* Apollo360 */,
 				628A3D862F1087B30037BE39 /* Products */,
 				B44F0D4ED5C071B0CAE23269 /* Pods */,
-				DB78F3BB535DC348991D55A6 /* Frameworks */,
+				B2A9FAA7C1C9D1C145B2B824 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -84,21 +84,21 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		B2A9FAA7C1C9D1C145B2B824 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				11930E998C5835DC263FC873 /* Pods_Apollo360.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B44F0D4ED5C071B0CAE23269 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				C71DECFD8995A3F96265C417 /* Pods-Apollo360.debug.xcconfig */,
-				B3E8D16FB8DF497D9645A555 /* Pods-Apollo360.release.xcconfig */,
+				30717DD174B9985A67CF3436 /* Pods-Apollo360.debug.xcconfig */,
+				704FD36CD22955517C33DD8C /* Pods-Apollo360.release.xcconfig */,
 			);
 			path = Pods;
-			sourceTree = "<group>";
-		};
-		DB78F3BB535DC348991D55A6 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				DDA9E59838AECC0A36F1DF4C /* Pods_Apollo360.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -108,11 +108,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 628A3D902F1087B40037BE39 /* Build configuration list for PBXNativeTarget "Apollo360" */;
 			buildPhases = (
-				CFC8E55062B7839C9EE5B7F5 /* [CP] Check Pods Manifest.lock */,
+				8708784F200852FF8B1E8E84 /* [CP] Check Pods Manifest.lock */,
 				628A3D812F1087B30037BE39 /* Sources */,
 				628A3D822F1087B30037BE39 /* Frameworks */,
 				628A3D832F1087B30037BE39 /* Resources */,
-				02FC7B2DD8B184D225A0B4BB /* [CP] Embed Pods Frameworks */,
+				0113A8F8D5C137DBA31218FF /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -183,7 +183,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		02FC7B2DD8B184D225A0B4BB /* [CP] Embed Pods Frameworks */ = {
+		0113A8F8D5C137DBA31218FF /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -191,20 +191,16 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Apollo360/Pods-Apollo360-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		CFC8E55062B7839C9EE5B7F5 /* [CP] Check Pods Manifest.lock */ = {
+		8708784F200852FF8B1E8E84 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -292,7 +288,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -350,7 +346,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -362,7 +358,7 @@
 		};
 		628A3D912F1087B40037BE39 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C71DECFD8995A3F96265C417 /* Pods-Apollo360.debug.xcconfig */;
+			baseConfigurationReference = 30717DD174B9985A67CF3436 /* Pods-Apollo360.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -381,7 +377,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -401,7 +397,7 @@
 		};
 		628A3D922F1087B40037BE39 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B3E8D16FB8DF497D9645A555 /* Pods-Apollo360.release.xcconfig */;
+			baseConfigurationReference = 704FD36CD22955517C33DD8C /* Pods-Apollo360.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -420,7 +416,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

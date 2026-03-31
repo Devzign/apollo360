@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct ApolloInsightsCard: View {
     let insights: [InsightItem]
@@ -20,12 +22,12 @@ struct ApolloInsightsCard: View {
                         .overlay(
                             Image(systemName: "sparkles")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(AppColor.primary)
+                                .foregroundColor(AppColor.primary)
                         )
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Apollo Insights")
                             .font(AppFont.display(size: 18, weight: .bold))
-                            .foregroundStyle(AppColor.black)
+                            .foregroundColor(AppColor.black)
                     }
                     Spacer()
                 }
@@ -60,7 +62,7 @@ private struct InsightRowView: View {
             VStack(alignment: .leading, spacing: 6) {
 //                Text(item.title)
 //                    .font(AppFont.body(size: 14, weight: .semibold))
-//                    .foregroundStyle(AppColor.black)
+//                    .foregroundColor(AppColor.black)
 
                 TypewriterText(
                     text: item.detail,
@@ -102,22 +104,13 @@ private struct InsightIconView: View {
     var body: some View {
         Group {
             if let url = item.iconURL {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    } else if phase.error != nil {
-                        fallbackIcon
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                    }
+                RemoteInsightIcon(url: url) {
+                    fallbackIcon
                 }
             } else if let systemImage = item.systemImage {
                 Image(systemName: systemImage)
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(tint)
+                    .foregroundColor(tint)
             } else {
                 fallbackIcon
             }
@@ -128,7 +121,53 @@ private struct InsightIconView: View {
     private var fallbackIcon: some View {
         Image(systemName: "sparkles")
             .font(.system(size: iconSize, weight: .semibold))
-            .foregroundStyle(tint)
+            .foregroundColor(tint)
+    }
+}
+
+private struct RemoteInsightIcon<Placeholder: View>: View {
+    @StateObject private var loader: InsightIconLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: InsightIconLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class InsightIconLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }
 

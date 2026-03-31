@@ -39,12 +39,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     static func lockOrientation(_ orientation: UIInterfaceOrientationMask, rotateTo rotateOrientation: UIInterfaceOrientation) {
         orientationLock = orientation
-        guard let windowScene = UIApplication.shared.connectedScenes
-            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
-            return
-        }
+        if #available(iOS 16.0, *) {
+            guard let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
+                    return
+                }
 
-        let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: orientation)
-        windowScene.requestGeometryUpdate(preferences) { _ in }
+            let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: orientation)
+            windowScene.requestGeometryUpdate(preferences) { _ in }
+        } else {
+            UIDevice.current.setValue(rotateOrientation.rawValue, forKey: "orientation")
+            UINavigationController.attemptRotationToDeviceOrientation()
+        }
     }
 }

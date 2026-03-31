@@ -12,6 +12,7 @@ struct SettingsView: View {
     private let session: SessionManager
     @StateObject private var viewModel: SettingsViewModel
     @State private var isShowingLogoutConfirmation = false
+    @State private var selectedItem: SettingItem?
 
     init(horizontalPadding: CGFloat, session: SessionManager) {
         self.horizontalPadding = horizontalPadding
@@ -41,11 +42,11 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Apollo 360 Settings")
                 .font(AppFont.display(size: 28, weight: .semibold))
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
 
             Text("Customize your experience, manage privacy, and review important agreements.")
                 .font(AppFont.body(size: 16))
-                .foregroundStyle(AppColor.black.opacity(0.78))
+                .foregroundColor(AppColor.black.opacity(0.78))
         }
     }
 
@@ -55,7 +56,7 @@ struct SettingsView: View {
             if let title = section.title {
                 Text(title)
                     .font(AppFont.body(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .textCase(.uppercase)
             }
             VStack(spacing: 16) {
@@ -67,17 +68,9 @@ struct SettingsView: View {
                             SettingRow(item: item)
                         }
                         .buttonStyle(.plain)
-                        .alert("Log out", isPresented: $isShowingLogoutConfirmation) {
-                            Button("Cancel", role: .cancel) {}
-                            Button("Logout", role: .destructive) {
-                                viewModel.logout()
-                            }
-                        } message: {
-                            Text("Logging out will end your session and require signing in again.")
-                        }
                     } else {
-                        NavigationLink {
-                            destination(for: item)
+                        Button {
+                            selectedItem = item
                         } label: {
                             SettingRow(item: item)
                         }
@@ -86,59 +79,92 @@ struct SettingsView: View {
                 }
             }
         }
+        .background(
+            NavigationLink(
+                destination: selectedDestination,
+                isActive: Binding(
+                    get: { selectedItem != nil },
+                    set: { if !$0 { selectedItem = nil } }
+                )
+            ) {
+                EmptyView()
+            }
+            .hidden()
+        )
+        .alert(isPresented: $isShowingLogoutConfirmation) {
+            Alert(
+                title: Text("Log out"),
+                message: Text("Logging out will end your session and require signing in again."),
+                primaryButton: .destructive(Text("Logout")) {
+                    viewModel.logout()
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
 
-    @ViewBuilder
-    private func destination(for item: SettingItem) -> some View {
+    private var selectedDestination: AnyView {
+        guard let item = selectedItem else {
+            return AnyView(EmptyView())
+        }
+        return destination(for: item)
+    }
+
+    private func destination(for item: SettingItem) -> AnyView {
         switch item.kind {
         case .terms, .privacy, .staticItem:
-            SettingDetailView(
+            return AnyView(SettingDetailView(
                 item: item,
                 htmlContent: viewModel.html(for: item.kind),
                 isLoading: viewModel.isLoadingLegal,
                 errorMessage: viewModel.errorMessage,
                 reload: viewModel.refreshLegal
-            )
+            ))
         case .forms:
-            FormsView(horizontalPadding: horizontalPadding, session: session)
+            return AnyView(FormsView(horizontalPadding: horizontalPadding, session: session))
         case .contact:
-            ContactUsView()
+            return AnyView(ContactUsView())
         case .creditCard:
-            CreditCardView(session: session)
+            return AnyView(CreditCardView(session: session))
         case .notifications:
-            NotificationsView(session: session)
+            return AnyView(NotificationsView(session: session))
         case .caregivers:
-            CaregiversView(session: session)
+            return AnyView(CaregiversView(session: session))
         case .team:
-            SettingDetailView(
+            return AnyView(SettingDetailView(
                 item: item,
                 htmlContent: viewModel.html(for: item.kind),
                 isLoading: viewModel.isLoadingTeam,
                 errorMessage: viewModel.errorMessage,
                 reload: viewModel.refreshTeam
-            )
+            ))
         case .billing:
-            BillingView(session: session)
+            return AnyView(BillingView(session: session))
         case .profile:
-            UserProfileView(session: session)
+            return AnyView(UserProfileView(session: session))
         case .logout:
-            LogoutView(logoutAction: viewModel.logout)
+            return AnyView(LogoutView(logoutAction: viewModel.logout))
         }
     }
 }
 
-#Preview("Settings - iPhone", traits: .sizeThatFitsLayout) {
-    NavigationStack {
-        SettingsView(horizontalPadding: 20, session: SessionManager())
-            .environment(\.horizontalSizeClass, .compact)
-    }
-    .toolbar(.hidden, for: .tabBar)
-}
+#if DEBUG
+struct SettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            NavigationView {
+                SettingsView(horizontalPadding: 20, session: SessionManager())
+                    .environment(\.horizontalSizeClass, .compact)
+            }
+            .previewDisplayName("Settings - iPhone")
 
-#Preview("Settings - iPad", traits: .sizeThatFitsLayout) {
-    NavigationStack {
-        SettingsView(horizontalPadding: 50, session: SessionManager())
-            .environment(\.horizontalSizeClass, .regular)
+            NavigationView {
+                SettingsView(horizontalPadding: 50, session: SessionManager())
+                    .environment(\.horizontalSizeClass, .regular)
+            }
+            .previewDisplayName("Settings - iPad")
+        }
+        .previewLayout(.sizeThatFits)
     }
-    .toolbar(.hidden, for: .tabBar)
 }
+#endif

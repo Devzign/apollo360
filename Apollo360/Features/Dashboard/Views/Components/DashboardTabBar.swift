@@ -127,7 +127,7 @@ struct DashboardTabBar: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: iconSize + 4, height: iconSize + 4)
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
         }
         .buttonStyle(.plain)
@@ -157,11 +157,11 @@ struct DashboardTabBar: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: iconSize, height: iconSize)
-                    .foregroundStyle(tint)
+                    .foregroundColor(tint)
 
                 Text(info.title)
                     .font(AppFont.body(size: 12, weight: .semibold))
-                    .foregroundStyle(tint)
+                    .foregroundColor(tint)
             }
         }
         .buttonStyle(.plain)

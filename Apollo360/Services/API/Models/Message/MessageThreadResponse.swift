@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct MessageThreadResponse: Decodable {
     let patientId: Int

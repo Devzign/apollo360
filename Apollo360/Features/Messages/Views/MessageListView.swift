@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct MessageListView: View {
     @StateObject private var viewModel: MessagesListViewModel
@@ -30,7 +32,7 @@ struct MessageListView: View {
                     ProgressView().padding()
                 }
                 if let error = viewModel.errorMessage {
-                    Text(error).foregroundStyle(.red).padding()
+                    Text(error).foregroundColor(.red).padding()
                 }
                 List {
                     ForEach(filteredProviders) { provider in
@@ -40,13 +42,11 @@ struct MessageListView: View {
                             ProviderRow(provider: provider)
                         }
                         .buttonStyle(.plain)
-                        .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
  
             .navigationBarHidden(true)
@@ -59,14 +59,14 @@ struct MessageListView: View {
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.gray)
+                .foregroundColor(.gray)
             TextField("Search", text: $searchText)
                 .textFieldStyle(.plain)
             Button {
                 searchText = ""
             } label: {
                 Image(systemName: "line.3.horizontal.decrease.circle")
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
             }
         }
         .padding(12)
@@ -88,12 +88,12 @@ private struct ProviderRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(provider.name)
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.grey.opacity(0.7))
+                .foregroundColor(AppColor.grey.opacity(0.7))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
@@ -120,20 +120,15 @@ private struct AvatarView: View {
             Circle().fill(bg)
             if let urlString,
                let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().scaledToFill()
-                    default:
-                        Text(initials)
-                            .font(AppFont.body(size: 14, weight: .bold))
-                            .foregroundStyle(AppColor.green)
-                    }
+                RemoteCircleAvatar(url: url) {
+                    Text(initials)
+                        .font(AppFont.body(size: 14, weight: .bold))
+                        .foregroundColor(AppColor.green)
                 }
             } else {
                 Text(initials)
                     .font(AppFont.body(size: 14, weight: .bold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
             }
         }
         .clipShape(Circle())
@@ -143,5 +138,52 @@ private struct AvatarView: View {
         let comps = placeholderText.split(separator: " ")
         let letters = comps.prefix(2).compactMap { $0.first }
         return letters.map(String.init).joined().uppercased()
+    }
+}
+
+private struct RemoteCircleAvatar<Placeholder: View>: View {
+    @StateObject private var loader: RemoteImageLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: RemoteImageLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class RemoteImageLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }

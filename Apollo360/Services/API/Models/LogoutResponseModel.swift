@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct LogoutResponse: Decodable {
     let success: Bool?

@@ -25,10 +25,10 @@ struct ActivitiesSummaryCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Activities")
                             .font(AppFont.display(size: 18, weight: .bold))
-                            .foregroundStyle(AppColor.black)
+                            .foregroundColor(AppColor.black)
                         Text("Your movement this week")
                             .font(AppFont.body(size: 13))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
                     Spacer()
                     HStack(spacing: 4) {
@@ -37,7 +37,7 @@ struct ActivitiesSummaryCard: View {
                         Text(formattedChangePercentage)
                             .font(AppFont.body(size: 12, weight: .semibold))
                     }
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                 }
 
                 ActivityBarChartView(days: days)
@@ -47,7 +47,7 @@ struct ActivitiesSummaryCard: View {
                     ForEach(days) { day in
                         Text(day.label)
                             .font(AppFont.body(size: 11))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -60,7 +60,7 @@ struct ActivitiesSummaryCard: View {
 
                 Text(summaryNote)
                     .font(AppFont.body(size: 12, weight: .medium))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -92,7 +92,7 @@ private struct ActivityBarChartView: View {
         }
         .onAppear { restartAnimation() }
         .onBecomeVisible { restartAnimation() }
-        .onChange(of: days) { _, _ in restartAnimation() }
+        .onChange(of: days) { _ in restartAnimation() }
     }
 
     private func barHeight(for day: ActivityDay, maxSteps: Int) -> CGFloat {
@@ -115,15 +115,15 @@ private struct ActivityStatView: View {
         VStack(spacing: 6) {
             Image(systemName: stat.systemImage)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(stat.tint)
+                .foregroundColor(stat.tint)
 
             Text(stat.value)
                 .font(AppFont.body(size: 13, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Text(stat.title)
                 .font(AppFont.body(size: 11))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)

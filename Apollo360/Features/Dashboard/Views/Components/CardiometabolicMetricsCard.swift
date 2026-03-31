@@ -16,16 +16,16 @@ struct CardiometabolicMetricsCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Cardiometabolic Metrics")
                         .font(AppFont.display(size: 18, weight: .bold))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                     Text("Key health trends over the past week")
                         .font(AppFont.body(size: 13))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                 }
 
                 if metrics.isEmpty {
                     Text("Cardiometabolic data is currently unavailable.")
                         .font(AppFont.body(size: 13))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(Color.black.opacity(0.04))
@@ -52,13 +52,13 @@ private struct CardioMetricRowView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(metric.title)
                     .font(AppFont.body(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Spacer()
 
                 Text("\(metric.value) \(metric.unit)")
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
             }
 
             MetricSparklineView(values: metric.sparkline, color: metric.tint)
@@ -66,7 +66,7 @@ private struct CardioMetricRowView: View {
 
             Text(metric.trend)
                 .font(AppFont.body(size: 12))
-                .foregroundStyle(metric.tint)
+                .foregroundColor(metric.tint)
         }
         .padding(12)
         .background(Color.black.opacity(0.04))
@@ -128,7 +128,7 @@ private struct MetricSparklineView: View {
         }
         .onAppear { restartAnimation() }
         .onBecomeVisible { restartAnimation() }
-        .onChange(of: values) { _, _ in restartAnimation() }
+        .onChange(of: values) { _ in restartAnimation() }
     }
 
     private func restartAnimation() {

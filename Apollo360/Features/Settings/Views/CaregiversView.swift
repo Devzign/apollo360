@@ -63,11 +63,11 @@ struct CaregiversView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("My Contacts")
                 .font(AppFont.display(size: 28, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             Text("Manage the caregivers, providers, and permissions that collaborate on your care.")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
     }
 
@@ -75,11 +75,11 @@ struct CaregiversView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(viewModel.accessLevel)
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Text("Caregivers: \(viewModel.caregivers.count)\nHealthcare Providers: \(viewModel.providers.count)")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -105,7 +105,7 @@ struct CaregiversView: View {
             if viewModel.caregivers.isEmpty {
                 Text("No caregivers yet.")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             } else {
                 ForEach(viewModel.caregivers) { caregiver in
                     contactRow(
@@ -135,7 +135,7 @@ struct CaregiversView: View {
             if viewModel.providers.isEmpty {
                 Text("No providers yet.")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             } else {
                 ForEach(viewModel.providers) { provider in
                     contactRow(
@@ -173,10 +173,10 @@ struct CaregiversView: View {
                     HStack(spacing: 6) {
                         Label(title, systemImage: icon)
                             .font(AppFont.body(size: 17, weight: .semibold))
-                            .foregroundStyle(AppColor.color414141)
+                            .foregroundColor(AppColor.color414141)
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(AppFont.body(size: 12, weight: .semibold))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
                 }
                 .buttonStyle(.plain)
@@ -190,7 +190,7 @@ struct CaregiversView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(AppColor.green.opacity(0.18))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .clipShape(Capsule())
                 }
             }
@@ -200,7 +200,7 @@ struct CaregiversView: View {
             } else if let collapsedInfo {
                 Text(collapsedInfo)
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
         }
         .padding(20)
@@ -216,21 +216,21 @@ struct CaregiversView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             if let subtitle {
                 Text(subtitle)
                     .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
             Text(badge)
                 .font(AppFont.body(size: 12, weight: .semibold))
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
         }
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .swipeActions {
-            Button(role: .destructive, action: deleteAction) {
+        .contextMenu {
+            Button(action: deleteAction) {
                 Label("Remove", systemImage: "trash")
             }
         }
@@ -305,7 +305,7 @@ struct CaregiversView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(title)
                     .font(AppFont.display(size: 24, weight: .semibold))
-                    .foregroundStyle(AppColor.color414141)
+                    .foregroundColor(AppColor.color414141)
 
             ForEach(fields, id: \.0) { label, binding in
                 FormInputField(label: label, value: binding)
@@ -316,14 +316,13 @@ struct CaregiversView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(AppColor.green)
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 Spacer()
             }
             .padding()
         }
-        .presentationDetents([.medium, .large])
     }
 
     private func resetCaregiverFields() {
@@ -346,10 +345,10 @@ struct CaregiversView: View {
         VStack(spacing: 12) {
             Text("Couldn't load contacts")
                 .font(AppFont.body(size: 18, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Text(message)
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.red)
+                .foregroundColor(AppColor.red)
             Button("Retry") {
                 viewModel.loadContacts(force: true)
             }
@@ -357,7 +356,7 @@ struct CaregiversView: View {
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(AppColor.green)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity)
@@ -365,8 +364,12 @@ struct CaregiversView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        CaregiversView(session: SessionManager())
+#if DEBUG
+struct CaregiversView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            CaregiversView(session: SessionManager())
+        }
     }
 }
+#endif

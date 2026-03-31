@@ -14,7 +14,7 @@ struct NotificationsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Notification Setting")
                     .font(AppFont.display(size: 32, weight: .semibold))
-                    .foregroundStyle(AppColor.color414141)
+                    .foregroundColor(AppColor.color414141)
 
                 VStack(spacing: 16) {
                     notificationRow(
@@ -49,37 +49,38 @@ struct NotificationsView: View {
             .padding(.horizontal, 20)
             .padding(.top, 16)
         }
-        .overlay {
-            if viewModel.isLoading {
-                ZStack {
-                    Color.black.opacity(0.08).ignoresSafeArea()
-                    ProgressView()
-                        .progressViewStyle(.circular)
+        .overlay(
+            Group {
+                if viewModel.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.08).ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                    }
                 }
             }
-        }
+        )
         .background(AppColor.secondary.ignoresSafeArea())
         .navigationTitle("Notification Setting")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .onAppear {
             viewModel.loadSettings()
         }
-        .alert(
-            viewModel.alertTitle,
-            isPresented: Binding(
-                get: { viewModel.alertMessage != nil },
-                set: { newValue in
-                    if !newValue {
-                        viewModel.clearAlert()
-                    }
+        .alert(isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    viewModel.clearAlert()
+                }
+            }
+        )) {
+            Alert(
+                title: Text(viewModel.alertTitle),
+                message: Text(viewModel.alertMessage ?? ""),
+                dismissButton: .cancel(Text("OK")) {
+                    viewModel.clearAlert()
                 }
             )
-        ) {
-            Button("OK", role: .cancel) {
-                viewModel.clearAlert()
-            }
-        } message: {
-            Text(viewModel.alertMessage ?? "")
         }
     }
 
@@ -88,17 +89,16 @@ struct NotificationsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.color414141)
+                    .foregroundColor(AppColor.color414141)
                 Text(description)
                     .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
 
             Spacer()
 
             Toggle("", isOn: isOn)
-                .toggleStyle(.switch)
-                .tint(AppColor.green)
+                .toggleStyle(SwitchToggleStyle(tint: AppColor.green))
         }
         .padding(18)
         .background(
@@ -109,8 +109,13 @@ struct NotificationsView: View {
     }
 }
 
-#Preview("Notification Settings") {
-    NavigationStack {
-        NotificationsView(session: SessionManager())
+#if DEBUG
+struct NotificationsView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            NotificationsView(session: SessionManager())
+        }
+        .previewDisplayName("Notification Settings")
     }
 }
+#endif

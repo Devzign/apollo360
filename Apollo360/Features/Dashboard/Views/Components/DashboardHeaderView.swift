@@ -17,7 +17,7 @@ struct DashboardHeaderView: View {
             Button(action: onMenuTap) {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .padding(8)
                     .background(
                         Circle()
@@ -28,10 +28,10 @@ struct DashboardHeaderView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(greeting)
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
                 Text(userName)
                     .font(AppFont.display(size: 22, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
             }
             Spacer()
             HStack(spacing: 12) {
@@ -49,7 +49,7 @@ struct DashboardHeaderView: View {
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundStyle(Color.black.opacity(0.08)),
+                .foregroundColor(Color.black.opacity(0.08)),
             alignment: .bottom
         )
     }
@@ -69,7 +69,7 @@ private struct HeaderIconButton: View {
             // Centered icon
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             // Badge only
             if showsBadge {

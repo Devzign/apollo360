@@ -76,16 +76,16 @@ struct SideMenuView: View {
             Image(systemName: "person.circle.fill")
                 .resizable()
                 .frame(width: 60, height: 60)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .padding(.leading, 8)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Hello,")
                     .font(AppFont.body(size: 16))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundColor(.white.opacity(0.85))
                 Text("John Marks")
                     .font(AppFont.display(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             Spacer()
@@ -93,7 +93,7 @@ struct SideMenuView: View {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .padding(6)
                     .background(Circle().stroke(Color.white.opacity(0.4), lineWidth: 2))
             }
@@ -114,11 +114,11 @@ struct SideMenuView: View {
             HStack {
                 Image(systemName: option.icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .frame(width: 28)
                 Text(option.title)
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                 Spacer()
                 if let badge = option.badge {
                     Text("\(badge)")
@@ -151,10 +151,10 @@ struct SideMenuView: View {
             HStack(spacing: 14) {
                 Image(systemName: "arrow.backward.circle")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                 Text("Logout")
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                 Spacer()
             }
             .padding(.vertical, 18)

@@ -33,7 +33,7 @@ struct SectionHeaderView: View {
 
             Text(title)
                 .font(AppFont.display(size: 22, weight: .bold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Spacer()
                 Button(action: onSyncTap) {
@@ -63,7 +63,7 @@ private struct HeaderIconButton: View {
                 .frame(width: 40, height: 40)
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             if showsBadge {
                 Circle()
                     .fill(AppColor.red)
@@ -79,6 +79,11 @@ private struct HeaderIconButton: View {
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
-    SectionHeaderView(title: "Library", onMenuTap: {}, onSyncTap: {}, onSettingsTap: {})
+#if DEBUG
+struct SectionHeaderView_Previews: PreviewProvider {
+    static var previews: some View {
+        SectionHeaderView(title: "Library", onMenuTap: {}, onSyncTap: {}, onSettingsTap: {})
+            .previewLayout(.sizeThatFits)
+    }
 }
+#endif

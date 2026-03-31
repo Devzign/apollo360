@@ -36,11 +36,11 @@ struct FormsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Apollo 360 Health Forms")
                 .font(AppFont.display(size: 28, weight: .semibold))
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
 
             Text("Please take a moment to carefully read and sign our patient forms.")
                 .font(AppFont.body(size: 16))
-                .foregroundStyle(AppColor.black.opacity(0.78))
+                .foregroundColor(AppColor.black.opacity(0.78))
         }
     }
 
@@ -99,10 +99,10 @@ struct FormsView: View {
         VStack(spacing: 12) {
             Text("Couldn't load forms")
                 .font(AppFont.display(size: 18, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Text(message)
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.red)
+                .foregroundColor(AppColor.red)
             Button("Retry") {
                 viewModel.refresh()
             }
@@ -110,7 +110,7 @@ struct FormsView: View {
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(AppColor.green)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -121,10 +121,10 @@ struct FormsView: View {
         VStack(spacing: 10) {
             Text("No Form Data Available")
                 .font(AppFont.body(size: 15, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Text("Check back later or pull to refresh.")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 28)
@@ -142,13 +142,13 @@ private struct FormRow: View {
                 .overlay(
                     Image(systemName: form.signed ? "checkmark.seal.fill" : "doc.plaintext")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(form.signed ? AppColor.green : AppColor.grey)
+                        .foregroundColor(form.signed ? AppColor.green : AppColor.grey)
                 )
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(form.title)
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .lineLimit(2)
 
                 HStack(spacing: 8) {
@@ -157,13 +157,13 @@ private struct FormRow: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(form.signedStatusColor.opacity(0.15))
-                        .foregroundStyle(form.signedStatusColor)
+                        .foregroundColor(form.signedStatusColor)
                         .clipShape(Capsule())
 
                     if let signedDate = form.signedDate, !signedDate.isEmpty {
                         Text("Signed: \(signedDate)")
                             .font(AppFont.body(size: 12))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
                 }
             }
@@ -172,7 +172,7 @@ private struct FormRow: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(AppColor.black.opacity(0.6))
+                .foregroundColor(AppColor.black.opacity(0.6))
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 18)
@@ -192,7 +192,7 @@ private struct FormDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text(form.title)
                     .font(AppFont.display(size: 24, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 statusRow
 
@@ -214,13 +214,13 @@ private struct FormDetailView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(form.signedStatusColor.opacity(0.18))
-                .foregroundStyle(form.signedStatusColor)
+                .foregroundColor(form.signedStatusColor)
                 .clipShape(Capsule())
 
             if let signedDate = form.signedDate, !signedDate.isEmpty {
                 Text("Signed on \(signedDate)")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
         }
     }
@@ -229,17 +229,17 @@ private struct FormDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Description")
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             if let desc = form.description, !desc.isEmpty {
                 Text(desc)
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.black.opacity(0.8))
+                    .foregroundColor(AppColor.black.opacity(0.8))
                     .multilineTextAlignment(.leading)
             } else {
                 Text("No description provided.")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
         }
         .padding(16)
@@ -251,16 +251,23 @@ private struct FormDetailView: View {
     }
 }
 
-#Preview("iPhone", traits: .sizeThatFitsLayout) {
-    NavigationStack {
-        FormsView(horizontalPadding: 20, session: SessionManager())
-            .environment(\.horizontalSizeClass, .compact)
-    }
-}
+#if DEBUG
+struct FormsView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            NavigationView {
+                FormsView(horizontalPadding: 20, session: SessionManager())
+                    .environment(\.horizontalSizeClass, .compact)
+            }
+            .previewDisplayName("iPhone")
 
-#Preview("iPad", traits: .sizeThatFitsLayout) {
-    NavigationStack {
-        FormsView(horizontalPadding: 50, session: SessionManager())
-            .environment(\.horizontalSizeClass, .regular)
+            NavigationView {
+                FormsView(horizontalPadding: 50, session: SessionManager())
+                    .environment(\.horizontalSizeClass, .regular)
+            }
+            .previewDisplayName("iPad")
+        }
+        .previewLayout(.sizeThatFits)
     }
 }
+#endif

@@ -25,7 +25,7 @@ struct TypewriterText: View {
             // Reserve full layout height
             Text(text)
                 .font(font)
-                .foregroundStyle(color)
+                .foregroundColor(color)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
                 .opacity(0)
@@ -33,13 +33,13 @@ struct TypewriterText: View {
 
             Text(displayedText)
                 .font(font)
-                .foregroundStyle(color)
+                .foregroundColor(color)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onBecomeVisible { startTyping() }
-        .onChange(of: text) { _, _ in resetAndStart() }
+        .onChange(of: text) { _ in resetAndStart() }
         .onDisappear {
             typingTask?.cancel()
         }

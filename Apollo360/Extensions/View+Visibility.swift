@@ -17,7 +17,7 @@ private struct VisibilityModifier: ViewModifier {
                 GeometryReader { proxy in
                     Color.clear
                         .onAppear { update(proxy) }
-                        .onChange(of: proxy.frame(in: .global)) { _, _ in
+                        .onChange(of: proxy.frame(in: .global)) { _ in
                             update(proxy)
                         }
                 }

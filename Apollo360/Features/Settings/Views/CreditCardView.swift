@@ -57,11 +57,11 @@ struct CreditCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Credit Card Information")
                 .font(AppFont.display(size: 28, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             Text("Add and manage the cards we can use to process your care transactions.")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -78,26 +78,26 @@ struct CreditCardView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Credit Card Information")
                 .font(AppFont.display(size: 34, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             Text("Customer Payment Profile ID: \(card.customerPaymentProfileId)")
                 .font(AppFont.body(size: 16, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Text("Card Number: \(card.cardNumber ?? card.maskedNumber)")
                 .font(AppFont.body(size: 16, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Text("Expiration Date: \(card.expiryDisplay)")
                 .font(AppFont.body(size: 16, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Button {
                 viewModel.deleteCard(card.id)
             } label: {
                 Text("Remove Credit Card")
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(Color.red)
@@ -118,11 +118,11 @@ struct CreditCardView: View {
         VStack(spacing: 10) {
             Text("No cards registered yet.")
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             Text("Use the + button to add a new card.")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .padding(.top, 40)
     }
@@ -131,11 +131,11 @@ struct CreditCardView: View {
         VStack(spacing: 10) {
             Text("Something went wrong")
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             Text(message)
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.red)
+                .foregroundColor(AppColor.red)
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 20)
@@ -145,7 +145,7 @@ struct CreditCardView: View {
         Button(action: { isPresentingAddSheet = true }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .frame(width: 56, height: 56)
                 .background(AppColor.green)
                 .clipShape(Circle())
@@ -158,36 +158,36 @@ struct CreditCardView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Add Card")
                 .font(AppFont.display(size: 24, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
 
             FormInputField(label: "Card Number", value: $cardNumber, placeholder: "1234 5678 9012 3456", keyboardType: .numberPad)
-                .onChange(of: cardNumber) { _, newValue in
+                .onChange(of: cardNumber) { newValue in
                     cardNumber = formatCardNumber(newValue)
                     cardNumberError = validateCardNumber(cardNumber)
                 }
             VStack(alignment: .leading, spacing: 8) {
                 Text("Expiration (MM - YY)")
                     .font(AppFont.body(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
 
                 HStack(spacing: 10) {
                     FormInputField(label: "", value: $expMonth, placeholder: "MM", keyboardType: .numberPad)
-                        .onChange(of: expMonth) { _, newValue in
+                        .onChange(of: expMonth) { newValue in
                             expMonth = sanitizeDigits(newValue, maxLength: 2)
                             expiryError = validateExpiry(month: expMonth, year: expYear)
                         }
                     Text("-")
                         .font(AppFont.body(size: 20, weight: .bold))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                     FormInputField(label: "", value: $expYear, placeholder: "YY", keyboardType: .numberPad)
-                        .onChange(of: expYear) { _, newValue in
+                        .onChange(of: expYear) { newValue in
                             expYear = sanitizeDigits(newValue, maxLength: 4)
                             expiryError = validateExpiry(month: expMonth, year: expYear)
                         }
                 }
             }
             FormInputField(label: "CVC", value: $cvv, placeholder: "123", keyboardType: .numberPad)
-                .onChange(of: cvv) { _, newValue in
+                .onChange(of: cvv) { newValue in
                     cvv = sanitizeDigits(newValue, maxLength: 4)
                     cvvError = validateCVV(cvv)
                 }
@@ -195,23 +195,23 @@ struct CreditCardView: View {
             if let cardNumberError {
                 Text(cardNumberError)
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
             }
             if let expiryError {
                 Text(expiryError)
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
             }
             if let cvvError {
                 Text(cvvError)
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
             }
 
             if let error = viewModel.errorMessage, !error.isEmpty {
                 Text(error)
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
             }
 
             Button(action: submitCard) {
@@ -227,7 +227,7 @@ struct CreditCardView: View {
             }
             .padding()
             .background(AppColor.green)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .disabled(viewModel.isSubmitting)
 
@@ -236,11 +236,6 @@ struct CreditCardView: View {
         .padding(.horizontal, 20)
         .padding(.top, 24)
         .padding(.bottom, 16)
-        .presentationDetents([.height(700), .large])
-        .presentationContentInteraction(.scrolls)
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(36)
-        .interactiveDismissDisabled(viewModel.isSubmitting)
     }
 
     private func submitCard() {
@@ -322,8 +317,13 @@ struct CreditCardView: View {
     }
 }
 
-#Preview("Credit Cards") {
-    NavigationStack {
-        CreditCardView(session: SessionManager())
+#if DEBUG
+struct CreditCardView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            CreditCardView(session: SessionManager())
+        }
+        .previewDisplayName("Credit Cards")
     }
 }
+#endif

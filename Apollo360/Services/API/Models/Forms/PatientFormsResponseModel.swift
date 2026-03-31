@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct PatientFormsAPIResponse: Decodable {
     let data: [PatientFormAPIModel]

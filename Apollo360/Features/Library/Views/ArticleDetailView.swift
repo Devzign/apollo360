@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct ArticleDetailView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     @StateObject private var viewModel: ArticleDetailViewModel
     private let session: SessionManager
 
@@ -28,13 +30,13 @@ struct ArticleDetailView: View {
                     if viewModel.isLoading {
                         ProgressView("Loading article...")
                             .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
 
                     if let error = viewModel.errorMessage, !error.isEmpty {
                         Text(error)
                             .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.red)
+                            .foregroundColor(AppColor.red)
                             .padding(.horizontal, 12)
                     }
 
@@ -51,7 +53,7 @@ struct ArticleDetailView: View {
         }
         .background(AppColor.secondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarHidden(true)
         .onAppear { viewModel.load() }
     }
 
@@ -72,17 +74,20 @@ struct ArticleDetailView: View {
                 if let title = viewModel.article?.title {
                     Text(title)
                         .font(AppFont.display(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .lineLimit(3)
                         .minimumScaleFactor(0.82)
                 }
                 if let author = viewModel.article?.author {
                     HStack(spacing: 10) {
-                        AsyncImage(url: URL(string: author.image ?? "")) { phase in
-                            if case .success(let image) = phase {
-                                image.resizable().scaledToFill()
+                        Group {
+                            if let url = URL(string: author.image ?? "") {
+                                RemoteArticleImage(url: url) {
+                                    Circle().fill(Color.white.opacity(0.25))
+                                }
                             } else {
-                                Circle().fill(Color.white.opacity(0.25))
+                                Circle()
+                                    .fill(Color.white.opacity(0.25))
                             }
                         }
                         .frame(width: 34, height: 34)
@@ -90,10 +95,10 @@ struct ArticleDetailView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("By \(author.staffName ?? "Apollo Team")")
                                 .font(AppFont.body(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
+                                .foregroundColor(.white)
                             Text(author.credentials ?? "")
                                 .font(AppFont.body(size: 12))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundColor(.white.opacity(0.9))
                         }
 
                         Spacer(minLength: 8)
@@ -101,7 +106,7 @@ struct ArticleDetailView: View {
                         Button(action: { viewModel.toggleSaved() }) {
                             Image(systemName: (viewModel.article?.isSaved ?? false) ? "heart.fill" : "heart")
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle((viewModel.article?.isSaved ?? false) ? AppColor.red : AppColor.black)
+                                .foregroundColor((viewModel.article?.isSaved ?? false) ? AppColor.red : AppColor.black)
                                 .frame(width: 36, height: 36)
                                 .background(Color.white.opacity(0.92))
                                 .clipShape(Circle())
@@ -112,52 +117,53 @@ struct ArticleDetailView: View {
             }
             .padding(16)
         }
-        .overlay(alignment: .topLeading) {
-            Button(action: { dismiss() }) {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(AppColor.black)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.92))
-                    .clipShape(Circle())
-            }
-            .padding(14)
-        }
-        .overlay(alignment: .topTrailing) {
-            Button(action: {}) {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(AppColor.black)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.92))
-                    .clipShape(Circle())
-            }
-            .padding(14)
-        }
+        .overlay(heroButtonsOverlay(contentWidth: contentWidth))
         .frame(width: contentWidth, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .padding(.horizontal, 12)
         .padding(.top, 10)
     }
 
+    private func heroButtonsOverlay(contentWidth: CGFloat) -> some View {
+        HStack {
+            Button(action: { presentationMode.wrappedValue.dismiss() }) {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppColor.black)
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.92))
+                    .clipShape(Circle())
+            }
+
+            Spacer()
+
+            Button(action: {}) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppColor.black)
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.92))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(14)
+        .frame(width: contentWidth, height: 280, alignment: .top)
+    }
+
     private var heroImage: some View {
         Group {
             if let image = viewModel.article?.heroImage,
                let url = URL(string: resolvedImageURL(image)) {
-                AsyncImage(url: url) { phase in
-                    if case .success(let loaded) = phase {
-                        loaded.resizable().scaledToFill()
-                    } else {
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                RemoteArticleImage(url: url) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .shimmer()
-                    }
+                        )
+                        .shimmer()
                 }
             } else {
                 Rectangle()
@@ -179,11 +185,11 @@ struct ArticleDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Summary")
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                 ForEach(summary, id: \.self) { point in
                     Text("• \(point)")
                         .font(AppFont.body(size: 15))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                         .lineSpacing(4)
                 }
             }
@@ -203,20 +209,16 @@ struct ArticleDetailView: View {
                    !image.isEmpty,
                    !image.hasSuffix("/articles/"),
                    let url = URL(string: image) {
-                    AsyncImage(url: url) { phase in
-                        if case .success(let loaded) = phase {
-                            loaded.resizable().scaledToFill()
-                        } else {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                    RemoteArticleImage(url: url) {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
-                                .shimmer()
-                        }
+                            )
+                            .shimmer()
                     }
                     .frame(width: contentWidth)
                     .frame(height: 200)
@@ -231,7 +233,7 @@ struct ArticleDetailView: View {
                 if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(normalizedBodyText(text, alignment: section.alignment))
                         .font(AppFont.body(size: 16))
-                        .foregroundStyle(AppColor.black.opacity(0.78))
+                        .foregroundColor(AppColor.black.opacity(0.78))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(width: contentWidth, alignment: .leading)
@@ -268,5 +270,51 @@ struct ArticleDetailView: View {
             return raw.replacingOccurrences(of: "{filedir_6}", with: "https://a360h.com/assets/images/articles/")
         }
         return raw
+    }
+}
+
+private struct RemoteArticleImage<Placeholder: View>: View {
+    @StateObject private var loader: ArticleRemoteImageLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: ArticleRemoteImageLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class ArticleRemoteImageLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }

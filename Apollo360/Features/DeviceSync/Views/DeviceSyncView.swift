@@ -3,7 +3,7 @@ import SafariServices
 import Combine
 
 struct DeviceSyncView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     let session: SessionManager
 
     @StateObject private var store = HealthSyncStore()
@@ -29,21 +29,22 @@ struct DeviceSyncView: View {
         }
         .background(AppColor.secondary)
         .navigationBarBackButtonHidden(true)
-        .task { store.configureIfNeeded() }
-        .refreshable { await syncNow() }
+        .onAppear { store.configureIfNeeded() }
         .sheet(isPresented: $showMarketplace) {
             if let url = marketplaceURL {
                 SafariView(url: url)
             }
         }
-        .alert("Sync Devices", isPresented: Binding(get: {
+        .alert(isPresented: Binding(get: {
             store.errorMessage != nil
         }, set: { newValue in
             if !newValue { store.errorMessage = nil }
         })) {
-            Button("OK", role: .cancel) { store.errorMessage = nil }
-        } message: {
-            Text(store.errorMessage ?? "")
+            Alert(
+                title: Text("Sync Devices"),
+                message: Text(store.errorMessage ?? ""),
+                dismissButton: .cancel(Text("OK")) { store.errorMessage = nil }
+            )
         }
     }
 
@@ -56,29 +57,29 @@ struct DeviceSyncView: View {
             VStack(spacing: 18) {
                 HStack {
                     Button {
-                        dismiss()
+                        presentationMode.wrappedValue.dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(AppColor.color414141)
+                            .foregroundColor(AppColor.color414141)
                     }
 
                     Text("Sync Devices")
                         .font(AppFont.display(size: 24, weight: .semibold))
-                        .foregroundStyle(AppColor.color414141)
+                        .foregroundColor(AppColor.color414141)
                     Spacer()
                     Button {
                         openMarketplaceIfAvailable()
                     } label: {
                         Image(systemName: "plus.circle")
                             .font(.system(size: 34, weight: .regular))
-                            .foregroundStyle(AppColor.color414141)
+                            .foregroundColor(AppColor.color414141)
                     }
                 }
 
                 Text("Swipe Down to Refresh")
                     .font(AppFont.display(size: 20, weight: .bold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .multilineTextAlignment(.center)
 
                 Circle()
@@ -87,7 +88,7 @@ struct DeviceSyncView: View {
                     .overlay(
                         Image(systemName: "arrow.down")
                             .font(.system(size: 28, weight: .medium))
-                            .foregroundStyle(AppColor.color414141)
+                            .foregroundColor(AppColor.color414141)
                     )
             }
             .padding(.horizontal, 24)
@@ -112,7 +113,7 @@ struct DeviceSyncView: View {
 
                 Text("Connected Device")
                     .font(AppFont.display(size: 18, weight: .bold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 8)
 
@@ -128,7 +129,7 @@ struct DeviceSyncView: View {
             } label: {
                 Text("Manage your devices")
                     .font(AppFont.body(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
                     .background(AppColor.green)
@@ -141,10 +142,10 @@ struct DeviceSyncView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "applelogo")
                         .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                     Text(buttonTitle)
                         .font(AppFont.body(size: 22, weight: .semibold))
-                        .foregroundStyle(AppColor.color414141)
+                        .foregroundColor(AppColor.color414141)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
@@ -157,7 +158,7 @@ struct DeviceSyncView: View {
 
             Text(lastSyncText)
                 .font(AppFont.body(size: 14, weight: .medium))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, 4)
         }
@@ -177,20 +178,27 @@ struct DeviceSyncView: View {
                 .fill(Color.white)
                 .frame(width: 56, height: 56)
                 .overlay(
-                    Text(initials(from: name))
-                        .font(AppFont.body(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.grey)
-                )
-                .overlay(alignment: .bottomTrailing) {
-                    Circle()
-                        .fill(isConnected ? Color.green : Color.red)
-                        .frame(width: 12, height: 12)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                }
+                    ZStack {
+                        Text(initials(from: name))
+                            .font(AppFont.body(size: 16, weight: .semibold))
+                            .foregroundColor(AppColor.grey)
 
-                Text(name)
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Circle()
+                                    .fill(isConnected ? Color.green : Color.red)
+                                    .frame(width: 12, height: 12)
+                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            }
+                        }
+                    }
+                )
+
+            Text(name)
                 .font(AppFont.display(size: 18, weight: .medium))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
@@ -198,7 +206,7 @@ struct DeviceSyncView: View {
 
             Button(actionTitle) { onAction() }
                 .font(AppFont.body(size: 13, weight: .medium))
-                .foregroundStyle(isConnected ? AppColor.green : AppColor.green)
+                .foregroundColor(isConnected ? AppColor.green : AppColor.green)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .frame(minWidth: 84)

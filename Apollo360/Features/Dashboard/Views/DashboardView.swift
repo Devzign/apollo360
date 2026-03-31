@@ -28,12 +28,9 @@ struct DashboardView: View {
     
     // MARK: - Body
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ZStack(alignment: .bottom) {
-                
-                contentView
-                    .background(Color.black.opacity(0.02))
-                    .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
                     SectionHeaderView(
                         title: selectedTab.displayTitle,
                         onMenuTap: {
@@ -47,8 +44,10 @@ struct DashboardView: View {
                         }
                     )
                     .padding(.horizontal, headerHorizontalPadding)
-                    }
-                
+                    contentView
+                        .background(Color.black.opacity(0.02))
+                }
+
                 if selectedTab != .settings {
                     DashboardTabBar(
                         selectedTab: $selectedTab,
@@ -57,26 +56,34 @@ struct DashboardView: View {
                     .padding(.horizontal, 5)
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .overlay {
+            .navigationBarHidden(true)
+            .overlay(
                 ZStack {
                     if viewModel.isLoading {
                         AppShimmerOverlay()
                     }
                     sideMenuOverlay
                 }
+            )
+            .alert(isPresented: $showingLogoutConfirmation) {
+                Alert(
+                    title: Text("Logout"),
+                    message: Text("Are you sure you want to log out of Apollo360?"),
+                    primaryButton: .destructive(Text("Logout")) {
+                        viewModel.logout()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
-            .alert("Logout", isPresented: $showingLogoutConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Logout", role: .destructive) {
-                    viewModel.logout()
+            .background(
+                NavigationLink(
+                    destination: DeviceSyncView(session: session),
+                    isActive: $isSyncDevicesVisible
+                ) {
+                    EmptyView()
                 }
-            } message: {
-                Text("Are you sure you want to log out of Apollo360?")
-            }
-            .navigationDestination(isPresented: $isSyncDevicesVisible) {
-                DeviceSyncView(session: session)
-            }
+                .hidden()
+            )
         }
         .background(
             GeometryReader { proxy in
@@ -133,7 +140,6 @@ struct DashboardView: View {
                 .padding(.horizontal, screenHorizontalPadding)
                 .padding(.top, 16)
             }
-            .scrollIndicators(.hidden)
 
         case .metrics:
             MetricsView(horizontalPadding: screenHorizontalPadding, session: session)

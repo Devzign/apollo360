@@ -30,17 +30,22 @@ struct DashboardCard<Content: View>: View {
     }
 }
 
-#Preview {
-    DashboardCard {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Preview Title")
-                .font(AppFont.display(size: 18, weight: .bold))
-                .foregroundStyle(AppColor.black)
-            Text("Preview content goes here.")
-                .font(AppFont.body(size: 13))
-                .foregroundStyle(AppColor.grey)
+#if DEBUG
+struct DashboardCard_Previews: PreviewProvider {
+    static var previews: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Preview Title")
+                    .font(AppFont.display(size: 18, weight: .bold))
+                    .foregroundColor(AppColor.black)
+                Text("Preview content goes here.")
+                    .font(AppFont.body(size: 13))
+                    .foregroundColor(AppColor.grey)
+            }
         }
+        .padding()
+        .background(Color.black.opacity(0.02))
+        .previewLayout(.sizeThatFits)
     }
-    .padding()
-    .background(Color.black.opacity(0.02))
 }
+#endif

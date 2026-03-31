@@ -6,13 +6,14 @@
 //
 
 import SwiftUI
+import Combine
 import UniformTypeIdentifiers
 import WebKit
 
 struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     let provider: MessageProvider
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     @State private var isFileImporterPresented = false
     @State private var previewURL: URL?
 
@@ -43,7 +44,7 @@ struct ConversationView: View {
                 } else if let error = viewModel.errorMessage {
                     VStack {
                         Spacer()
-                        Text(error).foregroundStyle(.red).padding()
+                        Text(error).foregroundColor(.red).padding()
                         Spacer()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,8 +67,7 @@ struct ConversationView: View {
                             .padding(.horizontal, 12)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .onChange(of: viewModel.messages.count) { oldValue, newValue in
-                            guard newValue != oldValue else { return }
+                        .onChange(of: viewModel.messages.count) { _ in
                             if let lastId = viewModel.messages.last?.id {
                                 proxy.scrollTo(lastId, anchor: .bottom)
                             }
@@ -94,7 +94,7 @@ struct ConversationView: View {
             )
         ) {
             if let url = previewURL {
-                NavigationStack {
+                NavigationView {
                     AttachmentPreviewView(url: url)
                 }
             }
@@ -120,10 +120,10 @@ struct ConversationView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Button(action: { dismiss() }) {
+            Button(action: { presentationMode.wrappedValue.dismiss() }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
             }
 
             AvatarView(urlString: provider.avatarURL, placeholderText: provider.name)
@@ -138,13 +138,13 @@ struct ConversationView: View {
                         .frame(width: 8, height: 8)
                     Text("Online")
                         .font(AppFont.body(size: 12))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                 }
             }
             Spacer()
             Image(systemName: "ellipsis")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -159,7 +159,7 @@ struct ConversationView: View {
             if let selectedAttachment = viewModel.selectedAttachmentName {
                 HStack(spacing: 8) {
                     Image(systemName: "doc.fill")
-                        .foregroundStyle(AppColor.green)
+                        .foregroundColor(AppColor.green)
                     Text(selectedAttachment)
                         .font(AppFont.body(size: 12, weight: .medium))
                         .lineLimit(1)
@@ -168,7 +168,7 @@ struct ConversationView: View {
                         viewModel.clearAttachment()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
                     .buttonStyle(.plain)
                 }
@@ -184,11 +184,10 @@ struct ConversationView: View {
                 } label: {
                     Image(systemName: "paperclip")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(AppColor.green)
+                        .foregroundColor(AppColor.green)
                 }
 
-                TextField("Type your message...", text: $viewModel.pendingMessageText, axis: .vertical)
-                    .lineLimit(1...4)
+                TextField("Type your message...", text: $viewModel.pendingMessageText)
                     .padding(12)
                     .background(Color.black.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -196,7 +195,7 @@ struct ConversationView: View {
                 Button(action: viewModel.sendMessage) {
                     Image(systemName: viewModel.isSending ? "hourglass" : "paperplane.fill")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(12)
                         .background(AppColor.green)
                         .clipShape(Circle())
@@ -221,7 +220,7 @@ private struct MessageBubble: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(message.message)
                     .font(AppFont.body(size: 15))
-                    .foregroundStyle(isMine ? .white : AppColor.black)
+                    .foregroundColor(isMine ? .white : AppColor.black)
 
                 if let filePath = message.filePath,
                    !filePath.isEmpty {
@@ -234,7 +233,7 @@ private struct MessageBubble: View {
                     Text(formattedTime)
                         .font(AppFont.body(size: 11))
                 }
-                .foregroundStyle(isMine ? Color.white.opacity(0.8) : AppColor.grey)
+                .foregroundColor(isMine ? Color.white.opacity(0.8) : AppColor.grey)
             }
             .padding(12)
             .background(isMine ? AppColor.green : Color.white)
@@ -260,7 +259,7 @@ private struct MessageBubble: View {
                         .lineLimit(1)
                 }
                 .font(AppFont.body(size: 12, weight: .medium))
-                .foregroundStyle(isMine ? .white : AppColor.green)
+                .foregroundColor(isMine ? .white : AppColor.green)
             }
             .buttonStyle(.plain)
         } else {
@@ -270,7 +269,7 @@ private struct MessageBubble: View {
                     .lineLimit(1)
             }
             .font(AppFont.body(size: 12, weight: .medium))
-            .foregroundStyle(isMine ? .white : AppColor.green)
+            .foregroundColor(isMine ? .white : AppColor.green)
         }
     }
 
@@ -322,20 +321,15 @@ private struct AvatarView: View {
             Circle().fill(bg)
             if let urlString,
                let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().scaledToFill()
-                    default:
-                        Text(initials)
-                            .font(AppFont.body(size: 14, weight: .bold))
-                            .foregroundStyle(AppColor.green)
-                    }
+                RemoteCircleAvatar(url: url) {
+                    Text(initials)
+                        .font(AppFont.body(size: 14, weight: .bold))
+                        .foregroundColor(AppColor.green)
                 }
             } else {
                 Text(initials)
                     .font(AppFont.body(size: 14, weight: .bold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
             }
         }
         .clipShape(Circle())
@@ -345,5 +339,52 @@ private struct AvatarView: View {
         let comps = placeholderText.split(separator: " ")
         let letters = comps.prefix(2).compactMap { $0.first }
         return letters.map(String.init).joined().uppercased()
+    }
+}
+
+private struct RemoteCircleAvatar<Placeholder: View>: View {
+    @StateObject private var loader: RemoteImageLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: RemoteImageLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class RemoteImageLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }

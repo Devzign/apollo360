@@ -1,5 +1,5 @@
 import SwiftUI
-import PhotosUI
+import Combine
 import UIKit
 import UniformTypeIdentifiers
 
@@ -9,8 +9,9 @@ struct UserProfileView: View {
     @State private var dob = ""
     @State private var email = ""
     @State private var phone = ""
-    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var isImagePickerPresented = false
     @State private var avatarImage: Image?
+    @State private var selectedImageData: Data?
 
     init(session: SessionManager) {
         _viewModel = StateObject(wrappedValue: UserProfileViewModel(session: session))
@@ -27,8 +28,11 @@ struct UserProfileView: View {
             viewModel.loadProfile(force: true)
         }
         .onReceive(viewModel.$profile) { handleProfileChange($0) }
-        .onChange(of: photoPickerItem?.itemIdentifier) { newValue, _ in
-            handlePhotoPickerChange(newValue)
+        .onChange(of: selectedImageData) { newValue in
+            handleImageSelection(newValue)
+        }
+        .sheet(isPresented: $isImagePickerPresented) {
+            LegacyImagePicker(imageData: $selectedImageData)
         }
     }
 
@@ -50,17 +54,13 @@ struct UserProfileView: View {
         .padding(.vertical, 24)
     }
 
-    private func handlePhotoPickerChange(_ _: String?) {
-        guard let item = photoPickerItem else { return }
-        Task {
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                if let uiImage = UIImage(data: data) {
-                    avatarImage = Image(uiImage: uiImage)
-                }
-                let mimeType = UTType.jpeg.preferredMIMEType ?? "image/jpeg"
-                viewModel.uploadProfilePhoto(imageData: data, mimeType: mimeType)
-            }
+    private func handleImageSelection(_ data: Data?) {
+        guard let data else { return }
+        if let uiImage = UIImage(data: data) {
+            avatarImage = Image(uiImage: uiImage)
         }
+        let mimeType = UTType.jpeg.preferredMIMEType ?? "image/jpeg"
+        viewModel.uploadProfilePhoto(imageData: data, mimeType: mimeType)
     }
 
     private func handleProfileChange(_ profile: Profile?) {
@@ -74,7 +74,7 @@ struct UserProfileView: View {
     private var profileHeader: some View {
         Text("User Profile")
             .font(AppFont.display(size: 28, weight: .semibold))
-            .foregroundStyle(AppColor.green)
+            .foregroundColor(AppColor.green)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -83,10 +83,12 @@ struct UserProfileView: View {
             avatarView
 
             HStack(spacing: 12) {
-                PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
+                Button {
+                    isImagePickerPresented = true
+                } label: {
                     Text("Choose File")
                         .font(AppFont.body(size: 13, weight: .semibold))
-                        .foregroundStyle(AppColor.green)
+                        .foregroundColor(AppColor.green)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 18)
                         .background(
@@ -94,10 +96,11 @@ struct UserProfileView: View {
                                 .stroke(AppColor.green, lineWidth: 1)
                         )
                 }
+                .buttonStyle(.plain)
 
-                Text(photoPickerItem == nil ? "no file selected" : "file selected")
+                Text(selectedImageData == nil ? "no file selected" : "file selected")
                     .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
 
                 Spacer()
             }
@@ -108,10 +111,11 @@ struct UserProfileView: View {
                     .fill(Color.white)
                     .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 2)
             )
+
             if let uploadError = viewModel.uploadError {
                 Text(uploadError)
                     .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -142,31 +146,20 @@ struct UserProfileView: View {
                     .clipShape(Circle())
             } else if let urlString = viewModel.profile?.avatarUrl,
                       let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        placeholderAvatar
-                            .shimmer()
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        placeholderAvatar
-                    }
-                }
-                .frame(width: 110, height: 110)
-                .clipShape(Circle())
+                RemoteAvatarView(url: url, placeholder: placeholderAvatar)
+                    .frame(width: 110, height: 110)
+                    .clipShape(Circle())
             } else {
                 placeholderAvatar
             }
+
             if viewModel.isUploadingPhoto {
                 Circle()
                     .fill(Color.black.opacity(0.35))
                     .frame(width: 110, height: 110)
                 ProgressView()
                     .progressViewStyle(.circular)
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
         }
     }
@@ -180,7 +173,7 @@ struct UserProfileView: View {
                     .resizable()
                     .scaledToFit()
                     .padding(24)
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
             )
     }
 
@@ -188,7 +181,7 @@ struct UserProfileView: View {
         VStack(spacing: 14) {
             Text(message)
                 .font(AppFont.body(size: 15, weight: .semibold))
-                .foregroundStyle(AppColor.red)
+                .foregroundColor(AppColor.red)
                 .multilineTextAlignment(.center)
 
             Button("Retry", action: { viewModel.loadProfile(force: true) })
@@ -196,13 +189,12 @@ struct UserProfileView: View {
                 .padding(.vertical, 10)
                 .padding(.horizontal, 18)
                 .background(AppColor.green)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .clipShape(Capsule())
         }
         .padding()
         .frame(maxWidth: .infinity)
     }
-
 }
 
 private struct ProfileField: View {
@@ -213,7 +205,7 @@ private struct ProfileField: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .font(AppFont.body(size: 12, weight: .semibold))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
 
             Text(value.isEmpty ? "—" : value)
                 .font(AppFont.body(size: 16))
@@ -229,5 +221,92 @@ private struct ProfileField: View {
                         )
                 )
         }
+    }
+}
+
+private struct LegacyImagePicker: UIViewControllerRepresentable {
+    @Binding var imageData: Data?
+    @Environment(\.presentationMode) private var presentationMode
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        picker.mediaTypes = ["public.image"]
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        private let parent: LegacyImagePicker
+
+        init(_ parent: LegacyImagePicker) {
+            self.parent = parent
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage,
+               let data = image.jpegData(compressionQuality: 0.9) {
+                parent.imageData = data
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
+private struct RemoteAvatarView<Placeholder: View>: View {
+    @StateObject private var loader: RemoteAvatarLoader
+    let placeholder: Placeholder
+
+    init(url: URL, placeholder: Placeholder) {
+        _loader = StateObject(wrappedValue: RemoteAvatarLoader(url: url))
+        self.placeholder = placeholder
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+                    .shimmer()
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class RemoteAvatarLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }

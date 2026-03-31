@@ -13,7 +13,6 @@ struct LoginView: View {
     @EnvironmentObject private var session: SessionManager
     @State private var isDatePickerPresented: Bool = false
     @State private var didAttemptBiometricUnlock: Bool = false
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var cardMaxWidth: CGFloat {
@@ -21,7 +20,7 @@ struct LoginView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ZStack {
                 AppColor.green.ignoresSafeArea()
 
@@ -44,7 +43,7 @@ struct LoginView: View {
         .sheet(isPresented: $isDatePickerPresented) {
             ZStack {
                 Color.white.ignoresSafeArea()
-                NavigationStack {
+                NavigationView {
                     VStack(alignment: .leading, spacing: 24) {
                         DatePicker(
                             "Date of Birth",
@@ -60,7 +59,14 @@ struct LoginView: View {
                             viewModel.updateDOBFields(from: viewModel.datePickerDate)
                             isDatePickerPresented = false
                         }
-                        .buttonStyle(.borderedProminent)
+                        .font(AppFont.body(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(AppColor.green)
+                        )
                         .frame(maxWidth: .infinity)
                     }
                     .padding(.top, 8)
@@ -76,14 +82,15 @@ struct LoginView: View {
                     }
                 }
             }
-            .presentationDetents([.fraction(0.70)])
-            .presentationDragIndicator(.visible)
         }
-        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
-            Button("OK", role: .cancel) { viewModel.showAlert = false }
-        } message: {
-            Text(viewModel.alertMessage)
-                .foregroundStyle(viewModel.alertStyle == .error ? AppColor.red : AppColor.black)
+        .alert(isPresented: $viewModel.showAlert) {
+            Alert(
+                title: Text(viewModel.alertTitle),
+                message: Text(viewModel.alertMessage),
+                dismissButton: .cancel(Text("OK")) {
+                    viewModel.showAlert = false
+                }
+            )
         }
         .onAppear {
             if viewModel.onVerifySuccess == nil {
@@ -110,11 +117,11 @@ struct LoginView: View {
             VStack(spacing: 4) {
                 Text("Sign In")
                     .font(AppFont.display(size: 32, weight: .bold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Text("Enter your Sign In details")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
 
             formFields
@@ -134,10 +141,10 @@ struct LoginView: View {
                 HStack(spacing: 2) {
                     Text("Caregiver")
                         .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                     Text(" Log-In")
                         .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundStyle(AppColor.green)
+                        .foregroundColor(AppColor.green)
                 }
             }
             .padding(.top, 8)
@@ -156,7 +163,7 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Date of Birth")
                 .font(AppFont.body(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             HStack(spacing: 12) {
                 TextField(
@@ -181,7 +188,7 @@ struct LoginView: View {
                         .renderingMode(.template)
                         .scaledToFit()
                         .frame(width: 30, height: 30)
-                        .foregroundStyle(
+                        .foregroundColor(
                             viewModel.selectedDateOfBirth == nil ? Color.gray.opacity(0.7) : AppColor.green
                         )
                 }
@@ -202,7 +209,7 @@ struct LoginView: View {
 
             Text("Phone Number")
                 .font(AppFont.body(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             PhoneInputField(
                 text: viewModel.formattedPhoneNumber,
@@ -212,7 +219,7 @@ struct LoginView: View {
             if let validationMessage = viewModel.phoneValidationMessage {
                 Text(validationMessage)
                     .font(AppFont.body(size: 12, weight: .medium))
-                    .foregroundStyle(AppColor.red)
+                    .foregroundColor(AppColor.red)
             }
         }
     }
@@ -221,7 +228,7 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("OTP")
                 .font(AppFont.body(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             OTPInputField(text: $viewModel.otpCode)
         }
         .padding(.top, 6)
@@ -233,7 +240,7 @@ struct LoginView: View {
                 Toggle(isOn: $viewModel.faceIdEnabled) {
                     Text("Enable Face ID on this device")
                         .font(AppFont.body(size: 14))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                 }
                 .toggleStyle(FaceIDCheckboxToggleStyle())
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,7 +263,7 @@ struct LoginView: View {
 
                 Text(viewModel.isOTPSent ? "Verify OTP" : "Sign In")
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
             }
             .frame(height: 56)
@@ -268,7 +275,7 @@ struct LoginView: View {
         Button(action: attemptBiometricLogin) {
             Label("Login with Face ID", systemImage: "faceid")
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
                 .overlay(
@@ -295,7 +302,7 @@ private struct FaceIDCheckboxToggleStyle: ToggleStyle {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(configuration.isOn ? AppColor.green : Color.gray)
+                    .foregroundColor(configuration.isOn ? AppColor.green : Color.gray)
                 configuration.label
             }
         }
@@ -382,7 +389,7 @@ private struct OTPInputField: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "questionmark.circle.fill")
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
             TextField("Enter Your OTP", text: $text)
                 .font(AppFont.body(size: 16, weight: .medium))
                 .keyboardType(.numberPad)
@@ -402,7 +409,9 @@ private struct OTPInputField: View {
     }
 }
 
-#Preview {
-    LoginView()
-        .environmentObject(SessionManager())
+struct LoginView_Previews: PreviewProvider {
+    static var previews: some View {
+        LoginView()
+            .environmentObject(SessionManager())
+    }
 }

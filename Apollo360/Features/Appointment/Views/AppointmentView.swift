@@ -14,8 +14,21 @@ struct AppointmentView: View {
     let horizontalPadding: CGFloat
     @State private var visibleAppointments: Set<UUID> = []
     @State private var pendingJoinAppointment: AppointmentCard?
-    @State private var showPermissionPrompt = false
-    @State private var showSettingsPrompt = false
+    @State private var activeAlert: AppointmentAlert?
+
+    private enum AppointmentAlert: Identifiable {
+        case joinError
+        case permissionPrompt
+        case settingsPrompt
+
+        var id: Int {
+            switch self {
+            case .joinError: return 0
+            case .permissionPrompt: return 1
+            case .settingsPrompt: return 2
+            }
+        }
+    }
 
     init(horizontalPadding: CGFloat, session: SessionManager) {
         self.horizontalPadding = horizontalPadding
@@ -27,27 +40,27 @@ struct AppointmentView: View {
             LazyVStack(alignment: .leading, spacing: 18) {
                 Text("Upcoming Appointments")
                     .font(AppFont.display(size: 26, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .padding(.top, 6)
 
                 if viewModel.isLoading {
                     ProgressView("Loading appointments...")
                         .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 if let error = viewModel.errorMessage, !error.isEmpty {
                     Text(error)
                         .font(AppFont.body(size: 13, weight: .medium))
-                        .foregroundStyle(AppColor.red)
+                        .foregroundColor(AppColor.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 if !viewModel.isLoading && viewModel.appointments.isEmpty {
                     Text("No upcoming appointments found.")
                         .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -73,43 +86,52 @@ struct AppointmentView: View {
             .padding(.bottom, 140)
         }
         .background(AppColor.secondary.ignoresSafeArea())
+        .id(viewModel.viewResetToken)
         .onAppear {
             viewModel.refresh()
         }
-        .alert("Unable to Join Meeting", isPresented: Binding(
-            get: { (viewModel.joinErrorMessage ?? "").isEmpty == false },
-            set: { newValue in
-                if !newValue {
-                    viewModel.joinErrorMessage = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {
-                viewModel.joinErrorMessage = nil
-            }
-        } message: {
-            Text(viewModel.joinErrorMessage ?? "")
+        .onChange(of: viewModel.viewResetToken) { _ in
+            visibleAppointments = []
+            pendingJoinAppointment = nil
+            activeAlert = nil
         }
-        .alert("Camera & Microphone Access", isPresented: $showPermissionPrompt) {
-            Button("Not Now", role: .cancel) {
-                pendingJoinAppointment = nil
+        .alert(item: $activeAlert) { alert in
+            switch alert {
+            case .joinError:
+                return Alert(
+                    title: Text("Unable to Join Meeting"),
+                    message: Text(viewModel.joinErrorMessage ?? ""),
+                    dismissButton: .cancel(Text("OK")) {
+                        viewModel.joinErrorMessage = nil
+                    }
+                )
+            case .permissionPrompt:
+                return Alert(
+                    title: Text("Camera & Microphone Access"),
+                    message: Text("To join the meeting, allow camera and microphone access."),
+                    primaryButton: .default(Text("Continue")) {
+                        requestPermissionsAndJoin()
+                    },
+                    secondaryButton: .cancel(Text("Not Now")) {
+                        pendingJoinAppointment = nil
+                    }
+                )
+            case .settingsPrompt:
+                return Alert(
+                    title: Text("Permission Required"),
+                    message: Text("Camera or microphone access is disabled. Please enable both in Settings to join the meeting."),
+                    primaryButton: .default(Text("Open Settings")) {
+                        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+                        openURL(settingsURL)
+                    },
+                    secondaryButton: .cancel(Text("Cancel")) {
+                        pendingJoinAppointment = nil
+                    }
+                )
             }
-            Button("Continue") {
-                requestPermissionsAndJoin()
-            }
-        } message: {
-            Text("To join the meeting, allow camera and microphone access.")
         }
-        .alert("Permission Required", isPresented: $showSettingsPrompt) {
-            Button("Cancel", role: .cancel) {
-                pendingJoinAppointment = nil
-            }
-            Button("Open Settings") {
-                guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-                openURL(settingsURL)
-            }
-        } message: {
-            Text("Camera or microphone access is disabled. Please enable both in Settings to join the meeting.")
+        .onChange(of: viewModel.joinErrorMessage) { newValue in
+            activeAlert = (newValue ?? "").isEmpty ? nil : .joinError
         }
     }
 
@@ -123,11 +145,11 @@ struct AppointmentView: View {
         }
 
         if hasDeniedPermissions {
-            showSettingsPrompt = true
+            activeAlert = .settingsPrompt
             return
         }
 
-        showPermissionPrompt = true
+        activeAlert = .permissionPrompt
     }
 
     private var hasRequiredPermissions: Bool {
@@ -154,7 +176,7 @@ struct AppointmentView: View {
                         viewModel.joinNativeCall(for: appointment)
                         pendingJoinAppointment = nil
                     } else {
-                        showSettingsPrompt = true
+                        activeAlert = .settingsPrompt
                     }
                 }
             }
@@ -176,16 +198,16 @@ private struct AppointmentCardView: View {
                     .overlay(
                         Image(systemName: "person.fill")
                             .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(appointment.name)
                         .font(AppFont.display(size: 20, weight: .semibold))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                     Text(appointment.role)
                         .font(AppFont.body(size: 15, weight: .medium))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                 }
 
                 Spacer()
@@ -194,13 +216,13 @@ private struct AppointmentCardView: View {
             HStack(spacing: 14) {
                 Label(appointment.date, systemImage: "calendar")
                     .font(AppFont.body(size: 15, weight: .semibold))
-                    .foregroundStyle(AppColor.black.opacity(0.8))
+                    .foregroundColor(AppColor.black.opacity(0.8))
 
                 Spacer()
 
                 Label(appointment.time, systemImage: "clock")
                     .font(AppFont.body(size: 15, weight: .semibold))
-                    .foregroundStyle(AppColor.black.opacity(0.8))
+                    .foregroundColor(AppColor.black.opacity(0.8))
             }
             .labelStyle(IconLeadingLabelStyle())
 
@@ -212,7 +234,7 @@ private struct AppointmentCardView: View {
                     Image(systemName: "video")
                         .font(.system(size: 18, weight: .semibold))
                 }
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 18)
                 .background(
@@ -236,13 +258,18 @@ private struct IconLeadingLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 8) {
             configuration.icon
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
             configuration.title
         }
     }
 }
 
-#Preview("iPhone", traits: .sizeThatFitsLayout) {
-    AppointmentView(horizontalPadding: 20, session: SessionManager())
-        .environment(\.horizontalSizeClass, .compact)
+#if DEBUG
+struct AppointmentView_Previews: PreviewProvider {
+    static var previews: some View {
+        AppointmentView(horizontalPadding: 20, session: SessionManager())
+            .environment(\.horizontalSizeClass, .compact)
+            .previewLayout(.sizeThatFits)
+    }
 }
+#endif

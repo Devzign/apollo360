@@ -20,13 +20,21 @@ final class AppointmentViewModel: ObservableObject {
     @Published private(set) var appointments: [AppointmentCard] = []
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var isJoiningCall: Bool = false
+    @Published private(set) var viewResetToken = UUID()
     @Published var errorMessage: String?
     @Published var joinErrorMessage: String?
 
     private let session: SessionManager
     private let service: AppointmentAPIService
+    private var callClient: CallClient?
+    private var callAgent: CallAgent?
+    private var activeCall: Call?
 #if canImport(AzureCommunicationUICalling)
     private var callComposite: CallComposite?
+    private var callCompositeState: CallCompositeState = .idle
+    private var pendingAppointmentToJoin: AppointmentCard?
+    private var pendingJoinWorkItem: DispatchWorkItem?
+    private var lastCompositeDismissedAt: Date?
 #endif
 
     init(session: SessionManager, service: AppointmentAPIService) {
@@ -74,7 +82,19 @@ final class AppointmentViewModel: ObservableObject {
     }
 
     func joinNativeCall(for appointment: AppointmentCard) {
-        guard !isJoiningCall else { return }
+        guard !isJoiningCall else {
+#if canImport(AzureCommunicationUICalling)
+            pendingAppointmentToJoin = appointment
+#endif
+            return
+        }
+#if canImport(AzureCommunicationUICalling)
+        if callCompositeState != .idle || callComposite != nil {
+            pendingAppointmentToJoin = appointment
+            leaveCurrentCall()
+            return
+        }
+#endif
         guard canJoinCall(for: appointment) else {
             joinErrorMessage = "Meeting details are missing for this appointment."
             return
@@ -84,6 +104,25 @@ final class AppointmentViewModel: ObservableObject {
             return
         }
 
+        startJoin(for: appointment)
+    }
+
+    private func startJoin(for appointment: AppointmentCard) {
+#if canImport(AzureCommunicationUICalling)
+        pendingJoinWorkItem?.cancel()
+        pendingJoinWorkItem = nil
+
+        let cooldownInterval: TimeInterval = 2.0
+        if let lastCompositeDismissedAt {
+            let elapsed = Date().timeIntervalSince(lastCompositeDismissedAt)
+            if elapsed < cooldownInterval {
+                schedulePendingJoin(for: appointment, after: cooldownInterval - elapsed)
+                return
+            }
+        }
+
+        callCompositeState = .launching
+#endif
         let roomId = (appointment.acsRoomId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let token = (appointment.acsToken ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let displayName = (session.username ?? "Guest").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -97,34 +136,39 @@ final class AppointmentViewModel: ObservableObject {
 #if canImport(AzureCommunicationUICalling)
             let options = CallCompositeOptions(
                 theme: ApolloCallThemeOptions(),
-                setupScreenOrientation: .portrait,
-                callingScreenOrientation: .portrait,
-                enableMultitasking: true,
-                enableSystemPictureInPictureWhenMultitasking: true,
-                displayName: safeName
+                setupScreenOrientation: nil,
+                callingScreenOrientation: nil,
+                enableMultitasking: false,
+                enableSystemPictureInPictureWhenMultitasking: false,
+                displayName: safeName,
+                disableInternalPushForIncomingCall: true
             )
-            let composite = callComposite ?? CallComposite(credential: credential, withOptions: options)
+            let composite = CallComposite(credential: credential, withOptions: options)
             callComposite = composite
+            callCompositeState = .active
 
             composite.events.onDismissed = { [weak self] _ in
                 DispatchQueue.main.async {
-                    self?.isJoiningCall = false
+                    self?.finishCompositeSession()
                 }
             }
             composite.events.onError = { [weak self] error in
                 DispatchQueue.main.async {
-                    self?.isJoiningCall = false
+                    self?.finishCompositeSession()
                     self?.joinErrorMessage = Self.mapJoinError("\(error)")
                     self?.refresh()
                 }
             }
 
-            let localOptions = LocalOptions()
+            let localOptions = LocalOptions(
+                cameraOn: true,
+                microphoneOn: true,
+                skipSetupScreen: true
+            )
             composite.launch(locator: .roomCall(roomId: roomId), localOptions: localOptions)
-            isJoiningCall = false
 #else
-            // Fallback when UI Calling package is not linked to target.
             let client = CallClient()
+            callClient = client
             let callAgentOptions = CallAgentOptions()
             callAgentOptions.displayName = safeName
             client.createCallAgent(userCredential: credential, options: callAgentOptions) { [weak self] agent, agentError in
@@ -136,37 +180,105 @@ final class AppointmentViewModel: ObservableObject {
                         return
                     }
                     guard let agent else {
+                        self.callClient = nil
                         self.isJoiningCall = false
                         self.joinErrorMessage = "Unable to create call agent."
                         return
                     }
+                    self.callAgent = agent
                     let locator = RoomCallLocator(roomId: roomId)
                     let joinOptions = JoinCallOptions()
-                    agent.join(with: locator, joinCallOptions: joinOptions) { [weak self] _, joinError in
+                    agent.join(with: locator, joinCallOptions: joinOptions) { [weak self] call, joinError in
                         guard let self else { return }
                         DispatchQueue.main.async {
-                            self.isJoiningCall = false
                             if let joinError {
+                                self.activeCall = nil
+                                self.callAgent = nil
+                                self.callClient = nil
+                                self.isJoiningCall = false
                                 self.joinErrorMessage = Self.mapJoinError(joinError.localizedDescription)
                                 self.refresh()
+                                return
                             }
+                            self.activeCall = call
+                            self.isJoiningCall = false
                         }
                     }
                 }
             }
 #endif
         } catch {
+#if canImport(AzureCommunicationUICalling)
+            callCompositeState = .idle
+#endif
             isJoiningCall = false
             joinErrorMessage = Self.mapJoinError(error.localizedDescription)
         }
     }
 
     func leaveCurrentCall() {
-        #if canImport(AzureCommunicationUICalling)
+#if canImport(AzureCommunicationUICalling)
+        pendingJoinWorkItem?.cancel()
+        pendingJoinWorkItem = nil
+        if callComposite != nil {
+            callCompositeState = .dismissing
+        }
         callComposite?.dismiss()
-        #endif
+#endif
+        let hangUpOptions = HangUpOptions()
+        activeCall?.hangUp(options: hangUpOptions) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.activeCall = nil
+                self?.callAgent = nil
+                self?.callClient = nil
+            }
+        }
+        if activeCall == nil {
+            callAgent = nil
+            callClient = nil
+        }
         isJoiningCall = false
     }
+
+#if canImport(AzureCommunicationUICalling)
+    private func finishCompositeSession() {
+        pendingJoinWorkItem?.cancel()
+        pendingJoinWorkItem = nil
+        isJoiningCall = false
+        callCompositeState = .idle
+        callComposite = nil
+        lastCompositeDismissedAt = Date()
+        viewResetToken = UUID()
+        refresh()
+
+        guard let pendingAppointment = pendingAppointmentToJoin else { return }
+        pendingAppointmentToJoin = nil
+
+        schedulePendingJoin(for: pendingAppointment, after: 2.0)
+    }
+
+    private func schedulePendingJoin(for appointment: AppointmentCard, after delay: TimeInterval) {
+        pendingAppointmentToJoin = appointment
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            guard self.callCompositeState == .idle, self.callComposite == nil else { return }
+            guard let pendingAppointment = self.pendingAppointmentToJoin else { return }
+            self.pendingAppointmentToJoin = nil
+            self.startJoin(for: pendingAppointment)
+        }
+
+        pendingJoinWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private enum CallCompositeState {
+        case idle
+        case launching
+        case active
+        case dismissing
+    }
+#endif
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()

@@ -20,21 +20,21 @@ struct SettingDetailView: View {
                 VStack(spacing: 14) {
                     Text(errorMessage)
                         .font(AppFont.body(size: 15, weight: .semibold))
-                        .foregroundStyle(AppColor.red)
+                        .foregroundColor(AppColor.red)
                         .multilineTextAlignment(.center)
                     Button("Retry", action: reload)
                         .font(AppFont.body(size: 15, weight: .semibold))
                         .padding(.vertical, 10)
                         .padding(.horizontal, 18)
                         .background(AppColor.green)
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
                 .padding()
             } else {
                 Text(item.kind.fallbackDetails)
                     .font(AppFont.body(size: 15))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
                     .multilineTextAlignment(.center)
                     .padding()
             }

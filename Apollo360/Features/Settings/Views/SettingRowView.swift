@@ -7,14 +7,14 @@ struct SettingRow: View {
         HStack(spacing: 14) {
             Text(item.title)
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
                 .lineLimit(2)
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(AppColor.black.opacity(0.6))
+                .foregroundColor(AppColor.black.opacity(0.6))
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 18)

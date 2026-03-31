@@ -26,7 +26,7 @@ struct BackButton: View {
                         .font(AppFont.body(size: 16, weight: .medium))
                 }
             }
-            .foregroundStyle(AppColor.black)
+            .foregroundColor(AppColor.black)
             .padding(10)
             .background(
                 Circle()

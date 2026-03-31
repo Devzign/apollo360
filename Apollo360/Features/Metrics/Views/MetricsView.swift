@@ -33,27 +33,27 @@ struct MetricsView: View {
                     if viewModel.isLoading {
                         ProgressView("Loading metrics...")
                             .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
 
                     if let error = viewModel.errorMessage, !error.isEmpty {
                         Text(error)
                             .font(AppFont.body(size: 13, weight: .medium))
-                            .foregroundStyle(AppColor.red)
+                            .foregroundColor(AppColor.red)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if let status = viewModel.compareStatusMessage, !status.isEmpty {
                         Text(status)
                             .font(AppFont.body(size: 13, weight: .medium))
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if !viewModel.isLoading && viewModel.cards.isEmpty {
                         Text("No metrics available yet.")
                             .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
@@ -146,7 +146,7 @@ struct MetricsView: View {
         HStack {
             Text(title)
                 .font(AppFont.body(size: 16, weight: .semibold))
-                .foregroundStyle(AppColor.black.opacity(0.7))
+                .foregroundColor(AppColor.black.opacity(0.7))
 
             Spacer()
 
@@ -165,11 +165,11 @@ struct MetricsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("What is this?")
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Text("Within this section, you can explore all of the health data that's relevant to your health journey. These analytics are monitored real time, and with your doctor's help can provide you with more ways to reach your health goals.")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.black.opacity(0.65))
+                    .foregroundColor(AppColor.black.opacity(0.65))
             }
 
             Spacer()
@@ -177,7 +177,7 @@ struct MetricsView: View {
             Button(action: {}) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 18))
-                    .foregroundStyle(AppColor.grey.opacity(0.7))
+                    .foregroundColor(AppColor.grey.opacity(0.7))
             }
             .buttonStyle(.plain)
         }
@@ -216,14 +216,14 @@ private struct MetricCardView: View {
             HStack {
                 Text(metric.title)
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Spacer()
 
                 if metric.isLabAvailable {
                     Text("Lab")
                         .font(AppFont.body(size: 12, weight: .semibold))
-                        .foregroundStyle(AppColor.green)
+                        .foregroundColor(AppColor.green)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(AppColor.green.opacity(0.16)))
@@ -233,10 +233,10 @@ private struct MetricCardView: View {
                     HStack(spacing: 6) {
                         Text("Compare")
                             .font(AppFont.body(size: 14))
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                         Image(systemName: "slider.horizontal.3")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                     }
                     .padding(8)
                     .background(Capsule().fill(AppColor.green.opacity(0.16)))
@@ -247,18 +247,18 @@ private struct MetricCardView: View {
             if let detail = metric.detailText, !detail.isEmpty {
                 Text(detail)
                     .font(AppFont.body(size: 12))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
                     .lineLimit(2)
             }
 
             Text("Last: \(metric.lastValue)\(unitSuffix)  Average: \(metric.averageValue)\(unitSuffix)")
                 .font(AppFont.body(size: 14))
-                .foregroundStyle(AppColor.black.opacity(0.7))
+                .foregroundColor(AppColor.black.opacity(0.7))
 
             if let comparedWith = metric.comparedWith {
                 Text("Compared with: \(comparedWith)")
                     .font(AppFont.body(size: 12, weight: .medium))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
             }
         }
     }
@@ -278,16 +278,16 @@ private struct CompareMetricSheet: View {
     let onSave: () -> Void
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Compare \(baseMetric.title) with")
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 if compareOptions.isEmpty {
                     Text("No compare metrics available.")
                         .font(AppFont.body(size: 14))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                 } else {
                     Picker("Compare Metric", selection: $selectedCompareMetricId) {
                         ForEach(compareOptions, id: \.id) { option in
@@ -301,7 +301,7 @@ private struct CompareMetricSheet: View {
                 Button(action: onSave) {
                     Text(isSaving ? "Saving..." : "Save Comparison")
                         .font(AppFont.body(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
                         .background(
@@ -321,7 +321,6 @@ private struct CompareMetricSheet: View {
                 }
             }
         }
-        .presentationDetents([.fraction(0.45), .medium])
         .onAppear {
             if selectedCompareMetricId.isEmpty {
                 selectedCompareMetricId = compareOptions.first?.id ?? ""
@@ -353,7 +352,7 @@ private struct ChartView: View {
             .overlay(
                 Text(rangeText)
                     .font(AppFont.body(size: 12))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
                     .padding(.bottom, 8),
                 alignment: .bottomLeading
             )
@@ -407,7 +406,7 @@ private struct RangeSelector: View {
                 Button(action: { onSelect(range) }) {
                     Text(range)
                         .font(AppFont.body(size: 12, weight: .semibold))
-                        .foregroundStyle(range == selectedRange ? AppColor.green : AppColor.grey)
+                        .foregroundColor(range == selectedRange ? AppColor.green : AppColor.grey)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(

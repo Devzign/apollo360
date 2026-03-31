@@ -11,7 +11,7 @@ struct FormInputField: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .font(AppFont.body(size: 12, weight: .semibold))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
 
             TextField(placeholder ?? label, text: $value)
                 .font(AppFont.body(size: 16))

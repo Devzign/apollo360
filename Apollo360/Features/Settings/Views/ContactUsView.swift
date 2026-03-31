@@ -15,7 +15,7 @@ struct ContactUsView: View {
 
                 Text("Contact Us")
                     .font(AppFont.display(size: 28, weight: .semibold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
 
@@ -23,13 +23,12 @@ struct ContactUsView: View {
                     ForEach(addressLines, id: \.self) { line in
                         Text(line)
                             .font(AppFont.body(size: 16))
-                            .foregroundStyle(AppColor.black)
+                            .foregroundColor(AppColor.black)
                     }
 
                     Link("(212) 686-0066", destination: URL(string: "tel:2126860066")!)
                         .font(AppFont.body(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.green)
-                        .underline()
+                        .foregroundColor(AppColor.green)
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity)
@@ -49,8 +48,13 @@ struct ContactUsView: View {
     }
 }
 
-#Preview("Contact Us") {
-    NavigationStack {
-        ContactUsView()
+#if DEBUG
+struct ContactUsView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            ContactUsView()
+        }
+        .previewDisplayName("Contact Us")
     }
 }
+#endif

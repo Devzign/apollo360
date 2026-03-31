@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct PasswordLoginRequest: Encodable {
     let username: String

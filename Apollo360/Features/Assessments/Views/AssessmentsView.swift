@@ -14,19 +14,19 @@ struct AssessmentsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Your Surveys")
                     .font(AppFont.display(size: 32, weight: .semibold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
 
                 if viewModel.isLoading {
                     ProgressView("Loading surveys...")
                 } else if let error = viewModel.errorMessage {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(error).foregroundStyle(AppColor.red)
+                        Text(error).foregroundColor(AppColor.red)
                         Button("Retry") { viewModel.refresh() }
                             .font(AppFont.body(size: 14, weight: .semibold))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(AppColor.green)
-                            .foregroundStyle(.white)
+                            .foregroundColor(.white)
                             .clipShape(Capsule())
                     }
                 } else {
@@ -63,21 +63,21 @@ private struct SurveyCardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(survey.title)
                     .font(AppFont.body(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                 Text("\(survey.completedQuestions)/\(survey.questionCount)")
                     .font(AppFont.body(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundColor(.white.opacity(0.9))
                 if isDisabled {
                     Text("Already completed")
                         .font(AppFont.body(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundColor(.white.opacity(0.95))
                 }
             }
 
             Spacer()
             Image(systemName: survey.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 32))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 20)
@@ -102,12 +102,12 @@ private struct SurveyIntroView: View {
             VStack(spacing: 16) {
                 Text(survey.title)
                     .font(AppFont.display(size: 36, weight: .semibold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .multilineTextAlignment(.center)
 
                 Text(survey.intro.htmlToPlainText)
                     .font(AppFont.body(size: 15))
-                    .foregroundStyle(AppColor.black.opacity(0.85))
+                    .foregroundColor(AppColor.black.opacity(0.85))
                     .padding(16)
                     .background(RoundedRectangle(cornerRadius: 16).fill(Color.white))
 
@@ -119,7 +119,7 @@ private struct SurveyIntroView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(AppColor.green)
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
@@ -134,7 +134,7 @@ private struct SurveyIntroView: View {
 }
 
 private struct SurveyQuestionScreen: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     @ObservedObject var viewModel: AssessmentsViewModel
     let surveyId: Int
 
@@ -143,20 +143,20 @@ private struct SurveyQuestionScreen: View {
             if viewModel.isLoadingDetail {
                 ProgressView("Loading survey...")
             } else if let error = viewModel.detailErrorMessage {
-                Text(error).foregroundStyle(AppColor.red)
+                Text(error).foregroundColor(AppColor.red)
             } else if let question = viewModel.currentQuestion {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 14) {
                         Text(viewModel.detailTitle)
                             .font(AppFont.display(size: 32, weight: .semibold))
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                             .frame(maxWidth: .infinity)
 
                         progressBar
 
                         Text(question.questionText)
                             .font(AppFont.body(size: 24, weight: .semibold))
-                            .foregroundStyle(AppColor.black)
+                            .foregroundColor(AppColor.black)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
 
@@ -164,10 +164,10 @@ private struct SurveyQuestionScreen: View {
                             TextField("Type your response...", text: Binding(
                                 get: { question.selectedValue ?? "" },
                                 set: { viewModel.updateText($0) }
-                            ), axis: .vertical)
-                            .lineLimit(4...8)
+                            ))
                             .padding(14)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(.white))
+                            .frame(minHeight: 120, alignment: .topLeading)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppColor.green.opacity(0.3), lineWidth: 1))
                         } else {
                             VStack(spacing: 12) {
@@ -179,12 +179,12 @@ private struct SurveyQuestionScreen: View {
                                         HStack {
                                             Text(option)
                                                 .font(AppFont.body(size: 16, weight: .medium))
-                                                .foregroundStyle(AppColor.black.opacity(0.8))
+                                                .foregroundColor(AppColor.black.opacity(0.8))
                                                 .lineLimit(2)
                                             Spacer()
                                             Image(systemName: question.selectedValue == option ? "checkmark.circle.fill" : "circle")
                                                 .font(.system(size: 32))
-                                                .foregroundStyle(question.selectedValue == option ? AppColor.green : AppColor.grey)
+                                                .foregroundColor(question.selectedValue == option ? AppColor.green : AppColor.grey)
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 15)
@@ -212,17 +212,17 @@ private struct SurveyQuestionScreen: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(AppColor.green)
-                                    .foregroundStyle(.white)
+                                    .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
 
-                            Button("End") { dismiss() }
+                            Button("End") { presentationMode.wrappedValue.dismiss() }
                                 .font(AppFont.body(size: 18, weight: .semibold))
                                 .frame(width: 110)
                                 .padding(.vertical, 14)
-                                .background(.white)
-                                .foregroundStyle(AppColor.black.opacity(0.7))
+                                .background(Color.white)
+                                .foregroundColor(AppColor.black.opacity(0.7))
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
                     }
@@ -235,7 +235,7 @@ private struct SurveyQuestionScreen: View {
             } else {
                 VStack(spacing: 10) {
                     Text("No question available.")
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                     Button("Reload") {
                         viewModel.loadSurveyDetail(id: surveyId, force: true)
                     }
@@ -243,12 +243,13 @@ private struct SurveyQuestionScreen: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(AppColor.green)
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .clipShape(Capsule())
                 }
             }
         }
-        .background(AppColor.secondary.ignoresSafeArea())
+        .background(AppColor.secondary)
+        .edgesIgnoringSafeArea(.all)
         .navigationTitle("Survey")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -257,9 +258,9 @@ private struct SurveyQuestionScreen: View {
     }
 
     private func popToAssessmentsMain() {
-        dismiss()
+        presentationMode.wrappedValue.dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            dismiss()
+            presentationMode.wrappedValue.dismiss()
         }
     }
 

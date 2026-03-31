@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct MessagesView: View {
     private let threads: [MessageThread] = MessageThread.sampleThreads
@@ -37,19 +39,19 @@ struct MessagesView: View {
     private var header: some View {
         HStack {
             Image(systemName: "line.horizontal.3.decrease")
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
                 .font(.system(size: 20, weight: .semibold))
 
             Spacer()
 
             Text("Messages")
                 .font(AppFont.display(size: 22, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Spacer()
 
             Image(systemName: "square.grid.2x2")
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .font(.system(size: 18, weight: .semibold))
         }
         .padding(.horizontal, 6)
@@ -58,13 +60,13 @@ struct MessagesView: View {
     private var searchBar: some View {
         HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
             TextField("Search conversations", text: $searchText)
                 .font(AppFont.body(size: 14))
-                .textInputAutocapitalization(.never)
+                .autocapitalization(.none)
                 .disableAutocorrection(true)
             Image(systemName: "line.3.horizontal.decrease.circle")
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
         }
         .padding(12)
         .background(
@@ -80,7 +82,7 @@ struct MessagesView: View {
             if filteredThreads.isEmpty {
                 Text("No conversations yet.")
                     .font(AppFont.body(size: 14))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 24)
             } else {
@@ -122,7 +124,7 @@ struct MessagesView: View {
     private func errorState(_ message: String) -> some View {
         Text(message)
             .font(AppFont.body(size: 14))
-            .foregroundStyle(AppColor.red)
+            .foregroundColor(AppColor.red)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 40)
     }
@@ -137,10 +139,10 @@ private struct MessageRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(thread.name)
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                 Text(thread.detail)
                     .font(AppFont.body(size: 13))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
 
             Spacer()
@@ -148,7 +150,7 @@ private struct MessageRow: View {
             VStack(alignment: .trailing, spacing: 6) {
                 Text(thread.timeAgo)
                     .font(AppFont.body(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
 
                 if let count = thread.unreadCount {
                     Text("\(count)")
@@ -156,7 +158,7 @@ private struct MessageRow: View {
                         .padding(.vertical, 6)
                         .padding(.horizontal, 8)
                         .background(AppColor.green)
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
             }
@@ -185,20 +187,13 @@ private struct AvatarView: View {
                 .frame(width: 64, height: 64)
 
             if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case let .success(image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 58, height: 58)
-                            .clipShape(Circle())
-                    default:
-                        Circle()
-                            .fill(AppColor.white.opacity(0.3))
-                            .frame(width: 58, height: 58)
-                    }
+                RemoteCircleAvatar(url: url) {
+                    Circle()
+                        .fill(AppColor.white.opacity(0.3))
+                        .frame(width: 58, height: 58)
                 }
+                .frame(width: 58, height: 58)
+                .clipShape(Circle())
             } else {
                 Circle()
                     .fill(AppColor.white.opacity(0.2))
@@ -208,8 +203,59 @@ private struct AvatarView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        MessagesView()
+private struct RemoteCircleAvatar<Placeholder: View>: View {
+    @StateObject private var loader: RemoteImageLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: RemoteImageLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
     }
 }
+
+private final class RemoteImageLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
+    }
+}
+
+#if DEBUG
+struct MessagesView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            MessagesView()
+        }
+    }
+}
+#endif

@@ -15,7 +15,7 @@ struct DailyStoryCarouselView: View {
     let stories: [DailyStory]
     let initialIndex: Int
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     @State private var currentIndex: Int
     @State private var lastIndex: Int = 0
     @State private var progress: CGFloat = 0
@@ -43,7 +43,7 @@ struct DailyStoryCarouselView: View {
                 Button(action: handleDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundColor(Color.white)
                         .padding(10)
                         .background(Circle().fill(Color.black.opacity(0.45)))
                 }
@@ -61,7 +61,7 @@ struct DailyStoryCarouselView: View {
 
             if stories.isEmpty {
                 Text("No stories yet.")
-                    .foregroundStyle(Color.white.opacity(0.8))
+                    .foregroundColor(Color.white.opacity(0.8))
                     .font(AppFont.body(size: 16, weight: .medium))
             } else {
                 GeometryReader { proxy in
@@ -180,7 +180,6 @@ struct DailyStoryCarouselView: View {
             resumeProgress()
         }) {
             ShareSheet(items: shareItems.isEmpty ? [shareTextForCurrentStory()] : shareItems)
-                .presentationDetents([.medium, .large])
         }
     }
 
@@ -215,7 +214,7 @@ struct DailyStoryCarouselView: View {
     }
 
     private func handleDismiss() {
-        dismiss()
+        presentationMode.wrappedValue.dismiss()
     }
 
     private func pauseProgress() {
@@ -239,14 +238,7 @@ struct DailyStoryCarouselView: View {
     }
 
     private func captureCurrentStoryImage() -> UIImage? {
-        guard stories.indices.contains(currentIndex) else { return nil }
-        let story = stories[currentIndex]
-        let renderer = ImageRenderer(
-            content: DailyStoryContentView(story: story, progress: .constant(progress), activeIndex: currentIndex)
-                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-        )
-        renderer.scale = UIScreen.main.scale
-        return renderer.uiImage
+        nil
     }
 
     private var pauseButton: some View {
@@ -257,7 +249,7 @@ struct DailyStoryCarouselView: View {
                 } label: {
                     Image(systemName: isPaused ? "play.fill" : "pause.fill")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundColor(Color.white)
                         .padding(10)
                         .background(Circle().fill(Color.black.opacity(0.45)))
                 }
@@ -351,21 +343,14 @@ private struct DailyStoryContentView: View {
     @ViewBuilder
     private var profileIcon: some View {
         if let iconURL = story.iconURL {
-            AsyncImage(url: iconURL) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                default:
-                    Circle()
-                        .fill(Color.white.opacity(0.18))
-                        .overlay(
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.white)
-                        )
-                }
+            RemoteCarouselIcon(url: iconURL) {
+                Circle()
+                    .fill(Color.white.opacity(0.18))
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
             }
             .frame(width: 32, height: 32)
             .clipShape(Circle())
@@ -408,12 +393,12 @@ private struct DailyStoryContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(story.title)
                     .font(AppFont.body(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
 
                 if let detail = story.detail {
                     Text(detail)
                         .font(AppFont.body(size: 13))
-                        .foregroundStyle(Color.white.opacity(0.7))
+                        .foregroundColor(Color.white.opacity(0.7))
                 }
             }
 
@@ -421,10 +406,10 @@ private struct DailyStoryContentView: View {
 
             Text("7h")
                 .font(AppFont.body(size: 14, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.7))
+                .foregroundColor(Color.white.opacity(0.7))
 
             Image(systemName: "ellipsis")
-                .foregroundStyle(Color.white.opacity(0.9))
+                .foregroundColor(Color.white.opacity(0.9))
         }
     }
 
@@ -434,7 +419,7 @@ private struct DailyStoryContentView: View {
             if let headline = story.headline {
                 Text(headline)
                     .font(AppFont.display(size: 22, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundColor(Color.white)
             }
 
             if let recommendation = story.recommendation {
@@ -463,9 +448,9 @@ private struct DailyStoryContentView: View {
                 }
             }
             .font(.system(size: 20, weight: .semibold))
-            .foregroundStyle(Color.white.opacity(0.95))
+            .foregroundColor(Color.white.opacity(0.95))
         }
-        .foregroundStyle(Color.white.opacity(0.9))
+        .foregroundColor(Color.white.opacity(0.9))
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
         .background(Color.white.opacity(0.08))
@@ -480,6 +465,52 @@ private struct ShareSheet: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct RemoteCarouselIcon<Placeholder: View>: View {
+    @StateObject private var loader: CarouselIconLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: CarouselIconLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class CarouselIconLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
+    }
 }
 
 private extension Notification.Name {

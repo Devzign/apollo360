@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct MessageEntry: Decodable, Identifiable {
     let entryId: Int

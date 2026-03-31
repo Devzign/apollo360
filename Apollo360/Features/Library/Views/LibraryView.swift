@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Combine
+import UIKit
 
 struct LibraryView: View {
     private struct ArticleRoute: Identifiable, Hashable {
@@ -39,10 +41,10 @@ struct LibraryView: View {
                     VStack(spacing: 14) {
                         ProgressView()
                             .scaleEffect(1.1)
-                            .tint(AppColor.green)
+                            .accentColor(AppColor.green)
                         Text("Loading library...")
                             .font(AppFont.body(size: 14, weight: .medium))
-                            .foregroundStyle(AppColor.grey)
+                            .foregroundColor(AppColor.grey)
                     }
                     .frame(width: contentWidth)
                     .frame(minHeight: proxy.size.height * 0.65, alignment: .center)
@@ -55,13 +57,13 @@ struct LibraryView: View {
                         if viewModel.isLoading {
                             ProgressView("Loading articles...")
                                 .font(AppFont.body(size: 14, weight: .medium))
-                                .foregroundStyle(AppColor.grey)
+                                .foregroundColor(AppColor.grey)
                         }
 
                         if let error = viewModel.errorMessage, !error.isEmpty {
                             Text(error)
                                 .font(AppFont.body(size: 13, weight: .medium))
-                                .foregroundStyle(AppColor.red)
+                                .foregroundColor(AppColor.red)
                         }
 
                         sectionTitle("My List")
@@ -101,21 +103,42 @@ struct LibraryView: View {
         .sheet(isPresented: $isSortPresented) {
             sortSheet
         }
-        .navigationDestination(item: $selectedArticle) { route in
-            ArticleDetailView(articleId: route.id, session: session)
+        .background(
+            NavigationLink(
+                destination: selectedDestination,
+                isActive: Binding(
+                    get: { selectedArticle != nil },
+                    set: { if !$0 { selectedArticle = nil } }
+                )
+            ) { EmptyView() }
+            .hidden()
+        )
+    }
+
+    private var selectedDestination: AnyView {
+        guard let article = selectedArticle else {
+            return AnyView(EmptyView())
         }
+
+        return AnyView(ArticleDetailView(articleId: article.id, session: session))
+    }
+
+    private var searchTextBinding: Binding<String> {
+        Binding(
+            get: { viewModel.searchText },
+            set: { viewModel.searchText = $0 }
+        )
     }
 
     private var searchBar: some View {
         HStack(spacing: 12) {
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(AppColor.grey)
-                TextField("Search", text: $viewModel.searchText)
+                    .foregroundColor(AppColor.grey)
+                TextField("Search", text: searchTextBinding, onCommit: {
+                    viewModel.refresh()
+                })
                     .textFieldStyle(.plain)
-                    .onSubmit {
-                        viewModel.refresh()
-                    }
             }
             .padding(12)
             .background(Color.white.opacity(0.95))
@@ -130,7 +153,7 @@ struct LibraryView: View {
             }) {
                 Image(systemName: "line.3.horizontal.decrease")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
                     .frame(width: 50, height: 50)
                     .background(AppColor.green.opacity(0.16))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -150,11 +173,11 @@ struct LibraryView: View {
         HStack {
             Text(text)
                 .font(AppFont.display(size: 18, weight: .bold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
             Spacer()
             Image(systemName: "arrow.right")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(AppColor.green)
+                .foregroundColor(AppColor.green)
         }
     }
 
@@ -180,7 +203,7 @@ struct LibraryView: View {
         } else {
             Text("No items in My List yet.")
                 .font(AppFont.body(size: 15))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
     }
 
@@ -188,7 +211,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(AppFont.display(size: 18, weight: .bold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
@@ -225,7 +248,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Sort by")
                 .font(AppFont.display(size: 24, weight: .semibold))
-                .foregroundStyle(AppColor.color414141)
+                .foregroundColor(AppColor.color414141)
                 .frame(maxWidth: .infinity, alignment: .center)
 
             Divider()
@@ -238,11 +261,11 @@ struct LibraryView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: viewModel.selectedMediaType == media ? "checkmark" : "")
-                            .foregroundStyle(AppColor.green)
+                            .foregroundColor(AppColor.green)
                             .frame(width: 18)
                         Text(media.rawValue)
                             .font(AppFont.body(size: 17, weight: viewModel.selectedMediaType == media ? .semibold : .regular))
-                            .foregroundStyle(viewModel.selectedMediaType == media ? AppColor.green : AppColor.black)
+                            .foregroundColor(viewModel.selectedMediaType == media ? AppColor.green : AppColor.black)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -251,8 +274,6 @@ struct LibraryView: View {
             Spacer(minLength: 0)
         }
         .padding(20)
-        .presentationDetents([.height(280), .medium])
-        .presentationDragIndicator(.visible)
     }
 }
 
@@ -276,7 +297,7 @@ private struct FeaturedArticleCard: View {
                     )
                 Text(article.title)
                     .font(AppFont.display(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .lineLimit(3)
                     .minimumScaleFactor(0.82)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -286,12 +307,20 @@ private struct FeaturedArticleCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .padding(16)
             }
-            .overlay(alignment: .topLeading) {
-                if article.isRecentlyVisited {
-                    statusBadge
+            .overlay(
+                Group {
+                    if article.isRecentlyVisited {
+                        VStack {
+                            HStack {
+                                statusBadge
+                                Spacer()
+                            }
+                            Spacer()
+                        }
                         .padding(12)
+                    }
                 }
-            }
+            )
             .frame(width: cardWidth, height: cardHeight, alignment: .leading)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(
@@ -308,13 +337,8 @@ private struct FeaturedArticleCard: View {
     private var articleImage: some View {
         Group {
             if let urlText = article.imageURL, let url = URL(string: urlText) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        fallbackImage.shimmer()
-                    }
+                RemoteLibraryImage(url: url) {
+                    fallbackImage.shimmer()
                 }
             } else {
                 fallbackImage.shimmer()
@@ -340,7 +364,7 @@ private struct FeaturedArticleCard: View {
             Text("Viewed")
                 .font(AppFont.body(size: 11, weight: .semibold))
         }
-        .foregroundStyle(AppColor.green)
+        .foregroundColor(AppColor.green)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(AppColor.green.opacity(0.16))
@@ -368,7 +392,7 @@ private struct SmallArticleCard: View {
                 if !article.readTimeDisplay.isEmpty {
                     Text(article.readTimeDisplay)
                         .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -376,7 +400,7 @@ private struct SmallArticleCard: View {
                 }
                 Text(article.title)
                     .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .padding(12)
@@ -395,21 +419,16 @@ private struct SmallArticleCard: View {
     private var articleImage: some View {
         Group {
             if let urlText = article.imageURL, let url = URL(string: urlText) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                RemoteLibraryImage(url: url) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.gray.opacity(0.22), Color.gray.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .shimmer()
-                    }
+                        )
+                        .shimmer()
                 }
             } else {
                 Rectangle()
@@ -432,10 +451,56 @@ private struct SmallArticleCard: View {
             Text("Viewed")
                 .font(AppFont.body(size: 10, weight: .semibold))
         }
-        .foregroundStyle(AppColor.green)
+        .foregroundColor(AppColor.green)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(AppColor.green.opacity(0.16))
         .clipShape(Capsule())
+    }
+}
+
+private struct RemoteLibraryImage<Placeholder: View>: View {
+    @StateObject private var loader: LibraryRemoteImageLoader
+    let placeholder: Placeholder
+
+    init(url: URL, @ViewBuilder placeholder: () -> Placeholder) {
+        _loader = StateObject(wrappedValue: LibraryRemoteImageLoader(url: url))
+        self.placeholder = placeholder()
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .onAppear {
+            loader.load()
+        }
+    }
+}
+
+private final class LibraryRemoteImageLoader: ObservableObject {
+    @Published var image: UIImage?
+    private let url: URL
+    private var hasLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.image = image
+            }
+        }.resume()
     }
 }

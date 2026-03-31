@@ -25,7 +25,7 @@ struct WellnessScoreCard: View {
                 HStack(alignment: .center) {
                     Text(title)
                         .font(AppFont.display(size: 18, weight: .bold))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -59,7 +59,7 @@ struct WellnessScoreCard: View {
 
             Text(description)
                 .font(AppFont.body(size: 13))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
                 .frame(maxWidth: .infinity)
@@ -78,10 +78,10 @@ struct WellnessScoreCard: View {
                 VStack(spacing: 6) {
                     Text("Last Week")
                         .font(AppFont.body(size: 12))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                     Text("\(previousScore)")
                         .font(AppFont.display(size: 28, weight: .bold))
-                        .foregroundStyle(AppColor.grey)
+                        .foregroundColor(AppColor.grey)
                 }
 
                 TrendIndicatorView(isImproving: isImproving)
@@ -89,10 +89,10 @@ struct WellnessScoreCard: View {
                 VStack(spacing: 6) {
                     Text("This Week")
                         .font(AppFont.body(size: 12, weight: .medium))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                     Text("\(currentScore)")
                         .font(AppFont.display(size: 32, weight: .bold))
-                        .foregroundStyle(isImproving ? AppColor.green : AppColor.red)
+                        .foregroundColor(isImproving ? AppColor.green : AppColor.red)
                 }
             }
 
@@ -102,7 +102,7 @@ struct WellnessScoreCard: View {
                  ? "Great progress! Your wellness has improved compared to your recent baseline."
                  : "Small changes add up. Focus on one area to improve this week.")
                 .font(AppFont.body(size: 13))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
 
@@ -123,7 +123,7 @@ private struct WellnessModeToggle: View {
             ForEach(WellnessMode.allCases, id: \.self) { mode in
                 Text(mode.rawValue)
                     .font(AppFont.body(size: 12, weight: .semibold))
-                    .foregroundStyle(mode == selected ? AppColor.secondary : AppColor.grey)
+                    .foregroundColor(mode == selected ? AppColor.secondary : AppColor.grey)
                     .lineLimit(1)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
@@ -172,11 +172,11 @@ private struct WellnessProgressRing: View {
             VStack(spacing: 6) {
                 Text("\(score)")
                     .font(AppFont.display(size: 46, weight: .bold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Text("Overall Score")
                     .font(AppFont.body(size: 12))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
             }
         }
         .frame(width: 220, height: 220)
@@ -235,7 +235,7 @@ private struct TrendIndicatorView: View {
             .resizable()
             .renderingMode(.template)
             .frame(width: 46, height: size)
-            .foregroundStyle(isImproving ? AppColor.green : AppColor.red)
+            .foregroundColor(isImproving ? AppColor.green : AppColor.red)
             .rotationEffect(isImproving ? .zero : .degrees(180))
             .offset(x: isAnimating ? 6 : 0)
             .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isAnimating)
@@ -254,13 +254,13 @@ private struct WellnessMetricRow: View {
 
             Text(metric.title)
                 .font(AppFont.body(size: 13, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Spacer()
 
             Text("\(metric.current)")
                 .font(AppFont.body(size: 13, weight: .semibold))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -283,13 +283,13 @@ private struct WellnessDeltaRow: View {
 
             Text(metric.title)
                 .font(AppFont.body(size: 13, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Spacer()
 
             Text("\(diff >= 0 ? "+" : "")\(diff)")
                 .font(AppFont.body(size: 13, weight: .semibold))
-                .foregroundStyle(diffColor)
+                .foregroundColor(diffColor)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -315,7 +315,7 @@ private struct WellnessChangeBadge: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background((isImproving ? AppColor.green : AppColor.red).opacity(0.12))
-        .foregroundStyle(isImproving ? AppColor.green : AppColor.red)
+        .foregroundColor(isImproving ? AppColor.green : AppColor.red)
         .clipShape(Capsule())
     }
 }

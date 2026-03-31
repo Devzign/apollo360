@@ -85,7 +85,7 @@ private extension BillingView {
             balanceRow
         }
         .padding(20)
-        .background {
+        .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(Color.white)
@@ -106,7 +106,7 @@ private extension BillingView {
                         }
                     )
             }
-        }
+        )
     }
 }
 
@@ -167,8 +167,12 @@ private extension BillingView {
 }
 
 // MARK: - Preview
-#Preview {
-    NavigationStack {
-        BillingView(session: SessionManager())
+#if DEBUG
+struct BillingView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            BillingView(session: SessionManager())
+        }
     }
 }
+#endif

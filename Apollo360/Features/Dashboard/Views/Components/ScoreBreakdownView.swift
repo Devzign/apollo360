@@ -10,11 +10,11 @@ struct ScoreBreakdownView: View {
             VStack(spacing: 24) {
                 Text("Score Breakdown")
                     .font(AppFont.display(size: 24, weight: .bold))
-                    .foregroundStyle(AppColor.black)
+                    .foregroundColor(AppColor.black)
 
                 Text("Mode: \(mode.rawValue.capitalized)")
                     .font(AppFont.body(size: 14, weight: .medium))
-                    .foregroundStyle(AppColor.grey)
+                    .foregroundColor(AppColor.grey)
 
                 ZStack {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -28,10 +28,10 @@ struct ScoreBreakdownView: View {
                         VStack(spacing: 6) {
                             Text("\(score)")
                                 .font(AppFont.display(size: 48, weight: .bold))
-                                .foregroundStyle(AppColor.black)
+                                .foregroundColor(AppColor.black)
                             Text("You are a very healthy individual.")
                                 .font(AppFont.body(size: 14, weight: .medium))
-                                .foregroundStyle(AppColor.grey)
+                                .foregroundColor(AppColor.grey)
                         }
 
                         HStack(spacing: 16) {
@@ -48,11 +48,11 @@ struct ScoreBreakdownView: View {
                 HStack {
                     Text(metric.title)
                         .font(AppFont.body(size: 16, weight: .semibold))
-                                .foregroundStyle(AppColor.black)
+                                .foregroundColor(AppColor.black)
                             Spacer()
                             Text("\(Int(metric.value.rounded()))")
                                 .font(AppFont.body(size: 16, weight: .bold))
-                                .foregroundStyle(metric.color)
+                                .foregroundColor(metric.color)
                         }
                         .padding()
                         .background(
@@ -182,7 +182,7 @@ private struct RadarChart: View {
                 ForEach(Array(zip(labels.indices, labels)), id: \.0) { index, label in
                     Text(label)
                         .font(AppFont.body(size: 11, weight: .semibold))
-                        .foregroundStyle(axisColors[safe: index] ?? AppColor.grey)
+                        .foregroundColor(axisColors[safe: index] ?? AppColor.grey)
                         .position(labelPosition(index: index, radius: radius + 14, center: center))
                 }
             }
@@ -284,21 +284,25 @@ private struct LegendDot: View {
                 .frame(width: 10, height: 10)
             Text(label)
                 .font(AppFont.body(size: 12, weight: .medium))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
         }
     }
 }
 
-#Preview {
-    ScoreBreakdownView(
-        score: 88,
-        mode: .absolute,
-        metrics: [
-            WellnessMetric(title: "Calorie", current: 78, previous: 0, tint: AppColor.green),
-            WellnessMetric(title: "BMI", current: 70, previous: 0, tint: AppColor.blue),
-            WellnessMetric(title: "BPM", current: 68, previous: 0, tint: AppColor.red),
-            WellnessMetric(title: "Hydration", current: 82, previous: 0, tint: AppColor.yellow),
-            WellnessMetric(title: "Sleep", current: 73, previous: 0, tint: AppColor.colorECF0F3),
-        ]
-    )
+#if DEBUG
+struct ScoreBreakdownView_Previews: PreviewProvider {
+    static var previews: some View {
+        ScoreBreakdownView(
+            score: 88,
+            mode: .absolute,
+            metrics: [
+                WellnessMetric(title: "Calorie", current: 78, previous: 0, tint: AppColor.green),
+                WellnessMetric(title: "BMI", current: 70, previous: 0, tint: AppColor.blue),
+                WellnessMetric(title: "BPM", current: 68, previous: 0, tint: AppColor.red),
+                WellnessMetric(title: "Hydration", current: 82, previous: 0, tint: AppColor.yellow),
+                WellnessMetric(title: "Sleep", current: 73, previous: 0, tint: AppColor.colorECF0F3),
+            ]
+        )
+    }
 }
+#endif

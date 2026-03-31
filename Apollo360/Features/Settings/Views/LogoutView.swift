@@ -7,7 +7,7 @@ struct LogoutView: View {
         VStack(spacing: 16) {
             Text("Click the button below to log out.")
                 .font(AppFont.body(size: 15))
-                .foregroundStyle(AppColor.grey)
+                .foregroundColor(AppColor.grey)
                 .multilineTextAlignment(.center)
 
             Button("Logout") {
@@ -17,7 +17,7 @@ struct LogoutView: View {
             .padding(.vertical, 12)
             .padding(.horizontal, 28)
             .background(AppColor.green)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .clipShape(Capsule())
         }
         .padding(24)

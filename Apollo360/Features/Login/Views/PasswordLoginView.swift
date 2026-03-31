@@ -16,7 +16,7 @@ struct PasswordLoginView: View {
             VStack(spacing: 22) {
                 Text("Welcome back!")
                     .font(AppFont.display(size: 26, weight: .bold))
-                    .foregroundStyle(AppColor.green)
+                    .foregroundColor(AppColor.green)
 
                 CredentialField(title: "Username", placeholder: "Username", text: $viewModel.username)
                 CredentialField(title: "Password", placeholder: "Password", text: $viewModel.password, isSecure: true)
@@ -24,7 +24,7 @@ struct PasswordLoginView: View {
                 Toggle(isOn: $viewModel.rememberMe) {
                     Text("Remember me")
                         .font(AppFont.body(size: 14))
-                        .foregroundStyle(AppColor.black)
+                        .foregroundColor(AppColor.black)
                 }
                 .toggleStyle(CheckboxToggleStyle())
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -33,7 +33,7 @@ struct PasswordLoginView: View {
                 Button(action: viewModel.login) {
                     Text("Sign In")
                         .font(AppFont.body(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                 }
@@ -45,11 +45,14 @@ struct PasswordLoginView: View {
                 .disabled(!viewModel.isFormValid || viewModel.isLoading)
             }
         }
-        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
-            Button("OK", role: .cancel) { viewModel.showAlert = false }
-        } message: {
-            Text(viewModel.alertMessage)
-                .foregroundStyle(viewModel.alertStyle == .error ? AppColor.red : AppColor.black)
+        .alert(isPresented: $viewModel.showAlert) {
+            Alert(
+                title: Text(viewModel.alertTitle),
+                message: Text(viewModel.alertMessage),
+                dismissButton: .cancel(Text("OK")) {
+                    viewModel.showAlert = false
+                }
+            )
         }
         .onAppear {
             if viewModel.onLoginSuccess == nil {
@@ -77,7 +80,7 @@ private struct CredentialField: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(AppFont.body(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.black)
+                .foregroundColor(AppColor.black)
 
             Group {
                 if isSecure {
@@ -105,13 +108,17 @@ private struct CheckboxToggleStyle: ToggleStyle {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(configuration.isOn ? AppColor.green : Color.gray)
+                    .foregroundColor(configuration.isOn ? AppColor.green : Color.gray)
                 configuration.label
             }
         }
     }
 }
 
-#Preview {
-    PasswordLoginView()
+#if DEBUG
+struct PasswordLoginView_Previews: PreviewProvider {
+    static var previews: some View {
+        PasswordLoginView()
+    }
 }
+#endif
