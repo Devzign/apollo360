@@ -160,11 +160,7 @@ final class AppointmentViewModel: ObservableObject {
                 }
             }
 
-            let localOptions = LocalOptions(
-                cameraOn: true,
-                microphoneOn: true,
-                skipSetupScreen: true
-            )
+            let localOptions = LocalOptions()
             composite.launch(locator: .roomCall(roomId: roomId), localOptions: localOptions)
 #else
             let client = CallClient()
