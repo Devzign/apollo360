@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SectionHeaderView: View {
     let title: String
+    let isSyncing: Bool
     let onMenuTap: () -> Void
     let onSyncTap: () -> Void
     let onSettingsTap: () -> Void
@@ -37,8 +38,9 @@ struct SectionHeaderView: View {
 
             Spacer()
                 Button(action: onSyncTap) {
-                    HeaderIconButton(systemImage: "arrow.triangle.2.circlepath", showsBadge: false)
+                    HeaderIconButton(systemImage: "arrow.triangle.2.circlepath", showsBadge: false, isSpinning: isSyncing)
                 }
+                .disabled(isSyncing)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -55,6 +57,7 @@ struct SectionHeaderView: View {
 private struct HeaderIconButton: View {
     let systemImage: String
     let showsBadge: Bool
+    let isSpinning: Bool
 
     var body: some View {
         ZStack {
@@ -64,6 +67,8 @@ private struct HeaderIconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .medium))
                 .foregroundColor(AppColor.black)
+                .rotationEffect(.degrees(isSpinning ? 360 : 0))
+                .animation(isSpinning ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isSpinning)
             if showsBadge {
                 Circle()
                     .fill(AppColor.red)
@@ -82,7 +87,7 @@ private struct HeaderIconButton: View {
 #if DEBUG
 struct SectionHeaderView_Previews: PreviewProvider {
     static var previews: some View {
-        SectionHeaderView(title: "Library", onMenuTap: {}, onSyncTap: {}, onSettingsTap: {})
+        SectionHeaderView(title: "Library", isSyncing: false, onMenuTap: {}, onSyncTap: {}, onSettingsTap: {})
             .previewLayout(.sizeThatFits)
     }
 }

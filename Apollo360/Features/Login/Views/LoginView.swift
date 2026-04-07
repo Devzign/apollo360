@@ -100,7 +100,7 @@ struct LoginView: View {
                         refreshToken: response.refreshToken,
                         patientId: response.patientIdentifier,
                         a360Id: response.a360Id,
-                        username: response.displayName
+                        username: response.user?.username
                     )
                 }
             }

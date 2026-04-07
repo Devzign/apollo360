@@ -40,10 +40,11 @@ enum ApolloSyncError: LocalizedError {
   case configuration(String)
   case api(String)
   case platform(String)
+  case auth(String)
 
   var errorDescription: String? {
     switch self {
-    case .configuration(let message), .api(let message), .platform(let message):
+    case .configuration(let message), .api(let message), .platform(let message), .auth(let message):
       return message
     }
   }
@@ -62,58 +63,59 @@ struct HandshakeResponse: Decodable {
   let token: String
 }
 
-struct ValidicUserResponse: Decodable {
-  struct Mobile: Decodable {
+struct ValidicUserResponse: Codable {
+  struct Mobile: Codable {
     let token: String
   }
 
-  struct Marketplace: Decodable {
+  struct Marketplace: Codable {
     let token: String?
     let url: String
   }
 
-  struct Source: Decodable {
+  struct Source: Codable {
     let type: String
     let connected_at: String
     let last_processed_at: String
+  }
+
+  struct Location: Codable {
+    let timezone: String?
+    let country_code: String?
   }
 
   let id: String
   let uid: String
   let marketplace: Marketplace
   let mobile: Mobile
+  let location: Location?
   let sources: [Source]?
+  let status: String?
+  let created_at: String?
+  let updated_at: String?
 }
 
 final class ApolloSyncService {
   private let config: ApolloSyncConfig
   private let session: URLSession
+  private let userDefaults: UserDefaults
 
-  init(config: ApolloSyncConfig, session: URLSession = .shared) {
+  init(config: ApolloSyncConfig, session: URLSession = .shared, userDefaults: UserDefaults = .standard) {
     self.config = config
     self.session = session
+    self.userDefaults = userDefaults
   }
 
   func runFullSync(encodedPatientUsername: String, deviceId: String) async throws -> ValidicUserResponse {
     print("📲 [DeviceSync] runFullSync started | deviceId=\(deviceId)")
-    let usernameCheck = try await fetchUsernameCheck(encodedPatientUsername: encodedPatientUsername)
-    print("✅ [DeviceSync] usernameCheck return_code=\(usernameCheck.return_code)")
-
-    guard usernameCheck.return_code == "400" else {
-      throw ApolloSyncError.api("usernameCheck returned code \(usernameCheck.return_code). Expected 400 for handshake flow.")
+    guard !encodedPatientUsername.isEmpty else {
+      throw ApolloSyncError.auth("Apollo username is missing from the current session. Log in again before syncing.")
     }
 
-    guard let patientIdRaw = usernameCheck.patient_id, let patientKeyRaw = usernameCheck.patient_key else {
-      throw ApolloSyncError.api("usernameCheck did not return patient_id or patient_key.")
-    }
-
-    let patientId = base64(patientIdRaw)
-    let patientKey = base64(patientKeyRaw)
-
-    let handshake = try await performHandshake(
-      patientId: patientId,
-      patientKey: patientKey,
-      deviceId: deviceId
+    let handshake = try await requestHandshake(
+      encodedPatientUsername: encodedPatientUsername,
+      deviceId: deviceId,
+      bearerToken: resolvedApolloAccessToken(explicitAccessToken: nil)
     )
     print("✅ [DeviceSync] handshake success=\(handshake.success)")
 
@@ -136,11 +138,81 @@ final class ApolloSyncService {
     return validicUser
   }
 
+  func runFullSync(encodedPatientUsername: String,
+                   deviceId: String,
+                   dateOfBirth: String,
+                   phoneNumber: String,
+                   otp: String) async throws -> ValidicUserResponse {
+    guard !encodedPatientUsername.isEmpty else {
+      throw ApolloSyncError.auth("Apollo username is missing from the current session. Log in again before syncing.")
+    }
+
+    let login = try await loginPatient(
+      dateOfBirth: dateOfBirth,
+      phoneNumber: phoneNumber,
+      otp: otp
+    )
+
+    guard let accessToken = login.accessToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !accessToken.isEmpty else {
+      throw ApolloSyncError.auth("Apollo patient-login did not return an access token.")
+    }
+
+    let handshake = try await requestHandshake(
+      encodedPatientUsername: encodedPatientUsername,
+      deviceId: deviceId,
+      bearerToken: accessToken
+    )
+
+    guard handshake.success else {
+      throw ApolloSyncError.api(handshake.message)
+    }
+
+    let validicUser = try await createOrFetchValidicUser(uidToken: handshake.token)
+
+    try startValidicSession(
+      validicUserID: validicUser.id,
+      accessToken: validicUser.mobile.token
+    )
+
+    try await configureHealthKitAndFetchHistory()
+
+    return validicUser
+  }
+
+  func performHandshakeForCurrentSession(encodedPatientUsername: String,
+                                         deviceId: String,
+                                         bearerToken: String? = nil) async throws -> HandshakeResponse {
+    guard !encodedPatientUsername.isEmpty else {
+      throw ApolloSyncError.auth("Apollo username is missing from the current session. Log in again before syncing.")
+    }
+
+    let handshake = try await requestHandshake(
+      encodedPatientUsername: encodedPatientUsername,
+      deviceId: deviceId,
+      bearerToken: resolvedApolloAccessToken(explicitAccessToken: bearerToken)
+    )
+
+    guard handshake.success else {
+      throw ApolloSyncError.api(handshake.message)
+    }
+
+    return handshake
+  }
+
   func refreshValidicSources(uidToken: String) async throws -> ValidicUserResponse {
     var components = URLComponents(url: config.validicBaseURL, resolvingAgainstBaseURL: false)!
     components.path = "/organizations/\(config.organizationId)/users/\(uidToken)"
     components.queryItems = [URLQueryItem(name: "token", value: config.validicToken)]
     return try await get(url: try requiredURL(from: components))
+  }
+
+  func startSession(for user: ValidicUserResponse) throws {
+    try startValidicSession(validicUserID: user.id, accessToken: user.mobile.token)
+  }
+
+  func syncHistoricalHealthKitData() async throws {
+    try await configureHealthKitAndFetchHistory()
   }
 
   func endSession() throws {
@@ -153,16 +225,58 @@ final class ApolloSyncService {
 }
 
 private extension ApolloSyncService {
-  func fetchUsernameCheck(encodedPatientUsername: String) async throws -> UsernameCheckResponse {
-    let key = "YXBvbGxvdHJhbnNhY3Rpb25rZXk="
-    let path = "/api/apollo-api/register-member/\(encodedPatientUsername)/\(key)"
-    let url = config.ppBaseURL.appendingPathComponent(path)
-    print("🌐 [DeviceSync] GET \(url.absoluteString)")
-    return try await get(url: url)
+  func loginPatient(dateOfBirth: String, phoneNumber: String, otp: String) async throws -> PatientLoginResponse {
+    let url = ppURL(path: "/api/patient-login")
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: [
+      "date_of_birth": dateOfBirth,
+      "phone_number": phoneNumber,
+      "otp": Int(otp) ?? 0
+    ])
+
+    let (data, response) = try await session.data(for: request)
+    try validate(response: response, data: data)
+    return try JSONDecoder().decode(PatientLoginResponse.self, from: data)
   }
 
-  func performHandshake(patientId: String, patientKey: String, deviceId: String) async throws -> HandshakeResponse {
-    var components = URLComponents(url: config.ppBaseURL, resolvingAgainstBaseURL: false)!
+  func requestHandshake(encodedPatientUsername: String,
+                        deviceId: String,
+                        bearerToken: String) async throws -> HandshakeResponse {
+    let usernameCheck = try await fetchUsernameCheck(
+      encodedPatientUsername: encodedPatientUsername,
+      bearerToken: bearerToken
+    )
+    print("✅ [DeviceSync] usernameCheck return_code=\(usernameCheck.return_code)")
+
+    guard usernameCheck.return_code == "400" else {
+      throw ApolloSyncError.api("usernameCheck returned code \(usernameCheck.return_code). Expected 400 for handshake flow.")
+    }
+
+    guard let patientIdRaw = usernameCheck.patient_id, let patientKeyRaw = usernameCheck.patient_key else {
+      throw ApolloSyncError.api("usernameCheck did not return patient_id or patient_key.")
+    }
+
+    return try await performHandshake(
+      patientId: base64(patientIdRaw),
+      patientKey: base64(patientKeyRaw),
+      deviceId: deviceId,
+      bearerToken: bearerToken
+    )
+  }
+
+  func fetchUsernameCheck(encodedPatientUsername: String, bearerToken: String) async throws -> UsernameCheckResponse {
+    let key = "YXBvbGxvdHJhbnNhY3Rpb25rZXk="
+    let path = "/api/apollo-api/register-member/\(encodedPatientUsername)/\(key)"
+    let url = ppURL(path: path)
+    print("🌐 [DeviceSync] GET \(url.absoluteString)")
+    return try await get(url: url, bearerToken: bearerToken)
+  }
+
+  func performHandshake(patientId: String, patientKey: String, deviceId: String, bearerToken: String) async throws -> HandshakeResponse {
+    var components = ppURLComponents()
     let model = UIDevice.current.model
     let osVersion = UIDevice.current.systemVersion
     let osName = UIDevice.current.systemName
@@ -178,7 +292,7 @@ private extension ApolloSyncService {
 
     let url = try requiredURL(from: components)
     print("🌐 [DeviceSync] GET \(url.absoluteString)")
-    return try await get(url: url)
+    return try await get(url: url, bearerToken: bearerToken)
   }
 
   func createOrFetchValidicUser(uidToken: String) async throws -> ValidicUserResponse {
@@ -225,16 +339,7 @@ private extension ApolloSyncService {
 
     manager.observeCurrentSubscriptions()
 
-    let identifiers: [String] = [
-      HKQuantityTypeIdentifier.stepCount.rawValue,
-      HKQuantityTypeIdentifier.heartRate.rawValue,
-      HKQuantityTypeIdentifier.activeEnergyBurned.rawValue,
-      HKQuantityTypeIdentifier.distanceWalkingRunning.rawValue,
-      HKQuantityTypeIdentifier.bloodGlucose.rawValue,
-      HKQuantityTypeIdentifier.oxygenSaturation.rawValue,
-      HKCategoryTypeIdentifier.sleepAnalysis.rawValue,
-      HKWorkoutType.workoutType().identifier
-    ]
+    let identifiers = healthKitSubscriptionIdentifiers()
 
     try await withCheckedThrowingContinuation { continuation in
       manager.setSubscriptionsFromIdentifiers(identifiers) {
@@ -266,10 +371,29 @@ private extension ApolloSyncService {
 #endif
   }
 
-  func get<T: Decodable>(url: URL) async throws -> T {
+  func healthKitSubscriptionIdentifiers() -> [String] {
+#if canImport(ValidicHealthKit)
+    [
+      HKQuantityTypeIdentifier.stepCount.rawValue,
+      HKQuantityTypeIdentifier.heartRate.rawValue,
+      HKQuantityTypeIdentifier.activeEnergyBurned.rawValue,
+      HKQuantityTypeIdentifier.distanceWalkingRunning.rawValue,
+      HKQuantityTypeIdentifier.bloodGlucose.rawValue,
+      HKQuantityTypeIdentifier.oxygenSaturation.rawValue,
+      HKCategoryTypeIdentifier.sleepAnalysis.rawValue,
+      HKWorkoutType.workoutType().identifier
+    ]
+#else
+    []
+#endif
+  }
+
+  func get<T: Decodable>(url: URL, bearerToken: String? = nil) async throws -> T {
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    applyApolloAuthHeaders(to: &request, bearerToken: bearerToken)
 
     let (data, response) = try await session.data(for: request)
     try validate(response: response, data: data)
@@ -295,11 +419,13 @@ private extension ApolloSyncService {
 
   func validate(response: URLResponse, data: Data) throws {
     guard let http = response as? HTTPURLResponse else {
+      print("❌ [DeviceSync] Invalid HTTP response")
       throw ApolloSyncError.api("Invalid HTTP response.")
     }
 
     guard (200...299).contains(http.statusCode) else {
       let body = String(data: data, encoding: .utf8) ?? ""
+      print("❌ [DeviceSync] HTTP \(http.statusCode) body=\(body)")
       throw ApolloSyncError.api("HTTP \(http.statusCode): \(body)")
     }
   }
@@ -311,7 +437,30 @@ private extension ApolloSyncService {
     return url
   }
 
+  func ppURL(path: String) -> URL {
+    config.ppBaseURL.appendingPathComponent(path)
+  }
+
+  func ppURLComponents() -> URLComponents {
+    URLComponents(url: config.ppBaseURL, resolvingAgainstBaseURL: false)!
+  }
+
   func base64(_ value: String) -> String {
     Data(value.utf8).base64EncodedString()
+  }
+
+  func applyApolloAuthHeaders(to request: inout URLRequest, bearerToken: String?) {
+    guard let bearerToken, !bearerToken.isEmpty else { return }
+    request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+    request.setValue(bearerToken, forHTTPHeaderField: "apollo-md-access-token")
+  }
+
+  func resolvedApolloAccessToken(explicitAccessToken: String?) throws -> String {
+    let accessToken = (explicitAccessToken ?? userDefaults.string(forKey: "Apollo360.accessToken"))?
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !accessToken.isEmpty else {
+      throw ApolloSyncError.auth("Apollo access token is missing. Log in again before starting device sync.")
+    }
+    return accessToken
   }
 }

@@ -9,15 +9,20 @@ struct DeviceSyncView: View {
     @StateObject private var store = HealthSyncStore()
     @State private var marketplaceURL: URL?
     @State private var showMarketplace = false
+    @State private var didBootstrap = false
 
-    private let disconnectedDevices: [(name: String, key: String)] = [
-        ("Fitbit Watch", "fitbit"),
-        ("Omron", "omron")
+    private let knownDevices: [(name: String, key: String)] = [
+        ("Apple Health", "healthkit"),
+        ("Fitbit", "fitbit"),
+        ("Withings", "withings"),
+        ("Omron", "omron"),
+        ("Garmin", "garmin")
     ]
 
-    private let connectedDevices: [(name: String, key: String)] = [
-        ("Withings", "withings")
-    ]
+    private var canOpenMarketplace: Bool {
+        guard let marketplaceURL = store.marketplaceURL else { return false }
+        return !marketplaceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -29,7 +34,12 @@ struct DeviceSyncView: View {
         }
         .background(AppColor.secondary)
         .navigationBarBackButtonHidden(true)
-        .onAppear { store.configureIfNeeded() }
+        .onAppear {
+            store.configureIfNeeded()
+            guard !didBootstrap else { return }
+            didBootstrap = true
+            Task { await store.refreshSourcesIfAvailable() }
+        }
         .sheet(isPresented: $showMarketplace) {
             if let url = marketplaceURL {
                 SafariView(url: url)
@@ -75,6 +85,7 @@ struct DeviceSyncView: View {
                             .font(.system(size: 34, weight: .regular))
                             .foregroundColor(AppColor.color414141)
                     }
+                    .disabled(!canOpenMarketplace)
                 }
 
                 Text("Swipe Down to Refresh")
@@ -105,19 +116,9 @@ struct DeviceSyncView: View {
                 .padding(.horizontal, 2)
 
             VStack(spacing: 14) {
-                ForEach(disconnectedDevices, id: \.key) { item in
-                    deviceRow(name: item.name, isConnected: isConnected(sourceKey: item.key), actionTitle: "Manage") {
-                        openMarketplaceIfAvailable()
-                    }
-                }
+                summaryCard
 
-                Text("Connected Device")
-                    .font(AppFont.display(size: 18, weight: .bold))
-                    .foregroundColor(AppColor.black)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
-
-                ForEach(connectedDevices, id: \.key) { item in
+                ForEach(knownDevices, id: \.key) { item in
                     deviceRow(name: item.name, isConnected: isConnected(sourceKey: item.key), actionTitle: isConnected(sourceKey: item.key) ? "Connected" : "Manage") {
                         openMarketplaceIfAvailable()
                     }
@@ -135,6 +136,7 @@ struct DeviceSyncView: View {
                     .background(AppColor.green)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
+            .disabled(!canOpenMarketplace)
 
             Button {
                 Task { await syncNow() }
@@ -154,7 +156,22 @@ struct DeviceSyncView: View {
                         .stroke(AppColor.color414141, lineWidth: 1.5)
                 )
             }
-            .disabled(store.isSyncing)
+            .disabled(store.isSyncing || !store.isReadyForInitialSync)
+
+            Button {
+                Task { await store.refreshSourcesIfAvailable() }
+            } label: {
+                Text(store.isRefreshing ? "Refreshing..." : "Refresh device status")
+                    .font(AppFont.body(size: 18, weight: .semibold))
+                    .foregroundColor(AppColor.color414141)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(AppColor.color414141.opacity(0.35), lineWidth: 1.2)
+                    )
+            }
+            .disabled(store.isRefreshing || store.validicUID == nil)
 
             Text(lastSyncText)
                 .font(AppFont.body(size: 14, weight: .medium))
@@ -170,6 +187,33 @@ struct DeviceSyncView: View {
         )
         .padding(.horizontal, 0)
         .offset(y: -26)
+    }
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            summaryRow(label: "Validic user id", value: store.validicUserID ?? "Not provisioned")
+            summaryRow(label: "Validic uid", value: store.validicUID ?? "Not provisioned")
+            summaryRow(label: "Timezone", value: store.timezone ?? "Unavailable")
+            summaryRow(label: "Status", value: store.userStatus ?? "Unavailable")
+            summaryRow(label: "Connected sources", value: "\(store.sourceTypes.count)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func summaryRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(AppFont.body(size: 14, weight: .medium))
+                .foregroundColor(AppColor.grey)
+            Spacer()
+            Text(value)
+                .font(AppFont.body(size: 14, weight: .semibold))
+                .foregroundColor(AppColor.color414141)
+                .multilineTextAlignment(.trailing)
+        }
     }
 
     private func deviceRow(name: String, isConnected: Bool, actionTitle: String, onAction: @escaping () -> Void) -> some View {
@@ -216,7 +260,7 @@ struct DeviceSyncView: View {
                     Capsule(style: .continuous)
                         .stroke(AppColor.green, lineWidth: 1.4)
                 )
-                .disabled(isConnected)
+                .disabled(isConnected || !canOpenMarketplace)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
@@ -252,6 +296,11 @@ struct DeviceSyncView: View {
 
     private func syncNow() async {
         let encodedUsername = resolveEncodedUsername()
+        if encodedUsername.isEmpty, store.validicUID != nil {
+            await store.syncFromCachedSession()
+            return
+        }
+
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "ios-device"
         await store.sync(encodedUsername: encodedUsername, deviceId: deviceId)
     }
@@ -277,10 +326,16 @@ struct DeviceSyncView: View {
 @MainActor
 final class HealthSyncStore: ObservableObject {
     @Published var isSyncing = false
+    @Published var isRefreshing = false
+    @Published var isReadyForInitialSync = false
     @Published var marketplaceURL: String?
     @Published var sourceTypes: [String] = []
     @Published var lastSyncedAt: Date?
     @Published var errorMessage: String?
+    @Published var validicUserID: String?
+    @Published var validicUID: String?
+    @Published var timezone: String?
+    @Published var userStatus: String?
 
     private var viewModel: HealthSyncViewModel?
 
@@ -291,9 +346,8 @@ final class HealthSyncStore: ObservableObject {
             let service = ApolloSyncService(config: config)
             let vm = HealthSyncViewModel(service: service)
             viewModel = vm
-            marketplaceURL = vm.marketplaceURL
-            sourceTypes = vm.sourceTypes
-            lastSyncedAt = vm.lastSyncedAt
+            apply(from: vm)
+            refreshReadiness()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -309,13 +363,64 @@ final class HealthSyncStore: ObservableObject {
         await viewModel.sync(encodedUsername: encodedUsername, deviceId: deviceId)
         isSyncing = false
 
-        marketplaceURL = viewModel.marketplaceURL
-        sourceTypes = viewModel.sourceTypes
-        lastSyncedAt = viewModel.lastSyncedAt
+        apply(from: viewModel)
+        refreshReadiness()
 
         if case .failure(let message) = viewModel.state {
             errorMessage = message
         }
+    }
+
+    func refreshSourcesIfAvailable() async {
+        guard let viewModel else {
+            errorMessage = "Device sync is not configured."
+            return
+        }
+
+        isRefreshing = true
+        await viewModel.refreshSources()
+        isRefreshing = false
+
+        apply(from: viewModel)
+        refreshReadiness()
+
+        if case .failure(let message) = viewModel.state {
+            errorMessage = message
+        }
+    }
+
+    func syncFromCachedSession() async {
+        guard let viewModel else {
+            errorMessage = "Device sync is not configured."
+            return
+        }
+
+        isSyncing = true
+        await viewModel.syncFromCachedSession()
+        isSyncing = false
+
+        apply(from: viewModel)
+        refreshReadiness()
+
+        if case .failure(let message) = viewModel.state {
+            errorMessage = message
+        }
+    }
+
+    private func apply(from viewModel: HealthSyncViewModel) {
+        marketplaceURL = viewModel.marketplaceURL
+        sourceTypes = viewModel.sourceTypes
+        lastSyncedAt = viewModel.lastSyncedAt
+        validicUserID = viewModel.validicUserID
+        validicUID = viewModel.validicUID
+        timezone = viewModel.timezone
+        userStatus = viewModel.userStatus
+    }
+
+    private func refreshReadiness() {
+        let token = UserDefaults.standard.string(forKey: "Apollo360.accessToken")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let username = UserDefaults.standard.string(forKey: "Apollo360.username")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        isReadyForInitialSync = !token.isEmpty && (!username.isEmpty || validicUID != nil)
     }
 }
 

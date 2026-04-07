@@ -2,40 +2,73 @@
 
 ## Validic + HealthKit Setup
 
-### Info.plist keys
-Add these keys in `Apollo360/Info.plist`:
-- `VALIDIC_URL_V2` (default: `https://api.v2.validic.com`)
-- `VALIDIC_ORG_ID` (preferred org id for mobile session)
-- `VALIDIC_ORGANIZATION_ID` (fallback org id)
-- `VALIDIC_TOKEN` (fallback direct Validic API token; backend-first flow is preferred)
-- `NSHealthShareUsageDescription`
-- `NSHealthUpdateUsageDescription`
+### Config keys
+Add these keys in [Info.plist](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Info.plist):
+- `PP_BASE_URL`
+  Default in this repo: `https://doctor.ioapollo.com`
+- `VALIDIC_URL_V2`
+  Default Validic v2 base: `https://api.v2.validic.com`
+- `ORGANISATION_ID`
+  Your Validic organization id. This is required for:
+  - `POST /organizations/{org_id}/users?token=...`
+  - `GET /organizations/{org_id}/users/{uid}?token=...`
+- `VALIDIC_TOKEN`
+  Your Validic API token used for direct Validic provisioning in this flow
 
-### Entitlements
-`Apollo360/Apollo360.entitlements` includes:
+### HealthKit setup
+[Apollo360.entitlements](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Apollo360.entitlements) already includes:
 - `com.apple.developer.healthkit = true`
 - `com.apple.developer.healthkit.background-delivery = true`
 
-### Runtime flow
-1. After login, Dashboard launch triggers `ValidicBootstrapService`.
-2. App calls backend endpoint `GET /api/v1/validic/user?uid=<rpmTokenOrPatientId>` with bearer auth.
-3. If backend mapping is unavailable, app falls back to Validic v2 direct create/get using plist config.
-4. Session starts with:
-   - `userID = validicUser.id`
-   - `organizationID = VALIDIC_ORG_ID` (or `VALIDIC_ORGANIZATION_ID`)
-   - `accessToken = validicUser.mobile.token`
-5. Device Sync screen:
-   - `+ Device` and `Manage` open `validicUser.marketplace.url`
-   - `Sync with Apple Health` sets subscriptions and fetches 30-day summary/workout history.
+[Info.plist](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Info.plist) already includes:
+- `NSHealthShareUsageDescription`
+- `NSHealthUpdateUsageDescription`
 
-### Manual test checklist
-- Login -> Dashboard loads -> Validic bootstrap starts (check logs).
-- Open Sync Devices -> marketplace opens from `+ Device` or `Manage your devices`.
-- Tap `Sync with Apple Health` -> HealthKit permission prompt appears and sync completes.
-- Relaunch app -> cached Validic user is reused and session bootstrap runs again.
+In Xcode, confirm:
+1. Signing & Capabilities -> HealthKit is enabled.
+2. Background delivery for HealthKit is enabled.
+3. The target is linked with the Validic iOS SDK modules used in [ApolloSyncService.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Features/DeviceSync/Services/ApolloSyncService.swift):
+   - `ValidicCore`
+   - `ValidicHealthKit`
 
-### Notes
-- Keep sensitive token logic on backend. `VALIDIC_TOKEN` exists only as fallback.
-- If `InformCore`/`InformHealthKit` SDKs are present, fill the SDK hook points in:
-  - `Apollo360/Features/DeviceSync/Services/ValidicSessionManager.swift`
-  - `Apollo360/Features/DeviceSync/Services/AppleHealthSyncManager.swift`
+### Native flow in this repo
+The SwiftUI Device Sync implementation matches the React Native flow:
+1. Read Apollo patient username from the current session.
+2. Base64-encode it when needed.
+3. Call Apollo username check:
+   `GET /api/apollo-api/register-member/{encodedPatientUsername}/YXBvbGxvdHJhbnNhY3Rpb25rZXk=`
+4. If `return_code == "400"`, base64-encode `patient_id` and `patient_key`.
+5. Call Apollo RPM handshake:
+   `GET /api/handshaking/register-rpm-user/{deviceId}/{patientId}/{patientKey}/HealthKit/{deviceName}`
+6. Use handshake `token` as the Validic `uid`.
+7. Try to create the Validic user first:
+   `POST /organizations/{org_id}/users?token={VALIDIC_TOKEN}`
+   Body: `{ "uid": "<handshakeToken>" }`
+8. If create fails, fetch the existing Validic user:
+   `GET /organizations/{org_id}/users/{uid}?token={VALIDIC_TOKEN}`
+9. Start the Validic mobile session with:
+   - `validicUser.id`
+   - `validicUser.mobile.token`
+   - `ORGANISATION_ID`
+10. Observe HealthKit subscriptions, set required subscriptions, and fetch 30 days of history.
+11. Refresh connected sources by calling the same Validic `GET /users/{uid}` endpoint later.
+
+### Main files
+- Service: [ApolloSyncService.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Features/DeviceSync/Services/ApolloSyncService.swift)
+- View model: [HealthSyncViewModel.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Features/DeviceSync/ViewModels/HealthSyncViewModel.swift)
+- SwiftUI screen: [DeviceSyncView.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Features/DeviceSync/Views/DeviceSyncView.swift)
+- UIKit sample bridge: [HealthSyncViewController.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Features/DeviceSync/Views/HealthSyncViewController.swift)
+
+### Manual verification
+1. Log in so [SessionManager.swift](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Core/Session/SessionManager.swift) has a username.
+2. Open Sync Devices.
+3. Tap `Sync with Apple Health`.
+4. Confirm HealthKit permission is granted.
+5. Confirm the screen now shows:
+   - Validic user id
+   - Validic uid
+   - timezone
+   - status
+   - connected sources
+6. Tap `Manage your devices` to open `marketplace.url`.
+7. Tap `Refresh device status` to refetch `sources` from Validic.

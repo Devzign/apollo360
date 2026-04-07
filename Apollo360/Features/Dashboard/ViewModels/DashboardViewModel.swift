@@ -8,6 +8,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import UIKit
 
 @MainActor
 final class DashboardViewModel: ObservableObject {
@@ -27,6 +28,8 @@ final class DashboardViewModel: ObservableObject {
     @Published var activityStats: [ActivityStat] = []
     @Published var activitySummaryNote: String = ""
     @Published var weeklyChangePercent: Int = 0
+    @Published private(set) var isHeaderSyncing: Bool = false
+    @Published var syncErrorMessage: String?
 
     private let session: SessionManager
     private var pendingLoads = 0 {
@@ -63,11 +66,45 @@ final class DashboardViewModel: ObservableObject {
     init(session: SessionManager) {
         self.session = session
         self.cardioMetrics = Self.defaultCardioMetrics()
+        refreshDashboard()
+    }
+
+    func refreshDashboard() {
         fetchDailyStories()
         fetchWellnessOverview()
         fetchApolloInsights()
         fetchCardiometabolicMetrics()
         fetchActivities()
+    }
+
+    func syncFromHeader() async {
+        guard !isHeaderSyncing else { return }
+
+        let username = (session.username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !username.isEmpty else {
+            syncErrorMessage = "Apollo username is missing. Log in again before syncing."
+            return
+        }
+
+        do {
+            isHeaderSyncing = true
+            let config = try ApolloSyncConfig.fromInfoPlist()
+            let service = ApolloSyncService(config: config)
+            let encodedUsername = Self.encodedUsername(from: username)
+            let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "ios-device"
+
+            _ = try await service.runFullSync(
+                encodedPatientUsername: encodedUsername,
+                deviceId: deviceId
+            )
+
+            refreshDashboard()
+        } catch {
+            print("❌ [Dashboard] Header sync failed: \(error.localizedDescription)")
+            syncErrorMessage = error.localizedDescription
+        }
+
+        isHeaderSyncing = false
     }
 
     private func fetchDailyStories() {
@@ -229,6 +266,16 @@ final class DashboardViewModel: ObservableObject {
 
     private func endLoading() {
         pendingLoads = max(pendingLoads - 1, 0)
+    }
+
+    private static func encodedUsername(from username: String) -> String {
+        if let data = Data(base64Encoded: username),
+           let decoded = String(data: data, encoding: .utf8),
+           !decoded.isEmpty {
+            return username
+        }
+
+        return Data(username.utf8).base64EncodedString()
     }
 
     private static func metrics(current: WellnessBreakdown, previous: WellnessBreakdown) -> [WellnessMetric] {

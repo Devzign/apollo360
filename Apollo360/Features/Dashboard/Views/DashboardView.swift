@@ -33,11 +33,12 @@ struct DashboardView: View {
                 VStack(spacing: 0) {
                     SectionHeaderView(
                         title: selectedTab.displayTitle,
+                        isSyncing: viewModel.isHeaderSyncing,
                         onMenuTap: {
                             isSideMenuVisible = true
                         },
                         onSyncTap: {
-                            isSyncDevicesVisible = true
+                            Task { await viewModel.syncFromHeader() }
                         },
                         onSettingsTap: {
                             selectedTab = .settings
@@ -74,6 +75,16 @@ struct DashboardView: View {
                     },
                     secondaryButton: .cancel()
                 )
+            }
+            .alert("Sync Failed", isPresented: Binding(
+                get: { viewModel.syncErrorMessage != nil },
+                set: { if !$0 { viewModel.syncErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {
+                    viewModel.syncErrorMessage = nil
+                }
+            } message: {
+                Text(viewModel.syncErrorMessage ?? "")
             }
             .background(
                 NavigationLink(
@@ -154,10 +165,7 @@ struct DashboardView: View {
             AssessmentsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .records:
-            DashboardTabPlaceholderView(
-                title: selectedTab.displayTitle
-            )
-            .padding(.horizontal, screenHorizontalPadding)
+            RecordsView(horizontalPadding: screenHorizontalPadding, session: session)
 
         case .appointment:
             AppointmentView(horizontalPadding: screenHorizontalPadding, session: session)

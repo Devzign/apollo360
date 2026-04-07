@@ -62,7 +62,7 @@ struct PasswordLoginView: View {
                         refreshToken: response.refreshToken,
                         patientId: response.patientId,
                         a360Id: response.a360Id,
-                        username: response.displayName
+                        username: response.user.username
                     )
                 }
             }

@@ -56,6 +56,12 @@ enum APIEndpoint {
     static let profile = "v1/profile"
     static let profilePicture = "v1/profile/picture"
     static let appointments = "v1/appointments"
+    static func patientRecords(for patientId: String) -> String {
+        "v1/patients/\(patientId)"
+    }
+    static func patientVisitSummary(for patientId: String, encounterId: Int) -> String {
+        "v1/patients/\(patientId)/io-summary/\(encounterId)"
+    }
     static let notificationSettings = "v1/notifications/settings"
     static func articles(type: String,
                          search: String,
