@@ -69,6 +69,8 @@ struct SettingDetailView: View {
             return "Profile Settings"
         case .logout:
             return "Logout"
+        case .deviceSync:
+            return "Sync Devices"
         }
     }
 }

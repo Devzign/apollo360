@@ -12,6 +12,7 @@ enum SettingKind: Hashable {
     case terms
     case privacy
     case billing
+    case deviceSync
     case staticItem(id: String)
     case forms
     case contact
@@ -163,6 +164,7 @@ final class SettingsViewModel: ObservableObject {
             SettingItem(title: "Forms", kind: .forms),
             SettingItem(title: "Terms of Use", kind: .terms),
             SettingItem(title: "Contact Us", kind: .contact),
+            SettingItem(title: "Sync Devices", kind: .deviceSync),
             SettingItem(title: "Billing", kind: .billing),
             SettingItem(title: "My Credit Card", kind: .creditCard),
             SettingItem(title: "Team", kind: .team),
@@ -232,6 +234,8 @@ extension SettingKind {
             return "Update your name, DOB, and contact details from this screen."
         case .logout:
             return "Logging out clears your session and requires signing back in."
+        case .deviceSync:
+            return "Connect Apple Health, Fitbit, Garmin, and other health devices."
         }
     }
 }

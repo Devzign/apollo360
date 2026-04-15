@@ -140,6 +140,8 @@ struct SettingsView: View {
             ))
         case .billing:
             return AnyView(BillingView(session: session))
+        case .deviceSync:
+            return AnyView(DeviceSyncView(session: session))
         case .profile:
             return AnyView(UserProfileView(session: session))
         case .logout:

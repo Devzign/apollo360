@@ -38,7 +38,7 @@ struct DashboardView: View {
                             isSideMenuVisible = true
                         },
                         onSyncTap: {
-                            Task { await viewModel.syncFromHeader() }
+                            isSyncDevicesVisible = true
                         },
                         onSettingsTap: {
                             selectedTab = .settings

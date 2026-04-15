@@ -1,5 +1,6 @@
 import SwiftUI
-import SafariServices
+import HealthKit
+import WebKit
 import Combine
 
 struct DeviceSyncView: View {
@@ -52,9 +53,17 @@ struct DeviceSyncView: View {
                 }
             }
         }
-        .sheet(isPresented: $showMarketplace) {
+        .fullScreenCover(isPresented: $showMarketplace) {
             if let url = marketplaceURL {
-                SafariView(url: url)
+                MarketplaceView(url: url)
+            } else {
+                // Safety fallback — should never happen
+                VStack(spacing: 16) {
+                    Text("Marketplace URL not available.")
+                        .foregroundColor(AppColor.grey)
+                    Button("Close") { showMarketplace = false }
+                        .foregroundColor(AppColor.green)
+                }
             }
         }
         .alert(isPresented: Binding(
@@ -314,7 +323,7 @@ struct DeviceSyncView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Button {
-                openMarketplaceIfAvailable()
+                connectAppleHealthAndOpenMarketplace()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.up.right.circle.fill")
@@ -353,14 +362,53 @@ struct DeviceSyncView: View {
         store.sourceTypes.contains { $0.lowercased().contains(sourceKey.lowercased()) }
     }
 
+    /// Opens the marketplace URL as a full-screen in-app view.
     private func openMarketplaceIfAvailable() {
-        guard let urlString = store.marketplaceURL, let url = URL(string: urlString) else {
-            // Marketplace URL not cached yet — trigger a sync first to get it
+        guard let urlString = store.marketplaceURL else {
+            print("⚠️ [Marketplace] marketplaceURL is nil — triggering sync first")
             Task { await syncNow() }
             return
         }
+        guard let url = URL(string: urlString) else {
+            print("❌ [Marketplace] Invalid URL string: \(urlString)")
+            return
+        }
+        print("🌐 [Marketplace] Opening URL: \(url.absoluteString)")
+        print("🔑 [Marketplace] Token present: \(url.absoluteString.contains("token="))")
         marketplaceURL = url
         showMarketplace = true
+    }
+
+    /// Requests HealthKit read permissions first, then opens the marketplace URL full-screen in-app.
+    private func connectAppleHealthAndOpenMarketplace() {
+        guard let urlString = store.marketplaceURL, let url = URL(string: urlString) else {
+            Task { await syncNow() }
+            return
+        }
+
+        guard HKHealthStore.isHealthDataAvailable() else {
+            marketplaceURL = url
+            showMarketplace = true
+            return
+        }
+
+        let readTypes: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
+            HKObjectType.quantityType(forIdentifier: .bloodGlucose)!,
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.workoutType()
+        ]
+
+        HKHealthStore().requestAuthorization(toShare: nil, read: readTypes) { _, _ in
+            DispatchQueue.main.async {
+                marketplaceURL = url
+                showMarketplace = true
+            }
+        }
     }
 
     private func syncNow() async {
@@ -466,16 +514,117 @@ final class HealthSyncStore: ObservableObject {
     }
 }
 
-// MARK: - SafariView
+// MARK: - Marketplace Full-Screen View
 
-private struct SafariView: UIViewControllerRepresentable {
+private struct MarketplaceView: View {
     let url: URL
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        let vc = SFSafariViewController(url: url)
-        vc.preferredControlTintColor = UIColor(AppColor.green)
-        return vc
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var isLoading = true
+    @State private var loadError: String?
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                MarketplaceWebView(url: url, isLoading: $isLoading, loadError: $loadError)
+                    .ignoresSafeArea(edges: .bottom)
+
+                if isLoading {
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(1.3)
+                        Text("Loading marketplace…")
+                            .font(AppFont.body(size: 14))
+                            .foregroundColor(AppColor.grey)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white)
+                }
+
+                if let error = loadError {
+                    VStack(spacing: 14) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .font(.system(size: 40))
+                            .foregroundColor(AppColor.grey)
+                        Text(error)
+                            .font(AppFont.body(size: 14))
+                            .foregroundColor(AppColor.grey)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Manage Devices")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        presentationMode.wrappedValue.dismiss()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Close")
+                                .font(AppFont.body(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(AppColor.green)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            print("🌐 [MarketplaceView] Loading: \(url.absoluteString)")
+            print("🔑 [MarketplaceView] Has token: \(url.absoluteString.contains("token="))")
+        }
     }
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
+}
+
+private struct MarketplaceWebView: UIViewRepresentable {
+    let url: URL
+    @Binding var isLoading: Bool
+    @Binding var loadError: String?
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.navigationDelegate = context.coordinator
+        webView.allowsBackForwardNavigationGestures = true
+        webView.load(URLRequest(url: url))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var parent: MarketplaceWebView
+
+        init(_ parent: MarketplaceWebView) { self.parent = parent }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            parent.isLoading = true
+            parent.loadError = nil
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.isLoading = false
+            print("✅ [MarketplaceWebView] Page loaded: \(webView.url?.absoluteString ?? "unknown")")
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            parent.isLoading = false
+            parent.loadError = error.localizedDescription
+            print("❌ [MarketplaceWebView] Load failed: \(error.localizedDescription)")
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            parent.isLoading = false
+            parent.loadError = error.localizedDescription
+            print("❌ [MarketplaceWebView] Provisional load failed: \(error.localizedDescription)")
+        }
+    }
 }
 
 // MARK: - Color helper
