@@ -153,6 +153,7 @@ final class APIClient {
         #if DEBUG
         APILogger.logRequest(
             endpoint: endpoint,
+            url: request.url?.absoluteString ?? "n/a",
             method: request.httpMethod ?? "GET",
             headers: request.allHTTPHeaderFields,
             body: request.httpBody
@@ -162,7 +163,11 @@ final class APIClient {
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 #if DEBUG
-                APILogger.logError(endpoint: endpoint, error: error)
+                APILogger.logError(
+                    endpoint: endpoint,
+                    url: request.url?.absoluteString ?? "n/a",
+                    error: error
+                )
                 #endif
                 self.completeOnMain(completion, .failure(.requestFailed(error)))
                 return
@@ -178,7 +183,12 @@ final class APIClient {
             let data = data ?? Data()
             
             #if DEBUG
-            APILogger.logResponse(endpoint: endpoint, statusCode: statusCode, data: data)
+            APILogger.logResponse(
+                endpoint: endpoint,
+                url: request.url?.absoluteString ?? "n/a",
+                statusCode: statusCode,
+                data: data
+            )
             #endif
             guard (200...299).contains(statusCode) else {
                 if statusCode == 401,

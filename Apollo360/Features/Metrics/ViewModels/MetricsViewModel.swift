@@ -25,23 +25,32 @@ struct MetricCardDisplay: Identifiable {
     let averageValue: String
     let dateRange: String
     let points: [Double]
-    let isLabAvailable: Bool
+    let dataSource: MetricDataSource
     let comparedWith: String?
+    let comparedMetricId: String?
 }
 
 @MainActor
 final class MetricsViewModel: ObservableObject {
     @Published private(set) var cards: [MetricCardDisplay] = []
-    @Published private(set) var compareOptions: [MetricFolderItem] = []
+    @Published private(set) var compareOptions: [MetricCompareOption] = []
+    @Published private(set) var rpmSelectionCategories: [RPMMetricSelectionCategory] = []
     @Published private(set) var isLoading = false
     @Published private(set) var isSavingCompare = false
+    @Published private(set) var isLoadingRPMSelections = false
+    @Published private(set) var isSavingRPMSelections = false
     @Published var errorMessage: String?
     @Published var compareStatusMessage: String?
-    @Published private(set) var selectedRange: String = "1D"
+    @Published var rpmSelectionErrorMessage: String?
+    @Published private(set) var selectedRange: String = "365"
+    @Published private(set) var activeSource: MetricDataSource = .rpm
 
     private let session: SessionManager
     private let service: MetricsAPIService
     private var didLoad = false
+    private var loadGeneration: Int = 0
+    private let enrichmentQueue = DispatchQueue(label: "com.apollo360.metrics.enrichment", qos: .userInitiated)
+    private var cachedCompareOptions: [MetricCompareOption] = []
 
     init(session: SessionManager,
          service: MetricsAPIService) {
@@ -61,95 +70,86 @@ final class MetricsViewModel: ObservableObject {
     }
 
     func load() {
+        loadMetrics(for: activeSource)
+    }
+
+    func setActiveSource(_ source: MetricDataSource) {
+        guard activeSource != source else { return }
+        activeSource = source
+        load()
+    }
+
+    private func loadMetrics(for source: MetricDataSource) {
         guard let credentials = credentials else {
             errorMessage = "Missing session or patient id."
             cards = []
             return
         }
 
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
         errorMessage = nil
         compareStatusMessage = nil
 
-        service.fetchMetricFolders(patientId: credentials.patientId, bearerToken: credentials.token) { [weak self] folderResult in
-            guard let self else { return }
-            switch folderResult {
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    self.isLoading = false
-                    self.errorMessage = error.localizedDescription
-                    self.cards = []
+        let group = DispatchGroup()
+        var rpmFolders: [MetricFolderItem] = []
+        var labFolders: [MetricFolderItem] = []
+        var firstError: APIError?
+
+        if source == .rpm {
+            group.enter()
+            service.fetchRPMMetricFolders(patientId: credentials.patientId, bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                switch result {
+                case .success(let folders):
+                    rpmFolders = folders
+                case .failure(let error):
+                    firstError = firstError ?? error
                 }
-            case .success(let folders):
-                self.loadLabAndSeries(patientId: credentials.patientId,
-                                      memberId: credentials.memberId,
-                                      token: credentials.token,
-                                      selectedRange: self.selectedRange,
-                                      folders: folders)
-                self.loadCompareOptions(patientId: credentials.patientId, token: credentials.token)
+            }
+        } else {
+            group.enter()
+            service.fetchLabMetricFolders(patientId: credentials.patientId, bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                switch result {
+                case .success(let folders):
+                    labFolders = folders
+                case .failure(let error):
+                    firstError = firstError ?? error
+                }
             }
         }
-    }
 
-    func updateRange(_ range: String) {
-        guard selectedRange != range else { return }
-        selectedRange = range
-        load()
-    }
-
-    func compareMetric(baseMetricId: String, compareMetricId: String) {
-        guard let credentials = credentials else {
-            compareStatusMessage = "Missing session details."
-            return
-        }
-
-        isSavingCompare = true
-        compareStatusMessage = nil
-
-        service.checkMetric(metricId: baseMetricId,
-                            patientId: credentials.patientId,
-                            memberId: credentials.memberId,
-                            bearerToken: credentials.token) { [weak self] checkResult in
-            guard let self else { return }
-            switch checkResult {
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    self.isSavingCompare = false
-                    self.compareStatusMessage = error.localizedDescription
+        if cachedCompareOptions.isEmpty {
+            group.enter()
+            service.fetchCompareOptions(patientId: credentials.patientId, bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                switch result {
+                case .success(let payload):
+                    self.cachedCompareOptions = payload.all
+                case .failure:
+                    break
                 }
-            case .success:
-                self.requestCompareAndSave(baseMetricId: baseMetricId,
-                                           compareMetricId: compareMetricId,
-                                           patientId: credentials.patientId,
-                                           memberId: credentials.memberId,
-                                           token: credentials.token)
             }
         }
-    }
 
-    private func loadLabAndSeries(patientId: String,
-                                  memberId: String,
-                                  token: String,
-                                  selectedRange: String,
-                                  folders: [MetricFolderItem]) {
-        service.fetchLabAvailableMetrics(patientId: patientId, bearerToken: token) { [weak self] labResult in
-            guard let self else { return }
-            let refs = (try? labResult.get()) ?? []
-            let labIds = Set(refs.compactMap { $0.id?.lowercased() })
-            let labNames = Set(refs.compactMap { $0.title?.lowercased() })
+        group.notify(queue: .main) {
+            guard generation == self.loadGeneration else { return }
+            self.compareOptions = self.cachedCompareOptions
 
-            if folders.isEmpty {
-                DispatchQueue.main.async {
-                    self.cards = []
-                    self.isLoading = false
-                    self.errorMessage = nil
-                }
+            if let firstError, rpmFolders.isEmpty, labFolders.isEmpty {
+                self.isLoading = false
+                self.errorMessage = firstError.localizedDescription
+                self.cards = []
                 return
             }
 
-            let initialCards = folders.map { folder in
-                let isLab = labIds.contains(folder.id.lowercased()) || labNames.contains(folder.title.lowercased())
-                return MetricCardDisplay(
+            let mergedFolders = (rpmFolders + labFolders)
+                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+
+            self.cards = mergedFolders.map { folder in
+                MetricCardDisplay(
                     id: folder.id,
                     metricField: folder.metricField,
                     metricType: folder.metricType,
@@ -159,148 +159,193 @@ final class MetricsViewModel: ObservableObject {
                     detailText: nil,
                     lastValue: "0",
                     averageValue: "0",
-                    dateRange: selectedRange,
-                    points: [0, 0, 0],
-                    isLabAvailable: isLab,
-                    comparedWith: nil
+                    dateRange: "Recent Data",
+                    points: [0],
+                    dataSource: folder.dataSource,
+                    comparedWith: nil,
+                    comparedMetricId: nil
                 )
-            }.sorted { $0.title < $1.title }
-
-            DispatchQueue.main.async {
-                self.cards = initialCards
-                self.isLoading = false
-                self.errorMessage = nil
             }
+            self.isLoading = false
+            self.errorMessage = nil
 
-            for folder in folders {
-                self.service.fetchUserMetricSeries(metricField: folder.metricField,
-                                                   patientId: patientId,
-                                                   selectedRange: selectedRange,
-                                                   bearerToken: token) { [weak self] result in
-                    guard let self else { return }
-                    guard case .success(let payload) = result else { return }
-                    DispatchQueue.main.async {
-                        self.cards = self.cards.map { current in
-                            guard current.id == folder.id else { return current }
-                            return MetricCardDisplay(
-                                id: current.id,
-                                metricField: current.metricField,
-                                metricType: current.metricType,
-                                unit: current.unit,
-                                sourceSection: current.sourceSection,
-                                title: current.title,
-                                detailText: current.detailText,
-                                lastValue: payload.lastValueText,
-                                averageValue: payload.averageValueText,
-                                dateRange: payload.dateRangeText,
-                                points: payload.points,
-                                isLabAvailable: current.isLabAvailable,
-                                comparedWith: current.comparedWith
-                            )
-                        }
-                    }
-                }
-            }
-
-            self.enrichMetricDetails(patientId: patientId, memberId: memberId, token: token)
-        }
-    }
-
-    private func loadCompareOptions(patientId: String, token: String) {
-        service.fetchAllRPMMetrics(patientId: patientId, bearerToken: token) { [weak self] rpmResult in
-            guard let self else { return }
-            switch rpmResult {
-            case .success(let rpmMetrics):
-                DispatchQueue.main.async {
-                    self.compareOptions = rpmMetrics.sorted { $0.title < $1.title }
-                }
-            case .failure:
-                break
-            }
-        }
-    }
-
-    private func requestCompareAndSave(baseMetricId: String,
-                                       compareMetricId: String,
-                                       patientId: String,
-                                       memberId: String,
-                                       token: String) {
-        guard let baseCard = cards.first(where: { $0.id == baseMetricId }) else {
-            isSavingCompare = false
-            compareStatusMessage = "Unable to find selected metric."
-            return
-        }
-
-        service.fetchCompareUserMetric(metricId: baseMetricId,
-                                       compMetricId: compareMetricId,
-                                       patientId: patientId,
-                                       memberId: memberId,
-                                       metricType: baseCard.metricType,
-                                       bearerToken: token) { [weak self] compareResult in
-            guard let self else { return }
-            switch compareResult {
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    self.isSavingCompare = false
-                    self.compareStatusMessage = error.localizedDescription
-                }
-            case .success(let payload):
-                let metricIds = [Int(baseMetricId), Int(compareMetricId)].compactMap { $0 }
-                self.service.saveUserMetrics(patientId: patientId,
-                                             metricGroupId: patientId,
-                                             metricIds: metricIds) { saveResult in
-                    DispatchQueue.main.async {
-                        self.isSavingCompare = false
-                        switch saveResult {
-                        case .success:
-                            self.applyCompareResult(baseMetricId: baseMetricId,
-                                                    compareMetricId: compareMetricId,
-                                                    payload: payload)
-                            self.compareStatusMessage = "Comparison saved successfully."
-                        case .failure(let error):
-                            self.compareStatusMessage = error.localizedDescription
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func applyCompareResult(baseMetricId: String,
-                                    compareMetricId: String,
-                                    payload: CompareMetricPayload) {
-        let compareTitle = compareOptions.first(where: { $0.id == compareMetricId })?.title
-        cards = cards.map { card in
-            guard card.id == baseMetricId else { return card }
-            return MetricCardDisplay(
-                id: card.id,
-                metricField: card.metricField,
-                metricType: card.metricType,
-                unit: card.unit,
-                sourceSection: card.sourceSection,
-                title: card.title,
-                detailText: card.detailText,
-                lastValue: payload.lastValueText,
-                averageValue: payload.averageValueText,
-                dateRange: card.dateRange,
-                points: payload.points,
-                isLabAvailable: card.isLabAvailable,
-                comparedWith: compareTitle
+            self.enrichCards(
+                folders: mergedFolders,
+                patientId: credentials.patientId,
+                memberId: credentials.memberId,
+                token: credentials.token,
+                generation: generation
             )
         }
     }
 
-    private func enrichMetricDetails(patientId: String, memberId: String, token: String) {
-        for card in cards {
-            service.fetchMetricDescription(metricField: card.metricField,
-                                           patientId: patientId,
-                                           memberId: memberId,
-                                           bearerToken: token) { [weak self] result in
+    func updateRange(_ range: String) {
+        let apiRange = Self.apiRange(for: range)
+        guard selectedRange != apiRange else { return }
+        selectedRange = apiRange
+        load()
+    }
+
+    func compareMetric(baseMetricId: String, compareMetricId: String) {
+        guard let credentials = credentials else {
+            compareStatusMessage = "Missing session details."
+            return
+        }
+
+        guard let baseCard = cards.first(where: { $0.id == baseMetricId }) else {
+            compareStatusMessage = "Unable to find selected metric."
+            return
+        }
+
+        guard let compareOption = compareOptions.first(where: { $0.id == compareMetricId }) else {
+            compareStatusMessage = "Unable to find compare metric."
+            return
+        }
+
+        isSavingCompare = true
+        compareStatusMessage = nil
+
+        requestCompareAndSave(baseCard: baseCard,
+                              compareOption: compareOption,
+                              patientId: credentials.patientId,
+                              memberId: credentials.memberId,
+                              token: credentials.token)
+    }
+
+    func loadRPMMetricSelections() {
+        guard let credentials = credentials else {
+            rpmSelectionErrorMessage = "Missing session details."
+            return
+        }
+
+        isLoadingRPMSelections = true
+        rpmSelectionErrorMessage = nil
+
+        service.fetchAllRPMMetricSelections(patientId: credentials.patientId, bearerToken: credentials.token) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                self.isLoadingRPMSelections = false
+                switch result {
+                case .success(let categories):
+                    self.rpmSelectionCategories = categories
+                case .failure(let error):
+                    self.rpmSelectionErrorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    func saveRPMMetricSelections(selectedMetricIds: [Int], completion: (() -> Void)? = nil) {
+        guard let credentials = credentials else {
+            rpmSelectionErrorMessage = "Missing session details."
+            return
+        }
+
+        isSavingRPMSelections = true
+        rpmSelectionErrorMessage = nil
+
+        service.saveUserMetrics(patientId: credentials.patientId,
+                                memberId: credentials.memberId,
+                                metricIds: selectedMetricIds,
+                                bearerToken: credentials.token) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                self.isSavingRPMSelections = false
+                switch result {
+                case .success:
+                    self.compareStatusMessage = "Metrics saved successfully."
+                    self.loadRPMMetricSelections()
+                    self.loadMetrics(for: .rpm)
+                    completion?()
+                case .failure(let error):
+                    self.rpmSelectionErrorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func enrichCards(folders: [MetricFolderItem],
+                             patientId: String,
+                             memberId: String,
+                             token: String,
+                             generation: Int) {
+        guard !folders.isEmpty else { return }
+
+        let maxConcurrentRequests = 4
+        let semaphore = DispatchSemaphore(value: maxConcurrentRequests)
+
+        for folder in folders {
+            enrichmentQueue.async { [weak self] in
                 guard let self else { return }
-                guard case .success(let detail) = result else { return }
+                semaphore.wait()
+                self.enrichCard(folder: folder,
+                                patientId: patientId,
+                                memberId: memberId,
+                                token: token,
+                                generation: generation) {
+                    semaphore.signal()
+                }
+            }
+        }
+    }
+
+    private func enrichCard(folder: MetricFolderItem,
+                            patientId: String,
+                            memberId: String,
+                            token: String,
+                            generation: Int,
+                            completion: @escaping () -> Void) {
+        service.fetchUserMetricSeries(metricField: folder.metricField,
+                                      patientId: patientId,
+                                      selectedRange: selectedRange,
+                                      source: folder.dataSource,
+                                      bearerToken: token) { [weak self] result in
+            guard let self else {
+                completion()
+                return
+            }
+
+            if case .success(let payload) = result {
                 DispatchQueue.main.async {
+                    guard generation == self.loadGeneration else { return }
                     self.cards = self.cards.map { current in
-                        guard current.id == card.id else { return current }
+                        guard current.id == folder.id else { return current }
+                        return MetricCardDisplay(
+                            id: current.id,
+                            metricField: current.metricField,
+                            metricType: current.metricType,
+                            unit: current.unit,
+                            sourceSection: current.sourceSection,
+                            title: current.title,
+                            detailText: current.detailText,
+                            lastValue: payload.lastValueText,
+                            averageValue: payload.averageValueText,
+                            dateRange: payload.dateRangeText,
+                            points: payload.points,
+                            dataSource: current.dataSource,
+                            comparedWith: current.comparedWith,
+                            comparedMetricId: current.comparedMetricId
+                        )
+                    }
+                }
+            }
+
+            self.service.fetchMetricDescription(metricField: folder.metricField,
+                                                patientId: patientId,
+                                                memberId: memberId,
+                                                source: folder.dataSource,
+                                                bearerToken: token) { [weak self] detailResult in
+                defer { completion() }
+                guard let self else { return }
+                guard case .success(let detail) = detailResult else { return }
+                DispatchQueue.main.async {
+                    guard generation == self.loadGeneration else { return }
+                    let compareTitle = detail.comparedMetricId.flatMap { comparedId in
+                        self.compareOptions.first(where: { $0.id == comparedId })?.title
+                    }
+
+                    self.cards = self.cards.map { current in
+                        guard current.id == folder.id else { return current }
                         return MetricCardDisplay(
                             id: current.id,
                             metricField: current.metricField,
@@ -313,12 +358,98 @@ final class MetricsViewModel: ObservableObject {
                             averageValue: current.averageValue,
                             dateRange: current.dateRange,
                             points: current.points,
-                            isLabAvailable: current.isLabAvailable,
-                            comparedWith: current.comparedWith
+                            dataSource: current.dataSource,
+                            comparedWith: compareTitle ?? current.comparedWith,
+                            comparedMetricId: detail.comparedMetricId ?? current.comparedMetricId
                         )
                     }
                 }
             }
+        }
+    }
+
+    private func requestCompareAndSave(baseCard: MetricCardDisplay,
+                                       compareOption: MetricCompareOption,
+                                       patientId: String,
+                                       memberId: String,
+                                       token: String) {
+        service.fetchCompareUserMetric(metricId: baseCard.id,
+                                       compMetricId: compareOption.id,
+                                       patientId: patientId,
+                                       memberId: memberId,
+                                       source: baseCard.dataSource,
+                                       selectedCategory: compareOption.category,
+                                       bearerToken: token) { [weak self] compareResult in
+            guard let self else { return }
+            switch compareResult {
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self.isSavingCompare = false
+                    self.compareStatusMessage = error.localizedDescription
+                }
+            case .success:
+                self.service.fetchUserMetricSeries(metricField: compareOption.metricField,
+                                                   patientId: patientId,
+                                                   selectedRange: self.selectedRange,
+                                                   source: compareOption.category,
+                                                   bearerToken: token) { seriesResult in
+                    DispatchQueue.main.async {
+                        self.isSavingCompare = false
+                        switch seriesResult {
+                        case .success(let payload):
+                            self.applyCompareResult(baseMetricId: baseCard.id,
+                                                    compareOption: compareOption,
+                                                    payload: payload)
+                            self.compareStatusMessage = "Comparison saved successfully."
+                        case .failure(let error):
+                            self.compareStatusMessage = error.localizedDescription
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func applyCompareResult(baseMetricId: String,
+                                    compareOption: MetricCompareOption,
+                                    payload: UserMetricSeriesPayload) {
+        cards = cards.map { card in
+            guard card.id == baseMetricId else { return card }
+            return MetricCardDisplay(
+                id: card.id,
+                metricField: card.metricField,
+                metricType: card.metricType,
+                unit: card.unit,
+                sourceSection: card.sourceSection,
+                title: card.title,
+                detailText: card.detailText,
+                lastValue: card.lastValue,
+                averageValue: card.averageValue,
+                dateRange: payload.dateRangeText,
+                points: payload.points,
+                dataSource: card.dataSource,
+                comparedWith: compareOption.title,
+                comparedMetricId: compareOption.id
+            )
+        }
+    }
+
+    private static func apiRange(for uiRange: String) -> String {
+        switch uiRange.uppercased() {
+        case "1D":
+            return "1"
+        case "1W":
+            return "7"
+        case "1M":
+            return "30"
+        case "3M":
+            return "90"
+        case "1Y":
+            return "365"
+        case "ALL":
+            return "all"
+        default:
+            return "365"
         }
     }
 

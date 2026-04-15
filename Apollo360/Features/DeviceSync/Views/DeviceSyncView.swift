@@ -11,17 +11,24 @@ struct DeviceSyncView: View {
     @State private var showMarketplace = false
     @State private var didBootstrap = false
 
-    private let knownDevices: [(name: String, key: String)] = [
-        ("Apple Health", "healthkit"),
-        ("Fitbit", "fitbit"),
-        ("Withings", "withings"),
-        ("Omron", "omron"),
-        ("Garmin", "garmin")
+    // All supported devices — (display name, Validic source key, icon asset name)
+    private let knownDevices: [(name: String, key: String, icon: String)] = [
+        ("Apple Health", "apple_health",  "applelogo"),
+        ("Fitbit",       "fitbit",        "fitbit"),
+        ("Withings",     "withings",      "withings"),
+        ("Omron",        "omron",         "omron"),
+        ("Garmin",       "garmin",        "garmin")
     ]
 
+    private var connectedDevices: [(name: String, key: String, icon: String)] {
+        knownDevices.filter { isConnected(sourceKey: $0.key) }
+    }
+    private var notConnectedDevices: [(name: String, key: String, icon: String)] {
+        knownDevices.filter { !isConnected(sourceKey: $0.key) }
+    }
     private var canOpenMarketplace: Bool {
-        guard let marketplaceURL = store.marketplaceURL else { return false }
-        return !marketplaceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard let url = store.marketplaceURL else { return false }
+        return !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -30,26 +37,30 @@ struct DeviceSyncView: View {
                 topBanner
                 cardsSection
             }
-            .padding(.bottom, 30)
+            .padding(.bottom, 40)
         }
-        .background(AppColor.secondary)
+        .background(Color(hex: "#F0F4F1"))
         .navigationBarBackButtonHidden(true)
         .onAppear {
             store.configureIfNeeded()
             guard !didBootstrap else { return }
             didBootstrap = true
-            Task { await store.refreshSourcesIfAvailable() }
+            Task {
+                // If we have a uid, refresh sources to show latest connection status
+                if store.validicUID != nil {
+                    await store.refreshSourcesIfAvailable()
+                }
+            }
         }
         .sheet(isPresented: $showMarketplace) {
             if let url = marketplaceURL {
                 SafariView(url: url)
             }
         }
-        .alert(isPresented: Binding(get: {
-            store.errorMessage != nil
-        }, set: { newValue in
-            if !newValue { store.errorMessage = nil }
-        })) {
+        .alert(isPresented: Binding(
+            get:  { store.errorMessage != nil },
+            set:  { if !$0 { store.errorMessage = nil } }
+        )) {
             Alert(
                 title: Text("Sync Devices"),
                 message: Text(store.errorMessage ?? ""),
@@ -58,99 +69,123 @@ struct DeviceSyncView: View {
         }
     }
 
+    // MARK: - Top Banner
+
     private var topBanner: some View {
         ZStack(alignment: .top) {
-            LinearGradient(colors: [Color(hex: "#DCE6DF"), Color(hex: "#BFD5C2")], startPoint: .top, endPoint: .bottom)
-                .frame(height: 310)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            LinearGradient(
+                colors: [Color(hex: "#DCE6DF"), Color(hex: "#BFD5C2")],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: 270)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
+                // Nav row
                 HStack {
-                    Button {
-                        presentationMode.wrappedValue.dismiss()
-                    } label: {
+                    Button { presentationMode.wrappedValue.dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(AppColor.color414141)
                     }
-
                     Text("Sync Devices")
-                        .font(AppFont.display(size: 24, weight: .semibold))
+                        .font(AppFont.display(size: 22, weight: .semibold))
                         .foregroundColor(AppColor.color414141)
                     Spacer()
-                    Button {
-                        openMarketplaceIfAvailable()
-                    } label: {
+                    Button { openMarketplaceIfAvailable() } label: {
                         Image(systemName: "plus.circle")
-                            .font(.system(size: 34, weight: .regular))
+                            .font(.system(size: 30, weight: .regular))
                             .foregroundColor(AppColor.color414141)
                     }
                     .disabled(!canOpenMarketplace)
                 }
 
-                Text("Swipe Down to Refresh")
-                    .font(AppFont.display(size: 20, weight: .bold))
-                    .foregroundColor(AppColor.black)
-                    .multilineTextAlignment(.center)
+                // Pull-to-refresh hint
+                VStack(spacing: 10) {
+                    Text("Swipe Down to Refresh")
+                        .font(AppFont.display(size: 18, weight: .bold))
+                        .foregroundColor(AppColor.black)
 
-                Circle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(width: 62, height: 62)
-                    .overlay(
-                        Image(systemName: "arrow.down")
-                            .font(.system(size: 28, weight: .medium))
-                            .foregroundColor(AppColor.color414141)
-                    )
+                    Circle()
+                        .fill(Color.white.opacity(0.55))
+                        .frame(width: 54, height: 54)
+                        .overlay(
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 24, weight: .medium))
+                                .foregroundColor(AppColor.color414141)
+                        )
+                }
+                .padding(.top, 8)
             }
             .padding(.horizontal, 24)
-            .padding(.top, 24)
+            .padding(.top, 20)
         }
-        .padding(.horizontal, 0)
     }
 
+    // MARK: - Cards Section
+
     private var cardsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Pull-tab handle
             RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color.white.opacity(0.28))
-                .frame(height: 16)
-                .padding(.horizontal, 2)
+                .fill(Color.black.opacity(0.10))
+                .frame(width: 44, height: 5)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 10)
 
-            VStack(spacing: 14) {
-                summaryCard
+            // ACTION REQUIRED banner — shown when no sources connected yet
+            if connectedDevices.isEmpty && canOpenMarketplace {
+                connectHintCard
+            }
 
-                ForEach(knownDevices, id: \.key) { item in
-                    deviceRow(name: item.name, isConnected: isConnected(sourceKey: item.key), actionTitle: isConnected(sourceKey: item.key) ? "Connected" : "Manage") {
-                        openMarketplaceIfAvailable()
+            // Not-connected devices
+            if !notConnectedDevices.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(notConnectedDevices, id: \.key) { item in
+                        deviceRow(name: item.name, key: item.key, icon: item.icon, isConnected: false)
                     }
                 }
             }
 
-            Button {
-                openMarketplaceIfAvailable()
-            } label: {
+            // Connected devices — shown in their own section
+            if !connectedDevices.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connected Device")
+                        .font(AppFont.body(size: 13, weight: .semibold))
+                        .foregroundColor(AppColor.grey)
+                        .padding(.leading, 4)
+                        .padding(.top, 4)
+
+                    ForEach(connectedDevices, id: \.key) { item in
+                        deviceRow(name: item.name, key: item.key, icon: item.icon, isConnected: true)
+                    }
+                }
+            }
+
+            // Manage your devices
+            Button { openMarketplaceIfAvailable() } label: {
                 Text("Manage your devices")
-                    .font(AppFont.body(size: 22, weight: .semibold))
+                    .font(AppFont.body(size: 18, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(AppColor.green)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(.vertical, 18)
+                    .background(canOpenMarketplace ? AppColor.green : AppColor.green.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .disabled(!canOpenMarketplace)
 
-            Button {
-                Task { await syncNow() }
-            } label: {
-                HStack(spacing: 12) {
+            // Sync with Apple Health
+            Button { Task { await syncNow() } } label: {
+                HStack(spacing: 10) {
                     Image(systemName: "applelogo")
-                        .font(.system(size: 30, weight: .semibold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(AppColor.black)
-                    Text(buttonTitle)
-                        .font(AppFont.body(size: 22, weight: .semibold))
+                    Text(store.isSyncing ? "Syncing…" : "Sync with Apple Health")
+                        .font(AppFont.body(size: 18, weight: .semibold))
                         .foregroundColor(AppColor.color414141)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.vertical, 16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(AppColor.color414141, lineWidth: 1.5)
@@ -158,136 +193,170 @@ struct DeviceSyncView: View {
             }
             .disabled(store.isSyncing || !store.isReadyForInitialSync)
 
-            Button {
-                Task { await store.refreshSourcesIfAvailable() }
-            } label: {
-                Text(store.isRefreshing ? "Refreshing..." : "Refresh device status")
-                    .font(AppFont.body(size: 18, weight: .semibold))
-                    .foregroundColor(AppColor.color414141)
+            // Refresh status
+            Button { Task { await store.refreshSourcesIfAvailable() } } label: {
+                Text(store.isRefreshing ? "Refreshing…" : "Refresh device status")
+                    .font(AppFont.body(size: 15, weight: .medium))
+                    .foregroundColor(AppColor.grey)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 12)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(AppColor.color414141.opacity(0.35), lineWidth: 1.2)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(AppColor.grey.opacity(0.35), lineWidth: 1.2)
                     )
             }
             .disabled(store.isRefreshing || store.validicUID == nil)
 
+            // Last sync label
             Text(lastSyncText)
-                .font(AppFont.body(size: 14, weight: .medium))
+                .font(AppFont.body(size: 13, weight: .medium))
                 .foregroundColor(AppColor.grey)
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 4)
+                .padding(.top, 2)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 22)
+        .padding(.bottom, 24)
         .background(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(Color(hex: "#F4F4F4"))
         )
-        .padding(.horizontal, 0)
-        .offset(y: -26)
+        .offset(y: -22)
     }
 
-    private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            summaryRow(label: "Validic user id", value: store.validicUserID ?? "Not provisioned")
-            summaryRow(label: "Validic uid", value: store.validicUID ?? "Not provisioned")
-            summaryRow(label: "Timezone", value: store.timezone ?? "Unavailable")
-            summaryRow(label: "Status", value: store.userStatus ?? "Unavailable")
-            summaryRow(label: "Connected sources", value: "\(store.sourceTypes.count)")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.white.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
+    // MARK: - Device Row
 
-    private func summaryRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(AppFont.body(size: 14, weight: .medium))
-                .foregroundColor(AppColor.grey)
-            Spacer()
-            Text(value)
-                .font(AppFont.body(size: 14, weight: .semibold))
-                .foregroundColor(AppColor.color414141)
-                .multilineTextAlignment(.trailing)
-        }
-    }
-
-    private func deviceRow(name: String, isConnected: Bool, actionTitle: String, onAction: @escaping () -> Void) -> some View {
+    private func deviceRow(name: String, key: String, icon: String, isConnected: Bool) -> some View {
         HStack(spacing: 14) {
-            Circle()
-                .fill(Color.white)
-                .frame(width: 56, height: 56)
-                .overlay(
-                    ZStack {
-                        Text(initials(from: name))
-                            .font(AppFont.body(size: 16, weight: .semibold))
-                            .foregroundColor(AppColor.grey)
+            // Icon circle
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 52, height: 52)
+                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
 
-                        VStack {
-                            Spacer()
-                            HStack {
-                                Spacer()
-                                Circle()
-                                    .fill(isConnected ? Color.green : Color.red)
-                                    .frame(width: 12, height: 12)
-                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                            }
-                        }
+                // Use system image for Apple, otherwise show initials
+                if key == "apple_health" {
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.black)
+                } else if UIImage(named: icon) != nil {
+                    Image(icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                } else {
+                    Text(initials(from: name))
+                        .font(AppFont.body(size: 15, weight: .semibold))
+                        .foregroundColor(AppColor.grey)
+                }
+
+                // Connection dot
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Circle()
+                            .fill(isConnected ? Color.green : Color.red)
+                            .frame(width: 13, height: 13)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
                     }
-                )
+                }
+                .frame(width: 52, height: 52)
+            }
 
             Text(name)
-                .font(AppFont.display(size: 18, weight: .medium))
+                .font(AppFont.display(size: 16, weight: .medium))
                 .foregroundColor(AppColor.color414141)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
 
             Spacer()
 
-            Button(actionTitle) { onAction() }
-                .font(AppFont.body(size: 13, weight: .medium))
-                .foregroundColor(isConnected ? AppColor.green : AppColor.green)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .frame(minWidth: 84)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(AppColor.green, lineWidth: 1.4)
-                )
-                .disabled(isConnected || !canOpenMarketplace)
+            if isConnected {
+                Text("Connected")
+                    .font(AppFont.body(size: 13, weight: .medium))
+                    .foregroundColor(AppColor.green)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(AppColor.green.opacity(0.10))
+                    .clipShape(Capsule())
+            } else {
+                Button("Manage") { openMarketplaceIfAvailable() }
+                    .font(AppFont.body(size: 13, weight: .medium))
+                    .foregroundColor(AppColor.green)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .overlay(Capsule().stroke(AppColor.green, lineWidth: 1.3))
+                    .disabled(!canOpenMarketplace)
+            }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(Color.white.opacity(0.45))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color.white.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private var buttonTitle: String {
-        if store.isSyncing { return "Syncing..." }
-        return "Sync with Apple Health"
+    // MARK: - Connect Hint
+
+    private var connectHintCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(AppColor.green)
+                Text("Action Required")
+                    .font(AppFont.body(size: 15, weight: .bold))
+                    .foregroundColor(AppColor.color414141)
+            }
+
+            Text("Apple Health is not connected yet. You need to connect it once through the Validic marketplace so your health data can sync.")
+                .font(AppFont.body(size: 13, weight: .regular))
+                .foregroundColor(AppColor.grey)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                openMarketplaceIfAvailable()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.right.circle.fill")
+                        .font(.system(size: 16))
+                    Text("Connect Apple Health Now")
+                        .font(AppFont.body(size: 14, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(AppColor.green)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.green.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppColor.green.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
+
+    // MARK: - Helpers
 
     private var lastSyncText: String {
-        guard let date = store.lastSyncedAt else { return "Last Sync: Not synced yet" }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return "Last Sync: \(formatter.string(from: date))"
+        guard let date = store.lastSyncedAt else { return "Not synced yet" }
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return "Last sync: \(f.string(from: date))"
     }
 
     private func isConnected(sourceKey: String) -> Bool {
-        store.sourceTypes.contains { $0.contains(sourceKey) }
+        store.sourceTypes.contains { $0.lowercased().contains(sourceKey.lowercased()) }
     }
 
     private func openMarketplaceIfAvailable() {
         guard let urlString = store.marketplaceURL, let url = URL(string: urlString) else {
-            store.errorMessage = "Marketplace URL is not available yet. Please sync first."
+            // Marketplace URL not cached yet — trigger a sync first to get it
+            Task { await syncNow() }
             return
         }
         marketplaceURL = url
@@ -300,7 +369,6 @@ struct DeviceSyncView: View {
             await store.syncFromCachedSession()
             return
         }
-
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "ios-device"
         await store.sync(encodedUsername: encodedUsername, deviceId: deviceId)
     }
@@ -308,13 +376,9 @@ struct DeviceSyncView: View {
     private func resolveEncodedUsername() -> String {
         let username = (session.username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !username.isEmpty else { return "" }
-
         if let data = Data(base64Encoded: username),
            let decoded = String(data: data, encoding: .utf8),
-           !decoded.isEmpty {
-            return username
-        }
-
+           !decoded.isEmpty { return username }
         return Data(username.utf8).base64EncodedString()
     }
 
@@ -322,6 +386,8 @@ struct DeviceSyncView: View {
         text.split(separator: " ").prefix(2).map { String($0.prefix(1)) }.joined().uppercased()
     }
 }
+
+// MARK: - HealthSyncStore
 
 @MainActor
 final class HealthSyncStore: ObservableObject {
@@ -354,87 +420,65 @@ final class HealthSyncStore: ObservableObject {
     }
 
     func sync(encodedUsername: String, deviceId: String) async {
-        guard let viewModel else {
-            errorMessage = "Device sync is not configured."
-            return
-        }
-
+        guard let viewModel else { errorMessage = "Device sync is not configured."; return }
         isSyncing = true
         await viewModel.sync(encodedUsername: encodedUsername, deviceId: deviceId)
         isSyncing = false
-
         apply(from: viewModel)
         refreshReadiness()
-
-        if case .failure(let message) = viewModel.state {
-            errorMessage = message
-        }
+        if case .failure(let message) = viewModel.state { errorMessage = message }
     }
 
     func refreshSourcesIfAvailable() async {
-        guard let viewModel else {
-            errorMessage = "Device sync is not configured."
-            return
-        }
-
+        guard let viewModel else { errorMessage = "Device sync is not configured."; return }
         isRefreshing = true
         await viewModel.refreshSources()
         isRefreshing = false
-
         apply(from: viewModel)
         refreshReadiness()
-
-        if case .failure(let message) = viewModel.state {
-            errorMessage = message
-        }
+        if case .failure(let message) = viewModel.state { errorMessage = message }
     }
 
     func syncFromCachedSession() async {
-        guard let viewModel else {
-            errorMessage = "Device sync is not configured."
-            return
-        }
-
+        guard let viewModel else { errorMessage = "Device sync is not configured."; return }
         isSyncing = true
         await viewModel.syncFromCachedSession()
         isSyncing = false
-
         apply(from: viewModel)
         refreshReadiness()
-
-        if case .failure(let message) = viewModel.state {
-            errorMessage = message
-        }
+        if case .failure(let message) = viewModel.state { errorMessage = message }
     }
 
     private func apply(from viewModel: HealthSyncViewModel) {
         marketplaceURL = viewModel.marketplaceURL
-        sourceTypes = viewModel.sourceTypes
-        lastSyncedAt = viewModel.lastSyncedAt
-        validicUserID = viewModel.validicUserID
-        validicUID = viewModel.validicUID
-        timezone = viewModel.timezone
-        userStatus = viewModel.userStatus
+        sourceTypes    = viewModel.sourceTypes
+        lastSyncedAt   = viewModel.lastSyncedAt
+        validicUserID  = viewModel.validicUserID
+        validicUID     = viewModel.validicUID
+        timezone       = viewModel.timezone
+        userStatus     = viewModel.userStatus
     }
 
     private func refreshReadiness() {
-        let token = UserDefaults.standard.string(forKey: "Apollo360.accessToken")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let token    = UserDefaults.standard.string(forKey: "Apollo360.accessToken")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let username = UserDefaults.standard.string(forKey: "Apollo360.username")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         isReadyForInitialSync = !token.isEmpty && (!username.isEmpty || validicUID != nil)
     }
 }
 
+// MARK: - SafariView
+
 private struct SafariView: UIViewControllerRepresentable {
     let url: URL
-
     func makeUIViewController(context: Context) -> SFSafariViewController {
-        let controller = SFSafariViewController(url: url)
-        controller.preferredControlTintColor = UIColor(AppColor.green)
-        return controller
+        let vc = SFSafariViewController(url: url)
+        vc.preferredControlTintColor = UIColor(AppColor.green)
+        return vc
     }
-
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
+
+// MARK: - Color helper
 
 private extension Color {
     init(hex: String) {
@@ -443,23 +487,16 @@ private extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3:
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6:
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8:
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (255, 0, 0, 0)
+        case 3:  (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6:  (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8:  (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default: (a, r, g, b) = (255, 0, 0, 0)
         }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
+        self.init(.sRGB,
+                  red:     Double(r) / 255,
+                  green:   Double(g) / 255,
+                  blue:    Double(b) / 255,
+                  opacity: Double(a) / 255)
     }
 }
 

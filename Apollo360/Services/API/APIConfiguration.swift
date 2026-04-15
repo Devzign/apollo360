@@ -82,14 +82,23 @@ enum APIEndpoint {
     static func rpmFolderMetrics(for patientId: String) -> String {
         "v1/rpm-folders/metrics/\(patientId)"
     }
+    static func labFolderMetrics(for patientId: String) -> String {
+        "v1/labfolders/metrics/\(patientId)"
+    }
     static func userMetric(metricField: String, patientId: String, selectedRange: String) -> String {
         "v1/usermetric/\(metricField)/\(patientId)/\(selectedRange)"
+    }
+    static func userLabMetric(metricField: String, patientId: String, selectedRange: String) -> String {
+        "v1/user-lab-metric/\(metricField)/\(patientId)/\(selectedRange)"
     }
     static func labAvailableMetricList(for patientId: String) -> String {
         "v1/lab-available-metric-list/\(patientId)"
     }
     static func metricDescription(metricField: String, patientId: String, memberId: String) -> String {
         "v1/metric-description/\(metricField)/\(patientId)/\(memberId)"
+    }
+    static func labMetricDetail(metricField: String, patientId: String, memberId: String) -> String {
+        "v1/lab-metric-detail/\(metricField)/\(patientId)/\(memberId)"
     }
     static func compareUserMetric(metricId: String,
                                   compMetricId: String,
@@ -98,16 +107,28 @@ enum APIEndpoint {
                                   metricType: String) -> String {
         "v1/compare-user-metric/\(metricId)/\(compMetricId)/\(patientId)/\(memberId)/\(metricType)"
     }
-    static func checkMetric(metricId: String,
-                            patientId: String,
-                            memberId: String) -> String {
-        "v1/check-metric/\(metricId)/\(patientId)/\(memberId)"
+    static func compareUserLabMetric(metricId: String,
+                                     compMetricId: String,
+                                     patientId: String,
+                                     memberId: String,
+                                     metricType: String) -> String {
+        "v1/compare-user-lab-metric/\(metricId)/\(compMetricId)/\(patientId)/\(memberId)/\(metricType)"
+    }
+    static func checkUserMetric(metricId: String,
+                                patientId: String,
+                                memberId: String) -> String {
+        "v1/check-user-metric/\(metricId)/\(patientId)/\(memberId)"
+    }
+    static func checkLabMetric(metricId: String,
+                               patientId: String,
+                               memberId: String) -> String {
+        "v1/check-lab-metric/\(metricId)/\(patientId)/\(memberId)"
     }
     static func showAllRPMMetrics(for patientId: String) -> String {
         "v1/show-all-rpm-metrics/\(patientId)"
     }
-    static func saveUserMetrics(patientId: String, metricGroupId: String) -> String {
-        "v1/save-user-metrics/\(patientId)/\(metricGroupId)"
+    static func saveUserMetrics(patientId: String, memberId: String) -> String {
+        "v1/save-user-metrics/\(patientId)/\(memberId)"
     }
     static func billingCards(for patientId: String) -> String {
         "v1/billing/cards/\(patientId)"

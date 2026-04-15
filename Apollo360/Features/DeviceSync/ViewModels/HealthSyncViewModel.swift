@@ -79,7 +79,7 @@ final class HealthSyncViewModel: ObservableObject {
       }
 
       try service.startSession(for: cachedUser)
-      try await service.syncHistoricalHealthKitData()
+      try await service.syncHistoricalHealthKitData(validicUser: cachedUser)
 
       let now = Date()
       self.lastSyncedAt = now

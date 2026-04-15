@@ -14,6 +14,7 @@ enum APILogger {
     // MARK: - Request Log
     static func logRequest(
         endpoint: String,
+        url: String,
         method: String,
         headers: [String: String]?,
         body: Data?
@@ -23,6 +24,7 @@ enum APILogger {
         \(line)
         📤 API REQUEST
         Endpoint : \(endpoint)
+        URL      : \(url)
         Method   : \(method)
         Headers  : \(headers ?? [:])
         \(line)
@@ -34,6 +36,7 @@ enum APILogger {
     // MARK: - Response Log
     static func logResponse(
         endpoint: String,
+        url: String,
         statusCode: Int,
         data: Data
     ) {
@@ -42,6 +45,7 @@ enum APILogger {
         \(line)
         🌐 API RESPONSE
         Endpoint : \(endpoint)
+        URL      : \(url)
         Status   : \(statusCode)
         Size     : \(data.count) bytes
         \(line)
@@ -53,6 +57,7 @@ enum APILogger {
     // MARK: - Error Log
     static func logError(
         endpoint: String,
+        url: String,
         error: Error
     ) {
         print("""
@@ -60,6 +65,7 @@ enum APILogger {
         \(line)
         ❌ API ERROR
         Endpoint : \(endpoint)
+        URL      : \(url)
         Error    : \(error.localizedDescription)
         \(line)
         """)
@@ -79,5 +85,4 @@ enum APILogger {
         }
     }
 }
-
 

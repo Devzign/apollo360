@@ -13,9 +13,9 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Apollo360 uses your microphone for audio during video appointments.</string>
 	<key>ORGANISATION_ID</key>
-	<string></string>
+	<string>6232413757463e0001806968</string>
 	<key>PP_BASE_URL</key>
-	<string>https://doctor.ioapollo.com</string>
+	<string>https://backend.pp-a360.com</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>font/poppins/Poppins-Black.ttf</string>
@@ -42,11 +42,13 @@
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
 	<key>VALIDIC_ORGANIZATION_ID</key>
-	<string></string>
+	<string>6232413757463e0001806968</string>
 	<key>VALIDIC_ORG_ID</key>
-	<string></string>
+	<string>6232413757463e0001806968</string>
 	<key>VALIDIC_TOKEN</key>
-	<string></string>
+	<string>6d2fc49838c2bdc5f63f4a6a4c8cd5be</string>
+	<key>VALIDIC_MOBILE_INFORM_URL</key>
+	<string>https://mobile-inform.prod.validic.com</string>
 	<key>VALIDIC_URL_V2</key>
 	<string>https://api.v2.validic.com</string>
 </dict>

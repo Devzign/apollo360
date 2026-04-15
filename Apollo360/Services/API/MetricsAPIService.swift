@@ -7,6 +7,11 @@
 
 import Foundation
 
+enum MetricDataSource: String, Hashable {
+    case rpm
+    case lab
+}
+
 struct MetricFolderItem: Identifiable, Hashable {
     enum SourceSection: String {
         case careTeam
@@ -19,6 +24,14 @@ struct MetricFolderItem: Identifiable, Hashable {
     let unit: String?
     let metricType: String
     let sourceSection: SourceSection
+    let dataSource: MetricDataSource
+}
+
+struct MetricCompareOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let metricField: String
+    let category: MetricDataSource
 }
 
 struct UserMetricSeriesPayload {
@@ -28,20 +41,37 @@ struct UserMetricSeriesPayload {
     let dateRangeText: String
 }
 
-struct LabAvailableMetricReference: Hashable {
-    let id: String?
-    let title: String?
-}
-
 struct MetricFullDetailPayload {
     let detailText: String?
     let lastValueText: String?
+    let comparedMetricId: String?
+    let comparedMetricType: MetricDataSource?
 }
 
-struct CompareMetricPayload {
-    let points: [Double]
-    let lastValueText: String
-    let averageValueText: String
+struct MetricCompareOptionsPayload {
+    let rpm: [MetricCompareOption]
+    let lab: [MetricCompareOption]
+
+    var all: [MetricCompareOption] {
+        (rpm + lab).sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+}
+
+struct RPMMetricSelectionItem: Identifiable, Hashable {
+    let id: Int
+    let metric: String
+    let description: String
+    let glossaryDisplay: String
+    let isChecked: Bool
+    let isDisabled: Bool
+    let isAvailable: Bool
+}
+
+struct RPMMetricSelectionCategory: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let availableMetrics: [RPMMetricSelectionItem]
+    let unavailableMetrics: [RPMMetricSelectionItem]
 }
 
 final class MetricsAPIService {
@@ -49,9 +79,9 @@ final class MetricsAPIService {
 
     private init() {}
 
-    func fetchMetricFolders(patientId: String,
-                            bearerToken: String,
-                            completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
+    func fetchRPMMetricFolders(patientId: String,
+                               bearerToken: String,
+                               completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
         APIClient.shared.performDataRequest(
             endpoint: APIEndpoint.rpmFolderMetrics(for: patientId),
             method: .get,
@@ -59,12 +89,46 @@ final class MetricsAPIService {
         ) { result in
             switch result {
             case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    let folders = Self.parseMetricFolders(from: json)
-                    completion(.success(folders))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseRPMMetricFolders(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchLabMetricFolders(patientId: String,
+                               bearerToken: String,
+                               completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.labFolderMetrics(for: patientId),
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseLabMetricFolders(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchCompareOptions(patientId: String,
+                             bearerToken: String,
+                             completion: @escaping (Result<MetricCompareOptionsPayload, APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.labAvailableMetricList(for: patientId),
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseCompareOptions(from: $0)
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -75,65 +139,26 @@ final class MetricsAPIService {
     func fetchUserMetricSeries(metricField: String,
                                patientId: String,
                                selectedRange: String,
+                               source: MetricDataSource,
                                bearerToken: String,
                                completion: @escaping (Result<UserMetricSeriesPayload, APIError>) -> Void) {
-        APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.userMetric(metricField: metricField, patientId: patientId, selectedRange: selectedRange),
-            method: .get,
-            headers: ["Authorization": "Bearer \(bearerToken)"]
-        ) { result in
-            switch result {
-            case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    let payload = Self.parseUserMetricSeries(from: json)
-                    completion(.success(payload))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
+        let endpoint: String
+        switch source {
+        case .rpm:
+            endpoint = APIEndpoint.userMetric(metricField: metricField, patientId: patientId, selectedRange: selectedRange)
+        case .lab:
+            endpoint = APIEndpoint.userLabMetric(metricField: metricField, patientId: patientId, selectedRange: selectedRange)
         }
-    }
 
-    func fetchLabAvailableMetrics(patientId: String,
-                                  bearerToken: String,
-                                  completion: @escaping (Result<[LabAvailableMetricReference], APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.labAvailableMetricList(for: patientId),
+            endpoint: endpoint,
             method: .get,
             headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
             switch result {
             case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    completion(.success(Self.parseLabAvailableMetrics(from: json)))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    func fetchAllRPMMetrics(patientId: String,
-                            bearerToken: String,
-                            completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
-        APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.showAllRPMMetrics(for: patientId),
-            method: .get,
-            headers: ["Authorization": "Bearer \(bearerToken)"]
-        ) { result in
-            switch result {
-            case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    completion(.success(Self.parseMetricFolders(from: json)))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseUserMetricSeries(from: $0)
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -144,20 +169,26 @@ final class MetricsAPIService {
     func fetchMetricDescription(metricField: String,
                                 patientId: String,
                                 memberId: String,
+                                source: MetricDataSource,
                                 bearerToken: String,
                                 completion: @escaping (Result<MetricFullDetailPayload, APIError>) -> Void) {
+        let endpoint: String
+        switch source {
+        case .rpm:
+            endpoint = APIEndpoint.metricDescription(metricField: metricField, patientId: patientId, memberId: memberId)
+        case .lab:
+            endpoint = APIEndpoint.labMetricDetail(metricField: metricField, patientId: patientId, memberId: memberId)
+        }
+
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.metricDescription(metricField: metricField, patientId: patientId, memberId: memberId),
+            endpoint: endpoint,
             method: .get,
             headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
             switch result {
             case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    completion(.success(Self.parseMetricFullDetail(from: json)))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseMetricFullDetail(from: $0)
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -168,10 +199,19 @@ final class MetricsAPIService {
     func checkMetric(metricId: String,
                      patientId: String,
                      memberId: String,
+                     source: MetricDataSource,
                      bearerToken: String,
                      completion: @escaping (Result<Void, APIError>) -> Void) {
+        let endpoint: String
+        switch source {
+        case .rpm:
+            endpoint = APIEndpoint.checkUserMetric(metricId: metricId, patientId: patientId, memberId: memberId)
+        case .lab:
+            endpoint = APIEndpoint.checkLabMetric(metricId: metricId, patientId: patientId, memberId: memberId)
+        }
+
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.checkMetric(metricId: metricId, patientId: patientId, memberId: memberId),
+            endpoint: endpoint,
             method: .put,
             headers: [
                 "Authorization": "Bearer \(bearerToken)",
@@ -179,9 +219,7 @@ final class MetricsAPIService {
             ]
         ) { result in
             switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(.noData):
+            case .success, .failure(.noData):
                 completion(.success(()))
             case .failure(let error):
                 completion(.failure(error))
@@ -193,17 +231,32 @@ final class MetricsAPIService {
                                 compMetricId: String,
                                 patientId: String,
                                 memberId: String,
-                                metricType: String,
+                                source: MetricDataSource,
+                                selectedCategory: MetricDataSource,
                                 bearerToken: String,
-                                completion: @escaping (Result<CompareMetricPayload, APIError>) -> Void) {
-        APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.compareUserMetric(
+                                completion: @escaping (Result<Void, APIError>) -> Void) {
+        let endpoint: String
+        switch source {
+        case .rpm:
+            endpoint = APIEndpoint.compareUserMetric(
                 metricId: metricId,
                 compMetricId: compMetricId,
                 patientId: patientId,
                 memberId: memberId,
-                metricType: metricType
-            ),
+                metricType: selectedCategory.rawValue
+            )
+        case .lab:
+            endpoint = APIEndpoint.compareUserLabMetric(
+                metricId: metricId,
+                compMetricId: compMetricId,
+                patientId: patientId,
+                memberId: memberId,
+                metricType: selectedCategory.rawValue
+            )
+        }
+
+        APIClient.shared.performDataRequest(
+            endpoint: endpoint,
             method: .put,
             headers: [
                 "Authorization": "Bearer \(bearerToken)",
@@ -211,13 +264,8 @@ final class MetricsAPIService {
             ]
         ) { result in
             switch result {
-            case .success(let data):
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data, options: [])
-                    completion(.success(Self.parseCompareMetric(from: json)))
-                } catch {
-                    completion(.failure(.decodingFailed(error)))
-                }
+            case .success, .failure(.noData):
+                completion(.success(()))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -225,24 +273,45 @@ final class MetricsAPIService {
     }
 
     func saveUserMetrics(patientId: String,
-                         metricGroupId: String,
+                         memberId: String,
                          metricIds: [Int],
+                         bearerToken: String,
                          completion: @escaping (Result<Void, APIError>) -> Void) {
         struct SaveUserMetricsRequest: Encodable {
             let metricIds: [Int]
         }
 
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.saveUserMetrics(patientId: patientId, metricGroupId: metricGroupId),
+            endpoint: APIEndpoint.saveUserMetrics(patientId: patientId, memberId: memberId),
             method: .put,
             body: SaveUserMetricsRequest(metricIds: metricIds),
-            headers: ["Content-Type": "application/json"]
+            headers: [
+                "Authorization": "Bearer \(bearerToken)",
+                "Content-Type": "application/json"
+            ]
         ) { result in
             switch result {
-            case .success:
+            case .success, .failure(.noData):
                 completion(.success(()))
-            case .failure(.noData):
-                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchAllRPMMetricSelections(patientId: String,
+                                     bearerToken: String,
+                                     completion: @escaping (Result<[RPMMetricSelectionCategory], APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.showAllRPMMetrics(for: patientId),
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseRPMMetricSelections(from: $0)
+                }
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -251,146 +320,263 @@ final class MetricsAPIService {
 }
 
 private extension MetricsAPIService {
-    static func parseMetricFolders(from json: Any) -> [MetricFolderItem] {
+    func decodeJSONObject<T>(from data: Data,
+                             completion: @escaping (Result<T, APIError>) -> Void,
+                             transform: (Any) -> T) {
+        do {
+            let json = try JSONSerialization.jsonObject(with: data, options: [])
+            completion(.success(transform(json)))
+        } catch {
+            completion(.failure(.decodingFailed(error)))
+        }
+    }
+
+    static func parseRPMMetricFolders(from json: Any) -> [MetricFolderItem] {
         if let dict = json as? [String: Any],
            let data = dict["data"] as? [[String: Any]],
            let first = data.first {
-            let careTeam = parseMetricMap(first["careTeamMetrics"], metricType: "rpm", sourceSection: .careTeam)
-            let mine = parseMetricMap(first["myMetrics"], metricType: "rpm", sourceSection: .myMetrics)
-            if !careTeam.isEmpty || !mine.isEmpty {
-                return (careTeam + mine)
+            let careTeam = parseMetricMap(first["careTeamMetrics"], defaultSource: .rpm, sourceSection: .careTeam)
+            let mine = parseMetricMap(first["myMetrics"], defaultSource: .rpm, sourceSection: .myMetrics)
+            return careTeam + mine
+        }
+
+        return extractPrimaryArray(from: json).compactMap {
+            parseStandaloneFolderItem($0, defaultSource: .rpm, sourceSection: .myMetrics)
+        }
+    }
+
+    static func parseLabMetricFolders(from json: Any) -> [MetricFolderItem] {
+        if let dict = json as? [String: Any] {
+            if let data = dict["data"] as? [[String: Any]] {
+                if let first = data.first,
+                   let labMetrics = first["labMetrics"] as? [String: Any] {
+                    return parseMetricMap(labMetrics, defaultSource: .lab, sourceSection: .myMetrics)
+                }
+
+                return data.compactMap {
+                    parseStandaloneFolderItem($0, defaultSource: .lab, sourceSection: .myMetrics)
+                }
+            }
+
+            if let metrics = dict["metrics"] as? [Any] {
+                return metrics.compactMap {
+                    parseStandaloneFolderItem($0, defaultSource: .lab, sourceSection: .myMetrics)
+                }
             }
         }
 
-        let array = extractPrimaryArray(from: json)
+        return extractPrimaryArray(from: json).compactMap {
+            parseStandaloneFolderItem($0, defaultSource: .lab, sourceSection: .myMetrics)
+        }
+    }
+
+    static func parseRPMMetricSelections(from json: Any) -> [RPMMetricSelectionCategory] {
+        let categories = extractPrimaryArray(from: json)
+        return categories.compactMap { item in
+            guard let dict = item as? [String: Any] else { return nil }
+            let title = stringValue(in: dict, keys: ["category", "title", "name"]) ?? "Category"
+            let available = parseRPMMetricSelectionItems(dict["availableMetrics"], isAvailable: true)
+            let unavailable = parseRPMMetricSelectionItems(dict["unavailableMetrics"], isAvailable: false)
+
+            return RPMMetricSelectionCategory(
+                id: title.lowercased().replacingOccurrences(of: " ", with: "_"),
+                title: title,
+                availableMetrics: available,
+                unavailableMetrics: unavailable
+            )
+        }
+    }
+
+    static func parseRPMMetricSelectionItems(_ raw: Any?, isAvailable: Bool) -> [RPMMetricSelectionItem] {
+        guard let array = raw as? [Any] else { return [] }
         return array.compactMap { item in
             guard let dict = item as? [String: Any] else { return nil }
-            let id = stringValue(in: dict, keys: ["id", "metricId", "metric_id", "folderMetricId", "folder_metric_id"])
-                ?? stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name"])
-            let metricField = stringValue(in: dict, keys: ["current_metric_field", "metric_field", "field"])
-            let title = stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name", "label"])
-                ?? stringValue(in: dict, keys: ["current_description", "description"])
-                ?? "Metric"
-            guard let resolvedId = id else { return nil }
-            return MetricFolderItem(
+            guard let entryIdText = stringValue(in: dict, keys: ["entry_id", "id"]),
+                  let entryId = Int(entryIdText) else {
+                return nil
+            }
+
+            let metric = stringValue(in: dict, keys: ["metric"]) ?? ""
+            let description = stringValue(in: dict, keys: ["description", "title", "name"]) ?? metric
+            let glossary = stringValue(in: dict, keys: ["glossary_display", "glossary", "description_text"]) ?? ""
+            let checked = boolValue(in: dict, keys: ["checked"])
+            let disabled = boolValue(in: dict, keys: ["disabled"])
+
+            return RPMMetricSelectionItem(
+                id: entryId,
+                metric: metric,
+                description: description,
+                glossaryDisplay: glossary,
+                isChecked: checked,
+                isDisabled: disabled,
+                isAvailable: isAvailable
+            )
+        }
+    }
+
+    static func parseCompareOptions(from json: Any) -> MetricCompareOptionsPayload {
+        if let dict = json as? [String: Any] {
+            if let nested = dict["data"] as? [[String: Any]] {
+                let rpm = nested.flatMap { parseCompareOptionArray($0["rpm"], category: .rpm) }
+                let lab = nested.flatMap { parseCompareOptionArray($0["lab"], category: .lab) }
+                return MetricCompareOptionsPayload(rpm: uniqueCompareOptions(rpm), lab: uniqueCompareOptions(lab))
+            }
+
+            let rpm = parseCompareOptionArray(dict["rpm"], category: .rpm)
+            let lab = parseCompareOptionArray(dict["lab"], category: .lab)
+            return MetricCompareOptionsPayload(rpm: uniqueCompareOptions(rpm), lab: uniqueCompareOptions(lab))
+        }
+
+        return MetricCompareOptionsPayload(rpm: [], lab: [])
+    }
+
+    static func parseCompareOptionArray(_ raw: Any?, category: MetricDataSource) -> [MetricCompareOption] {
+        guard let array = raw as? [Any] else { return [] }
+        return array.compactMap { item in
+            guard let dict = item as? [String: Any] else {
+                if let title = item as? String, !title.isEmpty {
+                    return MetricCompareOption(
+                        id: title.lowercased().replacingOccurrences(of: " ", with: "_"),
+                        title: title,
+                        metricField: title.lowercased().replacingOccurrences(of: " ", with: "_"),
+                        category: category
+                    )
+                }
+                return nil
+            }
+
+            let id = stringValue(in: dict, keys: ["entry_id", "id", "metricId", "metric_id", "compare_metric_id"])
+                ?? stringValue(in: dict, keys: ["metric_field", "current_metric_field", "field"])
+            let title = stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name", "label", "description"])
+            let metricField = stringValue(in: dict, keys: ["metric_field", "current_metric_field", "field"])
+                ?? title?.lowercased().replacingOccurrences(of: " ", with: "_")
+
+            guard let resolvedId = id, let resolvedTitle = title, let resolvedField = metricField else {
+                return nil
+            }
+
+            return MetricCompareOption(
                 id: resolvedId,
-                title: title,
-                metricField: metricField ?? title.lowercased().replacingOccurrences(of: " ", with: "_"),
-                unit: stringValue(in: dict, keys: ["current_default_unit", "unit"]),
-                metricType: stringValue(in: dict, keys: ["compare_metric_type", "metric_type"]) ?? "rpm",
-                sourceSection: .myMetrics
+                title: resolvedTitle,
+                metricField: resolvedField,
+                category: category
             )
         }
     }
 
     static func parseUserMetricSeries(from json: Any) -> UserMetricSeriesPayload {
-        let entries = extractPrimaryArray(from: json)
-        var points: [Double] = entries.compactMap { item in
-            if let number = item as? NSNumber {
-                return number.doubleValue
+        let series = extractSeriesRows(from: json)
+        var points = series.compactMap { row -> Double? in
+            guard !row.isEmpty else { return nil }
+            if row.count >= 2, let last = row.last {
+                return last
             }
-            guard let dict = item as? [String: Any] else { return nil }
-            return doubleValue(in: dict, keys: [
-                "value", "metricValue", "metric_value", "reading", "score", "y", "result", "amount"
-            ])
+            return row.last
         }
 
-        if points.isEmpty, let dict = json as? [String: Any] {
-            let candidateArrays = ["chart", "chartData", "series", "points", "values", "data"]
-            for key in candidateArrays {
-                if let raw = dict[key], let nested = raw as? [Any] {
-                    points = nested.compactMap { item in
-                        if let number = item as? NSNumber {
-                            return number.doubleValue
-                        }
-                        guard let sub = item as? [String: Any] else { return nil }
-                        return doubleValue(in: sub, keys: ["value", "y", "metricValue", "metric_value"])
-                    }
-                    if !points.isEmpty { break }
+        if points.isEmpty {
+            points = extractPrimaryArray(from: json).compactMap { item in
+                if let number = item as? NSNumber {
+                    return number.doubleValue
                 }
+                guard let dict = item as? [String: Any] else { return nil }
+                return doubleValue(in: dict, keys: ["value", "metricValue", "metric_value", "reading", "score", "y", "result", "amount"])
             }
         }
 
         if points.isEmpty {
-            points = [0, 0, 0]
+            points = [0]
         }
 
-        let last = points.last ?? 0
-        let average = points.reduce(0, +) / Double(max(points.count, 1))
-
-        let lastText = formatNumber(last)
-        let avgText = formatNumber(average)
+        let payloadAverage = extractAverageValue(from: json)
+        let lastValue = points.last ?? 0
+        let averageValue = payloadAverage ?? points.reduce(0, +) / Double(max(points.count, 1))
 
         return UserMetricSeriesPayload(
             points: points,
-            lastValueText: lastText,
-            averageValueText: avgText,
-            dateRangeText: "Recent Data"
+            lastValueText: formatNumber(lastValue),
+            averageValueText: formatNumber(averageValue),
+            dateRangeText: formatDateRange(from: series)
         )
     }
 
-    static func parseLabAvailableMetrics(from json: Any) -> [LabAvailableMetricReference] {
-        let array = extractPrimaryArray(from: json)
-        return array.compactMap { item in
-            if let dict = item as? [String: Any] {
-                let id = stringValue(in: dict, keys: ["id", "metricId", "metric_id"])
-                let title = stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name", "label"])
-                return LabAvailableMetricReference(id: id, title: title)
-            }
-            if let text = item as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return LabAvailableMetricReference(id: nil, title: text)
-            }
-            return nil
-        }
-    }
-
     static func parseMetricFullDetail(from json: Any) -> MetricFullDetailPayload {
-        if let dict = json as? [String: Any] {
-            let detail = stringValue(in: dict, keys: ["description", "detail", "summary", "message"])
-            let lastValue = stringValue(in: dict, keys: ["lastValue", "last_value", "value", "reading"])
-            if detail != nil || lastValue != nil {
-                return MetricFullDetailPayload(detailText: detail, lastValueText: lastValue)
-            }
-            if let nested = dict["data"] as? [String: Any] {
-                let nestedDetail = stringValue(in: nested, keys: ["description", "detail", "summary", "message"])
-                let nestedLast = stringValue(in: nested, keys: ["lastValue", "last_value", "value", "reading"])
-                return MetricFullDetailPayload(detailText: nestedDetail, lastValueText: nestedLast)
-            }
-        }
-        return MetricFullDetailPayload(detailText: nil, lastValueText: nil)
+        let dict = unwrapDataDictionary(from: json) ?? (json as? [String: Any]) ?? [:]
+        let detailDict = dict["detail"] as? [String: Any]
+
+        let detailParts = [
+            makeRangeText(label: "Range", from: detailDict, minKey: "min_range", maxKey: "max_range"),
+            makeRangeText(label: "Optimal", from: detailDict, minKey: "optimal_from", maxKey: "optimal_thru"),
+            stringValue(in: detailDict ?? [:], keys: ["default_unit"]).map { "Unit: \($0)" }
+        ].compactMap { $0 }
+
+        let compared = (dict["compared"] as? [[String: Any]])?.first
+        let comparedMetricId = stringValue(in: compared ?? [:], keys: ["compare_metric_id", "metric_id", "id"])
+        let comparedMetricType = stringValue(in: compared ?? [:], keys: ["compare_metric_type"]).flatMap(MetricDataSource.init(rawValue:))
+
+        let lastValue = stringValue(in: dict, keys: ["last", "lastValue", "last_value", "value", "reading"])
+
+        return MetricFullDetailPayload(
+            detailText: detailParts.isEmpty ? nil : detailParts.joined(separator: "  "),
+            lastValueText: lastValue,
+            comparedMetricId: comparedMetricId,
+            comparedMetricType: comparedMetricType
+        )
     }
 
-    static func parseCompareMetric(from json: Any) -> CompareMetricPayload {
-        let base = parseUserMetricSeries(from: json)
-        if let dict = json as? [String: Any] {
-            let lastValue = stringValue(in: dict, keys: ["lastValue", "last_value"]) ?? base.lastValueText
-            let averageValue = stringValue(in: dict, keys: ["average", "averageValue", "avg"]) ?? base.averageValueText
-            return CompareMetricPayload(points: base.points, lastValueText: lastValue, averageValueText: averageValue)
-        }
-        return CompareMetricPayload(points: base.points, lastValueText: base.lastValueText, averageValueText: base.averageValueText)
-    }
-
-    static func parseMetricMap(_ raw: Any?, metricType: String, sourceSection: MetricFolderItem.SourceSection) -> [MetricFolderItem] {
+    static func parseMetricMap(_ raw: Any?,
+                               defaultSource: MetricDataSource,
+                               sourceSection: MetricFolderItem.SourceSection) -> [MetricFolderItem] {
         guard let dict = raw as? [String: Any] else { return [] }
         return dict.compactMap { key, value in
             guard let metric = value as? [String: Any] else { return nil }
             let id = stringValue(in: metric, keys: ["current_metric_id", "metric_id", "id"]) ?? key
-            let field = stringValue(in: metric, keys: ["current_metric_field", "metric_field"]) ?? key
-            let title = stringValue(in: metric, keys: ["current_description", "description", "title"]) ?? field
+            let field = stringValue(in: metric, keys: ["current_metric_field", "metric_field", "field"]) ?? key
+            let title = stringValue(in: metric, keys: ["current_description", "description", "title", "name"]) ?? field
             let unit = stringValue(in: metric, keys: ["current_default_unit", "unit"])
-            let compareType = (metric["compare_metric"] as? [String: Any]).flatMap {
-                stringValue(in: $0, keys: ["compare_metric_type"])
-            } ?? metricType
+            let source = sourceValue(in: metric, keys: ["compare_metric_type", "metric_type"]) ?? defaultSource
 
             return MetricFolderItem(
                 id: id,
                 title: title,
                 metricField: field,
                 unit: unit,
-                metricType: compareType,
-                sourceSection: sourceSection
+                metricType: source.rawValue,
+                sourceSection: sourceSection,
+                dataSource: defaultSource
             )
         }
+    }
+
+    static func parseStandaloneFolderItem(_ raw: Any,
+                                          defaultSource: MetricDataSource,
+                                          sourceSection: MetricFolderItem.SourceSection) -> MetricFolderItem? {
+        guard let dict = raw as? [String: Any] else { return nil }
+        let id = stringValue(in: dict, keys: ["id", "metricId", "metric_id", "folderMetricId", "folder_metric_id"])
+            ?? stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name"])
+        let metricField = stringValue(in: dict, keys: ["current_metric_field", "metric_field", "field"])
+        let title = stringValue(in: dict, keys: ["title", "name", "metricName", "metric_name", "label"])
+            ?? stringValue(in: dict, keys: ["current_description", "description"])
+            ?? "Metric"
+        guard let resolvedId = id else { return nil }
+
+        return MetricFolderItem(
+            id: resolvedId,
+            title: title,
+            metricField: metricField ?? title.lowercased().replacingOccurrences(of: " ", with: "_"),
+            unit: stringValue(in: dict, keys: ["current_default_unit", "unit"]),
+            metricType: (sourceValue(in: dict, keys: ["compare_metric_type", "metric_type"]) ?? defaultSource).rawValue,
+            sourceSection: sourceSection,
+            dataSource: defaultSource
+        )
+    }
+
+    static func unwrapDataDictionary(from json: Any) -> [String: Any]? {
+        guard let dict = json as? [String: Any] else { return nil }
+        if let nested = dict["data"] as? [String: Any] {
+            return nested
+        }
+        return dict
     }
 
     static func extractPrimaryArray(from json: Any) -> [Any] {
@@ -400,13 +586,94 @@ private extension MetricsAPIService {
         guard let dict = json as? [String: Any] else {
             return []
         }
-        let keys = ["data", "result", "results", "metrics", "list", "items", "folders"]
-        for key in keys {
+        for key in ["data", "result", "results", "metrics", "list", "items", "folders"] {
             if let array = dict[key] as? [Any] {
                 return array
             }
         }
         return []
+    }
+
+    static func extractSeriesRows(from json: Any) -> [[Double]] {
+        let root = unwrapDataDictionary(from: json) ?? (json as? [String: Any]) ?? [:]
+        for key in ["data", "chart", "chartData", "series", "points", "values"] {
+            if let array = root[key] as? [Any] {
+                let rows = array.compactMap { item -> [Double]? in
+                    if let values = item as? [NSNumber] {
+                        return values.map(\.doubleValue)
+                    }
+                    if let values = item as? [Double] {
+                        return values
+                    }
+                    if let values = item as? [Any] {
+                        let doubles = values.compactMap { value -> Double? in
+                            if let number = value as? NSNumber { return number.doubleValue }
+                            if let text = value as? String { return Double(text) }
+                            return nil
+                        }
+                        return doubles.isEmpty ? nil : doubles
+                    }
+                    return nil
+                }
+                if !rows.isEmpty { return rows }
+            }
+        }
+        return []
+    }
+
+    static func uniqueCompareOptions(_ options: [MetricCompareOption]) -> [MetricCompareOption] {
+        var seen = Set<String>()
+        return options.filter { option in
+            let key = "\(option.category.rawValue):\(option.id):\(option.metricField)"
+            return seen.insert(key).inserted
+        }
+    }
+
+    static func extractAverageValue(from json: Any) -> Double? {
+        let dict = unwrapDataDictionary(from: json) ?? (json as? [String: Any]) ?? [:]
+        return doubleValue(in: dict, keys: ["average", "avg", "averageValue"])
+    }
+
+    static func formatDateRange(from rows: [[Double]]) -> String {
+        guard let firstTimestamp = rows.first?.first,
+              let lastTimestamp = rows.last?.first,
+              firstTimestamp > 10_000,
+              lastTimestamp > 10_000 else {
+            return "Recent Data"
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM d, yyyy"
+
+        let start = date(fromTimestamp: firstTimestamp)
+        let end = date(fromTimestamp: lastTimestamp)
+        return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
+    }
+
+    static func date(fromTimestamp value: Double) -> Date {
+        let seconds = value > 9_999_999_999 ? value / 1000 : value
+        return Date(timeIntervalSince1970: seconds)
+    }
+
+    static func makeRangeText(label: String,
+                              from dict: [String: Any]?,
+                              minKey: String,
+                              maxKey: String) -> String? {
+        guard let dict else { return nil }
+        let minValue = stringValue(in: dict, keys: [minKey])
+        let maxValue = stringValue(in: dict, keys: [maxKey])
+
+        switch (minValue, maxValue) {
+        case let (.some(min), .some(max)):
+            return "\(label): \(min)-\(max)"
+        case let (.some(min), nil):
+            return "\(label): \(min)"
+        case let (nil, .some(max)):
+            return "\(label): \(max)"
+        default:
+            return nil
+        }
     }
 
     static func stringValue(in dict: [String: Any], keys: [String]) -> String? {
@@ -434,6 +701,32 @@ private extension MetricsAPIService {
             }
             if let text = dict[key] as? String, let value = Double(text) {
                 return value
+            }
+        }
+        return nil
+    }
+
+    static func boolValue(in dict: [String: Any], keys: [String]) -> Bool {
+        for key in keys {
+            if let value = dict[key] as? Bool {
+                return value
+            }
+            if let number = dict[key] as? NSNumber {
+                return number.boolValue
+            }
+            if let text = dict[key] as? String {
+                let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if ["true", "1", "yes"].contains(normalized) { return true }
+                if ["false", "0", "no"].contains(normalized) { return false }
+            }
+        }
+        return false
+    }
+
+    static func sourceValue(in dict: [String: Any], keys: [String]) -> MetricDataSource? {
+        for key in keys {
+            if let raw = dict[key] as? String, let source = MetricDataSource(rawValue: raw.lowercased()) {
+                return source
             }
         }
         return nil

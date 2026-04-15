@@ -91,6 +91,7 @@ final class MessageAPIService {
 #if DEBUG
         APILogger.logRequest(
             endpoint: endpoint,
+            url: request.url?.absoluteString ?? "n/a",
             method: request.httpMethod ?? "POST",
             headers: request.allHTTPHeaderFields,
             body: request.httpBody
@@ -99,7 +100,11 @@ final class MessageAPIService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
 #if DEBUG
-                APILogger.logError(endpoint: endpoint, error: error)
+                APILogger.logError(
+                    endpoint: endpoint,
+                    url: request.url?.absoluteString ?? "n/a",
+                    error: error
+                )
 #endif
                 completion(.failure(.requestFailed(error)))
                 return
@@ -107,14 +112,23 @@ final class MessageAPIService {
 
             guard let httpResponse = response as? HTTPURLResponse else {
 #if DEBUG
-                APILogger.logError(endpoint: endpoint, error: APIError.invalidResponse)
+                APILogger.logError(
+                    endpoint: endpoint,
+                    url: request.url?.absoluteString ?? "n/a",
+                    error: APIError.invalidResponse
+                )
 #endif
                 completion(.failure(.invalidResponse))
                 return
             }
 
 #if DEBUG
-            APILogger.logResponse(endpoint: endpoint, statusCode: httpResponse.statusCode, data: data ?? Data())
+            APILogger.logResponse(
+                endpoint: endpoint,
+                url: request.url?.absoluteString ?? "n/a",
+                statusCode: httpResponse.statusCode,
+                data: data ?? Data()
+            )
 #endif
             guard (200...299).contains(httpResponse.statusCode) else {
                 completion(.failure(.serverError(statusCode: httpResponse.statusCode, data: data)))

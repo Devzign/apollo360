@@ -9,9 +9,11 @@ import HealthKit
 
 struct ApolloSyncConfig {
   let ppBaseURL: URL
+  let memberLookupBaseURL: URL
   let validicBaseURL: URL
   let organizationId: String
   let validicToken: String
+  static let fallbackValidicOrganizationId = "6232413757463e0001806968"
 
   static func fromInfoPlist() throws -> ApolloSyncConfig {
     let bundle = Bundle.main
@@ -19,19 +21,31 @@ struct ApolloSyncConfig {
     guard
       let ppBase = bundle.object(forInfoDictionaryKey: "PP_BASE_URL") as? String,
       let validicBase = bundle.object(forInfoDictionaryKey: "VALIDIC_URL_V2") as? String,
-      let orgId = bundle.object(forInfoDictionaryKey: "ORGANISATION_ID") as? String,
       let token = bundle.object(forInfoDictionaryKey: "VALIDIC_TOKEN") as? String,
       let ppURL = URL(string: ppBase),
       let validicURL = URL(string: validicBase)
     else {
-      throw ApolloSyncError.configuration("Missing one or more required Info.plist values: PP_BASE_URL, VALIDIC_URL_V2, ORGANISATION_ID, VALIDIC_TOKEN")
+      throw ApolloSyncError.configuration("Missing one or more required Info.plist values: PP_BASE_URL, VALIDIC_URL_V2, VALIDIC_TOKEN")
     }
+
+    let organizationCandidates = [
+      bundle.object(forInfoDictionaryKey: "ORGANISATION_ID") as? String,
+      bundle.object(forInfoDictionaryKey: "VALIDIC_ORGANIZATION_ID") as? String,
+      bundle.object(forInfoDictionaryKey: "VALIDIC_ORG_ID") as? String
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    let organizationId = organizationCandidates.first ?? fallbackValidicOrganizationId
+
+    let validicToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
 
     return ApolloSyncConfig(
       ppBaseURL: ppURL,
+      memberLookupBaseURL: ppURL,
       validicBaseURL: validicURL,
-      organizationId: orgId,
-      validicToken: token
+      organizationId: organizationId,
+      validicToken: validicToken
     )
   }
 }
@@ -57,10 +71,24 @@ struct UsernameCheckResponse: Decodable {
   let message: String?
 }
 
+struct ValidateRPMUserResponse: Decodable {
+  let status: Bool
+}
+
 struct HandshakeResponse: Decodable {
-  let success: Bool
+  let status: Bool
   let message: String
   let token: String
+
+  var success: Bool { status }
+}
+
+struct ValidicCreateUserErrorResponse: Decodable {
+  let errors: [String: [String]]?
+
+  var indicatesExistingUser: Bool {
+    errors?.values.flatMap { $0 }.contains(where: { $0.localizedCaseInsensitiveContains("already exists") }) == true
+  }
 }
 
 struct ValidicUserResponse: Codable {
@@ -132,7 +160,7 @@ final class ApolloSyncService {
     )
     print("✅ [DeviceSync] Validic session started")
 
-    try await configureHealthKitAndFetchHistory()
+    try await configureHealthKitAndFetchHistory(validicUser: validicUser)
     print("✅ [DeviceSync] HealthKit subscriptions/history done")
 
     return validicUser
@@ -175,8 +203,28 @@ final class ApolloSyncService {
       accessToken: validicUser.mobile.token
     )
 
-    try await configureHealthKitAndFetchHistory()
+    try await configureHealthKitAndFetchHistory(validicUser: validicUser)
 
+    return validicUser
+  }
+
+  /// Handshake + Validic user registration only — no HealthKit upload.
+  /// Fast path for dashboard header. Full HealthKit sync is in DeviceSyncView.
+  func registerValidicUser(encodedPatientUsername: String, deviceId: String) async throws -> ValidicUserResponse {
+    guard !encodedPatientUsername.isEmpty else {
+      throw ApolloSyncError.auth("Apollo username is missing. Log in again before syncing.")
+    }
+    let handshake = try await requestHandshake(
+      encodedPatientUsername: encodedPatientUsername,
+      deviceId: deviceId,
+      bearerToken: resolvedApolloAccessToken(explicitAccessToken: nil)
+    )
+    guard handshake.success else {
+      throw ApolloSyncError.api(handshake.message)
+    }
+    let validicUser = try await createOrFetchValidicUser(uidToken: handshake.token)
+    print("✅ [DeviceSync] Validic user registered | id=\(validicUser.id) sources=\(validicUser.sources?.count ?? 0)")
+    try startValidicSession(validicUserID: validicUser.id, accessToken: validicUser.mobile.token)
     return validicUser
   }
 
@@ -211,15 +259,15 @@ final class ApolloSyncService {
     try startValidicSession(validicUserID: user.id, accessToken: user.mobile.token)
   }
 
-  func syncHistoricalHealthKitData() async throws {
-    try await configureHealthKitAndFetchHistory()
+  func syncHistoricalHealthKitData(validicUser: ValidicUserResponse? = nil) async throws {
+    try await configureHealthKitAndFetchHistory(validicUser: validicUser)
   }
 
-  func endSession() throws {
+  func endSession() {
 #if canImport(ValidicCore)
     VLDSession.sharedInstance().endSession()
 #else
-    throw ApolloSyncError.platform("ValidicCore is not linked in this target.")
+    print("⚠️ [DeviceSync] ValidicCore SDK not linked — endSession skipped.")
 #endif
   }
 }
@@ -231,13 +279,14 @@ private extension ApolloSyncService {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.httpBody = try JSONSerialization.data(withJSONObject: [
       "date_of_birth": dateOfBirth,
       "phone_number": phoneNumber,
       "otp": Int(otp) ?? 0
     ])
 
-    let (data, response) = try await session.data(for: request)
+    let (data, response) = try await perform(request: request, endpointLabel: "Apollo patient-login")
     try validate(response: response, data: data)
     return try JSONDecoder().decode(PatientLoginResponse.self, from: data)
   }
@@ -259,9 +308,23 @@ private extension ApolloSyncService {
       throw ApolloSyncError.api("usernameCheck did not return patient_id or patient_key.")
     }
 
+    let encodedPatientId = base64(patientIdRaw)
+    let encodedPatientKey = base64(patientKeyRaw)
+
+    let validation = try await validateRPMUser(
+      patientId: encodedPatientId,
+      patientKey: encodedPatientKey,
+      bearerToken: bearerToken
+    )
+    print("✅ [DeviceSync] validateRPMUser status=\(validation.status)")
+
+    guard validation.status else {
+      throw ApolloSyncError.api("validate-rpm-user returned status=false.")
+    }
+
     return try await performHandshake(
-      patientId: base64(patientIdRaw),
-      patientKey: base64(patientKeyRaw),
+      patientId: encodedPatientId,
+      patientKey: encodedPatientKey,
       deviceId: deviceId,
       bearerToken: bearerToken
     )
@@ -269,10 +332,16 @@ private extension ApolloSyncService {
 
   func fetchUsernameCheck(encodedPatientUsername: String, bearerToken: String) async throws -> UsernameCheckResponse {
     let key = "YXBvbGxvdHJhbnNhY3Rpb25rZXk="
-    let path = "/api/apollo-api/register-member/\(encodedPatientUsername)/\(key)"
-    let url = ppURL(path: path)
+    let path = "/api/register-member/\(encodedPatientUsername)/\(key)"
+    let url = memberLookupURL(path: path)
     print("🌐 [DeviceSync] GET \(url.absoluteString)")
-    return try await get(url: url, bearerToken: bearerToken)
+    return try await get(url: url, bearerToken: nil, includeApolloHeaders: false)
+  }
+
+  func validateRPMUser(patientId: String, patientKey: String, bearerToken: String) async throws -> ValidateRPMUserResponse {
+    let url = ppURL(path: "/api/validate-rpm-user/\(patientId)/\(patientKey)")
+    print("🌐 [DeviceSync] GET \(url.absoluteString)")
+    return try await get(url: url, bearerToken: nil, includeApolloHeaders: false)
   }
 
   func performHandshake(patientId: String, patientKey: String, deviceId: String, bearerToken: String) async throws -> HandshakeResponse {
@@ -282,7 +351,7 @@ private extension ApolloSyncService {
     let osName = UIDevice.current.systemName
     let deviceName = model
 
-    components.path = "/api/handshaking/register-rpm-user/\(deviceId)/\(patientId)/\(patientKey)/HealthKit/\(deviceName)"
+    components.path = "/api/register-rpm-user/\(deviceId)/\(patientId)/\(patientKey)/HealthKit/\(deviceName)"
     components.queryItems = [
       URLQueryItem(name: "brand", value: "Apple"),
       URLQueryItem(name: "model", value: model),
@@ -292,10 +361,12 @@ private extension ApolloSyncService {
 
     let url = try requiredURL(from: components)
     print("🌐 [DeviceSync] GET \(url.absoluteString)")
-    return try await get(url: url, bearerToken: bearerToken)
+    return try await get(url: url, bearerToken: nil, includeApolloHeaders: false)
   }
 
   func createOrFetchValidicUser(uidToken: String) async throws -> ValidicUserResponse {
+    try ensureValidicConfiguration()
+
     var createComponents = URLComponents(url: config.validicBaseURL, resolvingAgainstBaseURL: false)!
     createComponents.path = "/organizations/\(config.organizationId)/users"
     createComponents.queryItems = [URLQueryItem(name: "token", value: config.validicToken)]
@@ -305,6 +376,14 @@ private extension ApolloSyncService {
       print("🌐 [DeviceSync] POST \(createURL.absoluteString) body={uid}")
       return try await post(url: createURL, body: ["uid": uidToken])
     } catch {
+      if let createError = error as? ApolloSyncError,
+         case .api(let message) = createError,
+         let data = message.data(using: .utf8),
+         let response = try? JSONDecoder().decode(ValidicCreateUserErrorResponse.self, from: data),
+         !response.indicatesExistingUser {
+        throw error
+      }
+
       var getComponents = URLComponents(url: config.validicBaseURL, resolvingAgainstBaseURL: false)!
       getComponents.path = "/organizations/\(config.organizationId)/users/\(uidToken)"
       getComponents.queryItems = [URLQueryItem(name: "token", value: config.validicToken)]
@@ -315,6 +394,7 @@ private extension ApolloSyncService {
   }
 
   func startValidicSession(validicUserID: String, accessToken: String) throws {
+    try ensureValidicConfiguration()
 #if canImport(ValidicCore)
     guard
       let user = VLDUser(
@@ -329,11 +409,11 @@ private extension ApolloSyncService {
 
     VLDSession.sharedInstance().startSession(with: user)
 #else
-    throw ApolloSyncError.platform("ValidicCore is not linked in this target.")
+    print("⚠️ [DeviceSync] ValidicCore SDK not linked — session start skipped.")
 #endif
   }
 
-  func configureHealthKitAndFetchHistory() async throws {
+  func configureHealthKitAndFetchHistory(validicUser: ValidicUserResponse? = nil) async throws {
 #if canImport(ValidicHealthKit)
     let manager = VLDHealthKitManager.sharedInstance()
 
@@ -367,7 +447,22 @@ private extension ApolloSyncService {
       }
     }
 #else
-    throw ApolloSyncError.platform("ValidicHealthKit is not linked in this target.")
+    guard let validicUser else {
+      print("⚠️ [DeviceSync] No Validic user available — HealthKit upload skipped.")
+      return
+    }
+    let uploader = ValidicMobileInformService(
+      organizationId: config.organizationId,
+      userId: validicUser.id,
+      mobileToken: validicUser.mobile.token,
+      validicUser: validicUser
+    )
+    do {
+      try await uploader.uploadThirtyDayHistory()
+    } catch ValidicUploadError.sourceNotConnected {
+      // Apple Health not connected yet — not a fatal error, just inform.
+      print("⚠️ [DeviceSync] Apple Health not connected in Validic. User must tap 'Manage your devices' first.")
+    }
 #endif
   }
 
@@ -388,33 +483,71 @@ private extension ApolloSyncService {
 #endif
   }
 
-  func get<T: Decodable>(url: URL, bearerToken: String? = nil) async throws -> T {
+  func get<T: Decodable>(url: URL,
+                         bearerToken: String? = nil,
+                         includeApolloHeaders: Bool = true,
+                         endpointLabel: String? = nil) async throws -> T {
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    applyApolloAuthHeaders(to: &request, bearerToken: bearerToken)
-
-    let (data, response) = try await session.data(for: request)
-    try validate(response: response, data: data)
-    if let http = response as? HTTPURLResponse {
-      print("📥 [DeviceSync] \(http.statusCode) \(url.absoluteString)")
+    if includeApolloHeaders {
+      applyApolloAuthHeaders(to: &request, bearerToken: bearerToken)
     }
+
+    let (data, response) = try await perform(request: request, endpointLabel: endpointLabel ?? url.absoluteString)
+    try validate(response: response, data: data)
     return try JSONDecoder().decode(T.self, from: data)
   }
 
-  func post<T: Decodable>(url: URL, body: [String: String]) async throws -> T {
+  func post<T: Decodable>(url: URL,
+                          body: [String: String],
+                          endpointLabel: String? = nil) async throws -> T {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-    let (data, response) = try await session.data(for: request)
+    let (data, response) = try await perform(request: request, endpointLabel: endpointLabel ?? url.absoluteString)
     try validate(response: response, data: data)
-    if let http = response as? HTTPURLResponse {
-      print("📥 [DeviceSync] \(http.statusCode) \(url.absoluteString)")
-    }
     return try JSONDecoder().decode(T.self, from: data)
+  }
+
+  func perform(request: URLRequest, endpointLabel: String) async throws -> (Data, URLResponse) {
+    #if DEBUG
+    APILogger.logRequest(
+      endpoint: endpointLabel,
+      url: request.url?.absoluteString ?? "n/a",
+      method: request.httpMethod ?? "GET",
+      headers: request.allHTTPHeaderFields,
+      body: request.httpBody
+    )
+    #endif
+
+    do {
+      let result = try await session.data(for: request)
+      #if DEBUG
+      if let http = result.1 as? HTTPURLResponse {
+        APILogger.logResponse(
+          endpoint: endpointLabel,
+          url: request.url?.absoluteString ?? "n/a",
+          statusCode: http.statusCode,
+          data: result.0
+        )
+      }
+      #endif
+      return result
+    } catch {
+      #if DEBUG
+      APILogger.logError(
+        endpoint: endpointLabel,
+        url: request.url?.absoluteString ?? "n/a",
+        error: error
+      )
+      #endif
+      throw error
+    }
   }
 
   func validate(response: URLResponse, data: Data) throws {
@@ -437,12 +570,30 @@ private extension ApolloSyncService {
     return url
   }
 
+  func ensureValidicConfiguration() throws {
+    if config.organizationId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      throw ApolloSyncError.configuration("Validic organization id is empty.")
+    }
+    if config.validicToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      throw ApolloSyncError.configuration("VALIDIC_TOKEN is empty.")
+    }
+  }
+
   func ppURL(path: String) -> URL {
-    config.ppBaseURL.appendingPathComponent(path)
+    url(from: config.ppBaseURL, path: path)
+  }
+
+  func memberLookupURL(path: String) -> URL {
+    url(from: config.memberLookupBaseURL, path: path)
   }
 
   func ppURLComponents() -> URLComponents {
     URLComponents(url: config.ppBaseURL, resolvingAgainstBaseURL: false)!
+  }
+
+  func url(from baseURL: URL, path: String) -> URL {
+    let cleanedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+    return baseURL.appendingPathComponent(cleanedPath)
   }
 
   func base64(_ value: String) -> String {

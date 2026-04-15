@@ -93,10 +93,18 @@ final class DashboardViewModel: ObservableObject {
             let encodedUsername = Self.encodedUsername(from: username)
             let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "ios-device"
 
-            _ = try await service.runFullSync(
+            print("🚀 [Dashboard] Registering device with Validic (no HealthKit upload from here)")
+            let validicUser = try await service.registerValidicUser(
                 encodedPatientUsername: encodedUsername,
                 deviceId: deviceId
             )
+            print("✅ [Dashboard] Device registered | validic_user=\(validicUser.id) sources=\(validicUser.sources?.count ?? 0)")
+
+            // Cache the Validic user so DeviceSyncView can immediately show
+            // the marketplace URL and device list without re-running the handshake.
+            if let data = try? JSONEncoder().encode(validicUser) {
+                UserDefaults.standard.set(data, forKey: "Apollo360.validicUser")
+            }
 
             refreshDashboard()
         } catch {
