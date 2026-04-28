@@ -114,44 +114,53 @@ struct DashboardView: View {
     private var contentView: some View {
         switch selectedTab {
         case .home:
-            ScrollView {
-                VStack(spacing: 24) {
-                    StoriesSectionView(
-                        title: viewModel.snapshotTitle,
-                        subtitle: viewModel.snapshotSubtitle,
-                        stories: viewModel.stories
-                    )
+//            ScrollView {
+//                VStack(spacing: 24) {
+//                    StoriesSectionView(
+//                        title: viewModel.snapshotTitle,
+//                        subtitle: viewModel.snapshotSubtitle,
+//                        stories: viewModel.stories
+//                    )
+//
+//                    WellnessSectionView(
+//                        title: viewModel.wellnessTitle,
+//                        description: viewModel.wellnessDescription,
+//                        currentScore: viewModel.currentScore,
+//                        previousScore: viewModel.previousScore,
+//                        progress: viewModel.progress,
+//                        metrics: viewModel.wellnessMetrics,
+//                        isImproving: viewModel.isWellnessImproving,
+//                        changeValue: viewModel.wellnessChange,
+//                        mode: $viewModel.wellnessMode
+//                    )
+//
+//                    InsightsSectionView(insights: viewModel.insights)
+//
+//                    CardioSectionView(metrics: viewModel.cardioMetrics)
+//
+//                    ActivitiesSectionView(
+//                        days: viewModel.activityDays,
+//                        stats: viewModel.activityStats,
+//                        summaryNote: viewModel.activitySummaryNote,
+//                        weeklyChangePercent: viewModel.weeklyChangePercent
+//                    )
+//
+//                    Color.clear
+//                        .frame(height: bottomSafeArea + 180)
+//                }
+//                .padding(.horizontal, screenHorizontalPadding)
+//                .padding(.top, 16)
+//            }
 
-                    WellnessSectionView(
-                        title: viewModel.wellnessTitle,
-                        description: viewModel.wellnessDescription,
-                        currentScore: viewModel.currentScore,
-                        previousScore: viewModel.previousScore,
-                        progress: viewModel.progress,
-                        metrics: viewModel.wellnessMetrics,
-                        isImproving: viewModel.isWellnessImproving,
-                        changeValue: viewModel.wellnessChange,
-                        mode: $viewModel.wellnessMode
-                    )
-
-                    InsightsSectionView(insights: viewModel.insights)
-
-                    CardioSectionView(metrics: viewModel.cardioMetrics)
-
-                    ActivitiesSectionView(
-                        days: viewModel.activityDays,
-                        stats: viewModel.activityStats,
-                        summaryNote: viewModel.activitySummaryNote,
-                        weeklyChangePercent: viewModel.weeklyChangePercent
-                    )
-
-                    Color.clear
-                        .frame(height: bottomSafeArea + 180)
-                }
-                .padding(.horizontal, screenHorizontalPadding)
-                .padding(.top, 16)
-            }
-
+ HomeMetricsPageView(
+ doctorMetrics: viewModel.doctorMetricCards,
+ myMetrics: viewModel.myMetricCards,
+ isLoading: viewModel.isLoading,
+ errorMessage: viewModel.homeMetricsError,
+ onSelectMetrics: {
+     selectedTab = .metrics
+ }
+)
         case .metrics:
             MetricsView(horizontalPadding: screenHorizontalPadding, session: session)
 

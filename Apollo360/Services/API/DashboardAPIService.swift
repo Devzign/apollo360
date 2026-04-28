@@ -113,4 +113,25 @@ final class DashboardAPIService {
             }
         }
     }
+
+    func fetchDashboardMetrics(patientId: String,
+                               bearerToken: String,
+                               selectionType: DashboardMetricSelectionType,
+                               completion: @escaping (Result<DashboardMetricsPayload, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardMetrics(for: patientId, selectionType: selectionType),
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardMetricsAPIResponse.self) { result in
+            switch result {
+            case .success(let response):
+                if response.success {
+                    completion(.success(response.data))
+                } else {
+                    completion(.failure(.serverError(statusCode: 500, data: nil)))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
 }

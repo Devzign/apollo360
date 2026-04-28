@@ -57,4 +57,30 @@ final class FormsAPIService {
                                  responseType: SurveySaveResponse.self,
                                  completion: completion)
     }
+
+    func fetchPatientFormDetail(id: Int,
+                                bearerToken: String,
+                                completion: @escaping (Result<PatientFormGroupAPIModel, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.patientForm(id: id),
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: PatientFormDetailAPIResponse.self) { result in
+            switch result {
+            case .success(let response):
+                completion(.success(response.data))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func signPatientForm(id: Int,
+                         bearerToken: String,
+                         completion: @escaping (Result<PatientFormSignResponse, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.patientFormSign(id: id),
+                                 method: .post,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: PatientFormSignResponse.self,
+                                 completion: completion)
+    }
 }

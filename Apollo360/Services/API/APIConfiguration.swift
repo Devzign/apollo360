@@ -47,6 +47,12 @@ enum APIEndpoint {
     static let passwordLogin = "v1/auth/login"
     static let logout = "v1/auth/logout"
     static let patientForms = "v1/patient-forms"
+    static func patientForm(id: Int) -> String {
+        "v1/patient-forms/\(id)"
+    }
+    static func patientFormSign(id: Int) -> String {
+        "v1/patient-forms/\(id)/sign"
+    }
     static let surveys = "v1/surveys"
     static func survey(id: Int) -> String {
         "v1/surveys/\(id)"
@@ -153,6 +159,9 @@ enum APIEndpoint {
     }
     static func activities(for patientId: String) -> String {
         "v1/dashboard/activities/\(patientId)"
+    }
+    static func dashboardMetrics(for patientId: String, selectionType: DashboardMetricSelectionType) -> String {
+        "v1/dashboard/metrics/\(patientId)?selectionType=\(selectionType.rawValue)"
     }
     static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)"

@@ -160,3 +160,26 @@ struct ApolloInsightDetail: Identifiable {
     let title: String
     let description: String
 }
+
+enum DashboardMetricSelectionType: String {
+    case doctor
+    case me
+}
+
+struct DashboardMetricCardModel: Identifiable {
+    let id: Int
+    let metricField: String
+    let title: String
+    let latestValueText: String
+    let unitText: String
+    let sourceText: String
+    let syncStatus: String
+    let trendText: String
+    let trendTint: Color
+    let statusBadgeText: String
+    let statusBadgeTint: Color
+    let statusBadgeBackground: Color
+    let lastSyncText: String
+    let isHero: Bool
+    let sparkline: [Double]
+}

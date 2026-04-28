@@ -12,6 +12,9 @@ import UIKit
 
 @MainActor
 final class DashboardViewModel: ObservableObject {
+    @Published var doctorMetricCards: [DashboardMetricCardModel] = []
+    @Published var myMetricCards: [DashboardMetricCardModel] = []
+    @Published var homeMetricsError: String?
     @Published var stories: [DailyStory] = []
     @Published var isLoadingInsights: Bool = false
     @Published private(set) var isLoading: Bool = false
@@ -70,11 +73,7 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func refreshDashboard() {
-        fetchDailyStories()
-        fetchWellnessOverview()
-        fetchApolloInsights()
-        fetchCardiometabolicMetrics()
-        fetchActivities()
+        fetchHomeMetrics()
     }
 
     func syncFromHeader() async {
@@ -129,6 +128,38 @@ final class DashboardViewModel: ObservableObject {
                 self.insightError = nil
             case .failure(let error):
                 self.insightError = error.localizedDescription
+            }
+        }
+    }
+
+    private func fetchHomeMetrics() {
+        guard let patientId = session.patientId,
+              let token = session.accessToken else { return }
+
+        homeMetricsError = nil
+        beginLoading()
+        DashboardAPIService.shared.fetchDashboardMetrics(patientId: patientId, bearerToken: token, selectionType: .doctor) { [weak self] result in
+            defer { self?.endLoading() }
+            guard let self = self else { return }
+            switch result {
+            case .success(let payload):
+                self.doctorMetricCards = self.mapDashboardMetricCards(from: payload.metrics, selectionType: .doctor)
+            case .failure(let error):
+                self.homeMetricsError = error.localizedDescription
+                self.doctorMetricCards = []
+            }
+        }
+
+        beginLoading()
+        DashboardAPIService.shared.fetchDashboardMetrics(patientId: patientId, bearerToken: token, selectionType: .me) { [weak self] result in
+            defer { self?.endLoading() }
+            guard let self = self else { return }
+            switch result {
+            case .success(let payload):
+                self.myMetricCards = self.mapDashboardMetricCards(from: payload.metrics, selectionType: .me)
+            case .failure(let error):
+                self.homeMetricsError = self.homeMetricsError ?? error.localizedDescription
+                self.myMetricCards = []
             }
         }
     }
@@ -247,6 +278,120 @@ final class DashboardViewModel: ObservableObject {
     private func formatNumber(_ value: Int) -> String {
         let number = NSNumber(value: value)
         return numberFormatter.string(from: number) ?? "\(value)"
+    }
+
+    private func mapDashboardMetricCards(from payloads: [DashboardMetricPayload],
+                                         selectionType: DashboardMetricSelectionType) -> [DashboardMetricCardModel] {
+        payloads.enumerated().map { index, payload in
+            let latestValue = payload.latestValue ?? 0
+            let averageValue = payload.averageValue
+            let percentageChange = payload.percentageChange
+            let syncStatus = payload.syncStatus ?? "unknown"
+            let defaultUnit = payload.defaultUnit?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let source = payload.source?.capitalized ?? "Unknown"
+            let isHero = selectionType == .doctor && index == 0
+
+            return DashboardMetricCardModel(
+                id: payload.metricId,
+                metricField: payload.metricField,
+                title: payload.description,
+                latestValueText: formatMetricValue(latestValue),
+                unitText: defaultUnit,
+                sourceText: source,
+                syncStatus: syncStatus,
+                trendText: formatTrendText(percentageChange),
+                trendTint: trendTint(for: percentageChange),
+                statusBadgeText: statusBadgeText(for: syncStatus),
+                statusBadgeTint: statusBadgeTint(for: syncStatus),
+                statusBadgeBackground: statusBadgeBackground(for: syncStatus),
+                lastSyncText: relativeSyncText(from: payload.lastSyncDate),
+                isHero: isHero,
+                sparkline: sparklineSeed(for: payload.metricField, anchor: latestValue, average: averageValue),
+            )
+        }
+    }
+
+    private func formatMetricValue(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(format: "%.0f", value)
+        }
+        return String(format: "%.2f", value)
+    }
+
+    private func formatTrendText(_ change: Double?) -> String {
+        guard let change else { return "0%" }
+        return String(format: "%@%.0f%%", change >= 0 ? "+" : "", change)
+    }
+
+    private func trendTint(for change: Double?) -> Color {
+        guard let change else { return AppColor.green }
+        return change < 0 ? AppColor.red : AppColor.green
+    }
+
+    private func statusBadgeText(for syncStatus: String) -> String {
+        switch syncStatus.lowercased() {
+        case "critical":
+            return "Help"
+        case "warning":
+            return "Watch"
+        case "optimal", "good":
+            return "Optimal"
+        default:
+            return syncStatus.capitalized
+        }
+    }
+
+    private func statusBadgeTint(for syncStatus: String) -> Color {
+        switch syncStatus.lowercased() {
+        case "critical":
+            return AppColor.red
+        case "warning":
+            return AppColor.yellow
+        default:
+            return AppColor.green
+        }
+    }
+
+    private func statusBadgeBackground(for syncStatus: String) -> Color {
+        switch syncStatus.lowercased() {
+        case "critical":
+            return AppColor.red.opacity(0.12)
+        case "warning":
+            return AppColor.yellow.opacity(0.18)
+        default:
+            return AppColor.green.opacity(0.14)
+        }
+    }
+
+    private func relativeSyncText(from isoDate: String?) -> String {
+        guard let isoDate else { return "0 min ago" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fallbackFormatter = ISO8601DateFormatter()
+
+        let date = formatter.date(from: isoDate) ?? fallbackFormatter.date(from: isoDate)
+        guard let date else { return "0 min ago" }
+
+        let interval = max(Int(Date().timeIntervalSince(date)), 0)
+        if interval < 3600 {
+            return "\(max(interval / 60, 1)) min ago"
+        }
+        if interval < 86_400 {
+            return "\(interval / 3600) hrs ago"
+        }
+        return "\(interval / 86_400)d ago"
+    }
+
+    private func sparklineSeed(for metricField: String, anchor: Double, average: Double?) -> [Double] {
+        let base = max(anchor, average ?? anchor, 1)
+        let hashSeed = abs(metricField.hashValue % 7)
+        let deltas: [Double] = [
+            0.18, 0.42, 0.27, 0.58, 0.34, 0.51, 0.29
+        ]
+        return deltas.enumerated().map { index, delta in
+            let wobble = Double((hashSeed + index) % 5) * 0.04
+            return (base * max(0.12, delta + wobble)).rounded() / 100
+        }
     }
 
     private func tintColor(for value: String?) -> Color {

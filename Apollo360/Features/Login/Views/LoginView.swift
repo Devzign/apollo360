@@ -52,6 +52,7 @@ struct LoginView: View {
                             displayedComponents: .date
                         )
                         .datePickerStyle(.graphical)
+                        .environment(\.locale, Locale(identifier: "en_US_POSIX"))
                         .labelsHidden()
                         .frame(maxWidth: .infinity)
 
@@ -166,18 +167,16 @@ struct LoginView: View {
                 .foregroundColor(AppColor.black)
 
             HStack(spacing: 12) {
-                TextField(
-                    "MM-DD-YYYY",
-                    text: Binding(
-                        get: { viewModel.dateOfBirthText },
-                        set: { viewModel.updateDateOfBirthText($0) }
-                    )
-                )
+                TextField("MM-DD-YYYY", text: $viewModel.dateOfBirthText)
                 .font(AppFont.body(size: 16, weight: .medium))
-                .keyboardType(.numbersAndPunctuation)
+                .keyboardType(.numberPad)
+                .textContentType(.none)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
                 .frame(maxWidth: .infinity)
+                .onChange(of: viewModel.dateOfBirthText) { newValue in
+                    viewModel.updateDateOfBirthText(newValue)
+                }
 
                 Button {
                     viewModel.datePickerDate = viewModel.selectedDateOfBirth ?? Date()

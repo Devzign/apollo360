@@ -41,6 +41,7 @@ final class LoginViewModel: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
 
@@ -48,6 +49,7 @@ final class LoginViewModel: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd-yyyy"
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
 
@@ -262,9 +264,10 @@ final class LoginViewModel: ObservableObject {
     }
 
     func updateDOBFields(from date: Date) {
-        selectedDateOfBirth = date
-        datePickerDate = date
-        dateOfBirthText = Self.displayDOBFormatter.string(from: date)
+        let normalizedDate = calendar.startOfDay(for: date)
+        selectedDateOfBirth = normalizedDate
+        datePickerDate = normalizedDate
+        dateOfBirthText = Self.displayDOBFormatter.string(from: normalizedDate)
         dateOfBirthValidationMessage = nil
     }
 

@@ -5,14 +5,18 @@
 //  Created by Amit Sinha on 11/01/26.
 //
 
+import Combine
 import SwiftUI
+import Foundation
 
 struct FormsView: View {
     let horizontalPadding: CGFloat
+    private let session: SessionManager
     @StateObject private var viewModel: FormsViewModel
 
     init(horizontalPadding: CGFloat, session: SessionManager) {
         self.horizontalPadding = horizontalPadding
+        self.session = session
         _viewModel = StateObject(wrappedValue: FormsViewModel(session: session))
     }
 
@@ -56,7 +60,7 @@ struct FormsView: View {
             VStack(spacing: 16) {
                 ForEach(viewModel.forms) { form in
                     NavigationLink {
-                        FormDetailView(form: form)
+                        FormDetailView(form: form, session: session)
                     } label: {
                         FormRow(form: form)
                     }
@@ -186,6 +190,12 @@ private struct FormRow: View {
 
 private struct FormDetailView: View {
     let form: PatientForm
+    @StateObject private var viewModel: FormDetailViewModel
+
+    init(form: PatientForm, session: SessionManager) {
+        self.form = form
+        _viewModel = StateObject(wrappedValue: FormDetailViewModel(form: form, session: session))
+    }
 
     var body: some View {
         ScrollView {
@@ -194,9 +204,30 @@ private struct FormDetailView: View {
                     .font(AppFont.display(size: 24, weight: .semibold))
                     .foregroundColor(AppColor.black)
 
-                statusRow
+                if viewModel.isLoading {
+                    ProgressView("Loading form...")
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 32)
+                } else if let error = viewModel.errorMessage {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(error)
+                            .font(AppFont.body(size: 14))
+                            .foregroundColor(AppColor.red)
 
-                descriptionSection
+                        Button("Retry") {
+                            viewModel.load()
+                        }
+                        .font(AppFont.body(size: 14, weight: .semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(AppColor.green)
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                    }
+                } else {
+                    statusRow
+                    subFormsSection
+                }
 
                 Spacer(minLength: 12)
             }
@@ -205,19 +236,29 @@ private struct FormDetailView: View {
         }
         .navigationTitle("Form Details")
         .navigationBarTitleDisplayMode(.inline)
+        .alert(isPresented: $viewModel.showAlert) {
+            Alert(
+                title: Text(viewModel.alertTitle),
+                message: Text(viewModel.alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .onAppear {
+            viewModel.loadIfNeeded()
+        }
     }
 
     private var statusRow: some View {
         HStack(spacing: 12) {
-            Label(form.signedStatusText, systemImage: form.signed ? "checkmark.seal.fill" : "doc.text")
+            Label(viewModel.groupFullySigned ? "Signed" : "Pending", systemImage: viewModel.groupFullySigned ? "checkmark.seal.fill" : "doc.text")
                 .font(AppFont.body(size: 15, weight: .semibold))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(form.signedStatusColor.opacity(0.18))
-                .foregroundColor(form.signedStatusColor)
+                .background((viewModel.groupFullySigned ? AppColor.green : AppColor.yellow).opacity(0.18))
+                .foregroundColor(viewModel.groupFullySigned ? AppColor.green : AppColor.yellow)
                 .clipShape(Capsule())
 
-            if let signedDate = form.signedDate, !signedDate.isEmpty {
+            if let signedDate = viewModel.lastSignedDate, !signedDate.isEmpty {
                 Text("Signed on \(signedDate)")
                     .font(AppFont.body(size: 14))
                     .foregroundColor(AppColor.grey)
@@ -225,20 +266,59 @@ private struct FormDetailView: View {
         }
     }
 
-    private var descriptionSection: some View {
+    private var subFormsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Description")
+            Text("Documents")
                 .font(AppFont.body(size: 16, weight: .semibold))
                 .foregroundColor(AppColor.black)
 
-            if let desc = form.description, !desc.isEmpty {
-                Text(desc)
-                    .font(AppFont.body(size: 14))
-                    .foregroundColor(AppColor.black.opacity(0.8))
-                    .multilineTextAlignment(.leading)
-            } else {
-                Text("No description provided.")
-                    .font(AppFont.body(size: 14))
+            ForEach(Array(viewModel.subForms.enumerated()), id: \.element.id) { index, subForm in
+                subFormCard(subForm, index: index)
+            }
+        }
+    }
+
+    private func subFormCard(_ subForm: PatientSubForm, index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(subForm.title)
+                        .font(AppFont.body(size: 16, weight: .semibold))
+                        .foregroundColor(AppColor.black)
+
+                    Text(subForm.signed ? "Signed" : "Pending")
+                        .font(AppFont.body(size: 12, weight: .semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background((subForm.signed ? AppColor.green : AppColor.yellow).opacity(0.15))
+                        .foregroundColor(subForm.signed ? AppColor.green : AppColor.yellow)
+                        .clipShape(Capsule())
+                }
+
+                Spacer(minLength: 12)
+
+                if subForm.signatureRequired && !subForm.signed {
+                    Button(viewModel.buttonTitle(for: index)) {
+                        viewModel.sign(subForm: subForm)
+                    }
+                    .font(AppFont.body(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .frame(height: 36)
+                    .background(AppColor.green)
+                    .clipShape(Capsule())
+                    .disabled(viewModel.signingFormIDs.contains(subForm.id))
+                    .opacity(viewModel.signingFormIDs.contains(subForm.id) ? 0.6 : 1)
+                }
+            }
+
+            Text(subForm.body)
+                .font(AppFont.body(size: 14))
+                .foregroundColor(AppColor.black.opacity(0.82))
+
+            if let signedDate = subForm.signedDate, !signedDate.isEmpty {
+                Text("Signed on \(signedDate)")
+                    .font(AppFont.body(size: 12))
                     .foregroundColor(AppColor.grey)
             }
         }
@@ -248,6 +328,110 @@ private struct FormDetailView: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
         )
+    }
+}
+
+private struct PatientSubForm: Identifiable {
+    let id: Int
+    let title: String
+    let body: String
+    let signed: Bool
+    let signedDate: String?
+    let signatureRequired: Bool
+}
+
+@MainActor
+private final class FormDetailViewModel: ObservableObject {
+    @Published private(set) var subForms: [PatientSubForm] = []
+    @Published private(set) var isLoading = false
+    @Published var errorMessage: String?
+    @Published private(set) var groupFullySigned = false
+    @Published private(set) var lastSignedDate: String?
+    @Published private(set) var signingFormIDs: Set<Int> = []
+    @Published var showAlert = false
+    @Published var alertTitle = ""
+    @Published var alertMessage = ""
+
+    private let form: PatientForm
+    private let session: SessionManager
+    private let service: FormsAPIService
+    private var hasLoaded = false
+
+    init(form: PatientForm,
+         session: SessionManager,
+         service: FormsAPIService? = nil) {
+        self.form = form
+        self.session = session
+        self.service = service ?? .shared
+    }
+
+    func loadIfNeeded() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        load()
+    }
+
+    func load() {
+        guard let token = session.accessToken else {
+            errorMessage = "You're not signed in."
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        service.fetchPatientFormDetail(id: form.id, bearerToken: token) { [weak self] result in
+            guard let self else { return }
+            self.isLoading = false
+            switch result {
+            case .success(let group):
+                self.groupFullySigned = group.groupFullySigned
+                self.subForms = group.forms.map {
+                    PatientSubForm(
+                        id: $0.id,
+                        title: $0.title,
+                        body: $0.body,
+                        signed: $0.signed,
+                        signedDate: $0.signedDate,
+                        signatureRequired: $0.signatureRequired
+                    )
+                }
+                self.lastSignedDate = self.subForms.last(where: { $0.signed })?.signedDate
+            case .failure(let error):
+                self.errorMessage = error.localizedDescription
+                self.subForms = []
+            }
+        }
+    }
+
+    func sign(subForm: PatientSubForm) {
+        guard let token = session.accessToken else {
+            alertTitle = "Sign In Required"
+            alertMessage = "You're not signed in."
+            showAlert = true
+            return
+        }
+
+        signingFormIDs.insert(subForm.id)
+        service.signPatientForm(id: subForm.id, bearerToken: token) { [weak self] result in
+            guard let self else { return }
+            self.signingFormIDs.remove(subForm.id)
+            switch result {
+            case .success(let response):
+                self.alertTitle = response.success ? "Success" : "Unable to Sign"
+                self.alertMessage = response.message
+                self.showAlert = true
+                self.load()
+            case .failure(let error):
+                self.alertTitle = "Unable to Sign"
+                self.alertMessage = error.localizedDescription
+                self.showAlert = true
+            }
+        }
+    }
+
+    func buttonTitle(for index: Int) -> String {
+        guard index == subForms.indices.last else { return "Initial" }
+        return "Sign"
     }
 }
 

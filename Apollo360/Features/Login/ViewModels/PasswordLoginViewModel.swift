@@ -45,7 +45,6 @@ final class PasswordLoginViewModel: ObservableObject {
             switch result {
             case .success(let response):
                 self.onLoginSuccess?(response)
-                self.triggerHandshakeAfterLogin(username: request.username, bearerToken: response.accessToken)
                 self.showAlert(title: "Welcome \(response.user.firstName)", message: "Logged in as \(response.user.username).")
             case .failure(let error):
                 self.showAlert(title: "Login failed", message: error.localizedDescription, style: .error)
@@ -60,34 +59,4 @@ final class PasswordLoginViewModel: ObservableObject {
         showAlert = true
     }
 
-    private func triggerHandshakeAfterLogin(username: String, bearerToken: String) {
-        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedUsername.isEmpty else { return }
-
-        let encodedUsername: String
-        if let data = Data(base64Encoded: trimmedUsername),
-           let decoded = String(data: data, encoding: .utf8),
-           !decoded.isEmpty {
-            encodedUsername = trimmedUsername
-        } else {
-            encodedUsername = Data(trimmedUsername.utf8).base64EncodedString()
-        }
-
-        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "ios-device"
-
-        Task {
-            do {
-                let config = try ApolloSyncConfig.fromInfoPlist()
-                let service = ApolloSyncService(config: config)
-                let handshake = try await service.performHandshakeForCurrentSession(
-                    encodedPatientUsername: encodedUsername,
-                    deviceId: deviceId,
-                    bearerToken: bearerToken
-                )
-                print("✅ [Login] Handshake token received: \(handshake.token)")
-            } catch {
-                print("❌ [Login] Handshake failed: \(error.localizedDescription)")
-            }
-        }
-    }
 }
