@@ -10,6 +10,8 @@ import SwiftUI
 extension DashboardTab {
     var displayTitle: String {
         switch self {
+        case .dashboard:
+            return "Dashboard"
         case .metrics:
             return "Metrics"
         case .library:

@@ -11,7 +11,7 @@ struct DashboardView: View {
     
     // MARK: - State
     @StateObject private var viewModel: DashboardViewModel
-    @State private var selectedTab: DashboardTab = .home
+    @State private var selectedTab: DashboardTab = .dashboard
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
     @State private var isSyncDevicesVisible = false
@@ -113,7 +113,7 @@ struct DashboardView: View {
     @ViewBuilder
     private var contentView: some View {
         switch selectedTab {
-        case .home:
+        case .dashboard:
 //            ScrollView {
 //                VStack(spacing: 24) {
 //                    StoriesSectionView(
@@ -152,15 +152,17 @@ struct DashboardView: View {
 //                .padding(.top, 16)
 //            }
 
- HomeMetricsPageView(
- doctorMetrics: viewModel.doctorMetricCards,
- myMetrics: viewModel.myMetricCards,
- isLoading: viewModel.isLoading,
- errorMessage: viewModel.homeMetricsError,
- onSelectMetrics: {
-     selectedTab = .metrics
- }
-)
+            DoctorMeDashboard(
+                doctorMetrics: viewModel.doctorMetricCards,
+                myMetrics: viewModel.myMetricCards,
+                isLoading: viewModel.isLoading,
+                errorMessage: viewModel.homeMetricsError,
+                onSelectMetrics: {
+                    selectedTab = .metrics
+                }
+            )
+        case .home:
+            HomeNew(session: session)
         case .metrics:
             MetricsView(horizontalPadding: screenHorizontalPadding, session: session)
 
@@ -201,6 +203,7 @@ struct DashboardView: View {
 
                     SideMenuView(
                         selectedTab: selectedTab,
+                        userDisplayName: viewModel.userName,
                         onSelectTab: { selectedTab = $0 },
                         onClose: closeSideMenu,
                         logoutAction: {

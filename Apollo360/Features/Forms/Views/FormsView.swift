@@ -279,55 +279,198 @@ private struct FormDetailView: View {
     }
 
     private func subFormCard(_ subForm: PatientSubForm, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(subForm.title)
-                        .font(AppFont.body(size: 16, weight: .semibold))
-                        .foregroundColor(AppColor.black)
+        NavigationLink {
+            PatientSubFormDetailView(
+                subForm: subForm,
+                actionTitle: viewModel.buttonTitle(for: index),
+                isSigning: viewModel.signingFormIDs.contains(subForm.id),
+                onSign: { viewModel.sign(subForm: subForm) }
+            )
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(subForm.title)
+                            .font(AppFont.body(size: 16, weight: .semibold))
+                            .foregroundColor(AppColor.black)
 
-                    Text(subForm.signed ? "Signed" : "Pending")
-                        .font(AppFont.body(size: 12, weight: .semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background((subForm.signed ? AppColor.green : AppColor.yellow).opacity(0.15))
-                        .foregroundColor(subForm.signed ? AppColor.green : AppColor.yellow)
-                        .clipShape(Capsule())
-                }
-
-                Spacer(minLength: 12)
-
-                if subForm.signatureRequired && !subForm.signed {
-                    Button(viewModel.buttonTitle(for: index)) {
-                        viewModel.sign(subForm: subForm)
+                        Text(subForm.signed ? "Signed" : "Pending")
+                            .font(AppFont.body(size: 12, weight: .semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background((subForm.signed ? AppColor.green : AppColor.yellow).opacity(0.15))
+                            .foregroundColor(subForm.signed ? AppColor.green : AppColor.yellow)
+                            .clipShape(Capsule())
                     }
-                    .font(AppFont.body(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: 36)
-                    .background(AppColor.green)
-                    .clipShape(Capsule())
-                    .disabled(viewModel.signingFormIDs.contains(subForm.id))
-                    .opacity(viewModel.signingFormIDs.contains(subForm.id) ? 0.6 : 1)
+
+                    Spacer(minLength: 12)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppColor.black.opacity(0.4))
+                }
+
+                Text(subForm.body.htmlPlainText)
+                    .font(AppFont.body(size: 14))
+                    .foregroundColor(AppColor.black.opacity(0.82))
+                    .lineLimit(3)
+
+                if let signedDate = subForm.signedDate, !signedDate.isEmpty {
+                    Text("Signed on \(signedDate)")
+                        .font(AppFont.body(size: 12))
+                        .foregroundColor(AppColor.grey)
                 }
             }
-
-            Text(subForm.body)
-                .font(AppFont.body(size: 14))
-                .foregroundColor(AppColor.black.opacity(0.82))
-
-            if let signedDate = subForm.signedDate, !signedDate.isEmpty {
-                Text("Signed on \(signedDate)")
-                    .font(AppFont.body(size: 12))
-                    .foregroundColor(AppColor.grey)
-            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
+            )
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PatientSubFormDetailView: View {
+    let subForm: PatientSubForm
+    let actionTitle: String
+    let isSigning: Bool
+    let onSign: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(subForm.title)
+                            .font(AppFont.display(size: 24, weight: .semibold))
+                            .foregroundColor(AppColor.black)
+
+                        Text(subForm.signed ? "Signed" : "Pending")
+                            .font(AppFont.body(size: 12, weight: .semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background((subForm.signed ? AppColor.green : AppColor.yellow).opacity(0.15))
+                            .foregroundColor(subForm.signed ? AppColor.green : AppColor.yellow)
+                            .clipShape(Capsule())
+                    }
+
+                    Spacer(minLength: 12)
+
+                    if subForm.signatureRequired && !subForm.signed {
+                        Button(actionTitle, action: onSign)
+                            .font(AppFont.body(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(AppColor.green)
+                            .clipShape(Capsule())
+                            .disabled(isSigning)
+                            .opacity(isSigning ? 0.6 : 1)
+                    }
+                }
+
+                HTMLPreviewText(
+                    html: subForm.body,
+                    fontSize: 14,
+                    textColor: UIColor(AppColor.black.opacity(0.82))
+                )
+
+                if let signedDate = subForm.signedDate, !signedDate.isEmpty {
+                    Text("Signed on \(signedDate)")
+                        .font(AppFont.body(size: 12))
+                        .foregroundColor(AppColor.grey)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
+            )
+            .padding(20)
+        }
+        .background(AppColor.secondary.ignoresSafeArea())
+        .navigationTitle("Document Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct HTMLPreviewText: View {
+    let html: String
+    let fontSize: CGFloat
+    let textColor: UIColor
+
+    var body: some View {
+        if let attributed = html.htmlAttributedString(fontSize: fontSize, textColor: textColor),
+           let swiftAttributed = try? AttributedString(attributed, including: \.foundation) {
+            Text(swiftAttributed)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(html.htmlPlainText)
+                .font(AppFont.body(size: fontSize))
+                .foregroundColor(Color(textColor))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private extension String {
+    func htmlAttributedString(fontSize: CGFloat, textColor: UIColor) -> NSAttributedString? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard let data = trimmed.data(using: .utf8) else { return nil }
+
+        let css = """
+        <style>
+        body { font-family: -apple-system; font-size: \(fontSize)px; color: \(textColor.hexString); margin: 0; padding: 0; }
+        p { margin: 0 0 10px 0; }
+        </style>
+        """
+        let wrappedHTML = "<html><head>\(css)</head><body>\(trimmed)</body></html>"
+        guard let wrappedData = wrappedHTML.data(using: .utf8) else { return nil }
+
+        return try? NSAttributedString(
+            data: wrappedData,
+            options: [
+                .documentType: NSAttributedString.DocumentType.html,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ],
+            documentAttributes: nil
         )
+    }
+
+    var htmlPlainText: String {
+        let withBreaks = self
+            .replacingOccurrences(of: "<br>", with: "\n", options: [.caseInsensitive, .regularExpression])
+            .replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: "</p>", with: "\n", options: [.caseInsensitive, .regularExpression])
+            .replacingOccurrences(of: "<p[^>]*>", with: "", options: [.caseInsensitive, .regularExpression])
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+
+        let stripped = withBreaks.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+
+        // Normalize excessive blank lines for card previews.
+        let normalized = stripped.replacingOccurrences(of: "\\n{3,}", with: "\n\n", options: .regularExpression)
+        return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private extension UIColor {
+    var hexString: String {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        let r = Int(red * 255)
+        let g = Int(green * 255)
+        let b = Int(blue * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }
 

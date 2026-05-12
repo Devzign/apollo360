@@ -16,6 +16,21 @@ struct SurveyDetailResponse: Decodable {
     let title: String
     let intro: String
     let questions: [SurveyQuestionResponse]
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case intro
+        case questions
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        intro = try container.decodeIfPresent(String.self, forKey: .intro) ?? ""
+        questions = try container.decodeIfPresent([SurveyQuestionResponse].self, forKey: .questions) ?? []
+    }
 }
 
 struct SurveyQuestionResponse: Decodable, Identifiable {
@@ -29,6 +44,40 @@ struct SurveyQuestionResponse: Decodable, Identifiable {
     var otherText: String?
 
     var id: Int { questionId }
+
+    private enum CodingKeys: String, CodingKey {
+        case questionId
+        case questionText
+        case sectionHeader
+        case sectionIntro
+        case questionType
+        case options
+        case selectedValue
+        case otherText
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        questionId = try container.decodeIfPresent(Int.self, forKey: .questionId) ?? 0
+        questionText = try container.decodeIfPresent(String.self, forKey: .questionText) ?? ""
+        sectionHeader = try container.decodeIfPresent(String.self, forKey: .sectionHeader)
+        sectionIntro = try container.decodeIfPresent(String.self, forKey: .sectionIntro)
+        questionType = try container.decodeIfPresent(String.self, forKey: .questionType) ?? ""
+        options = try container.decodeIfPresent([String].self, forKey: .options) ?? []
+        otherText = try container.decodeIfPresent(String.self, forKey: .otherText)
+
+        if let value = try? container.decodeIfPresent(String.self, forKey: .selectedValue) {
+            selectedValue = value
+        } else if let values = try? container.decodeIfPresent([String?].self, forKey: .selectedValue) {
+            selectedValue = values.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first(where: { !$0.isEmpty })
+        } else if let values = try? container.decodeIfPresent([String].self, forKey: .selectedValue) {
+            selectedValue = values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first(where: { !$0.isEmpty })
+        } else {
+            selectedValue = nil
+        }
+    }
 }
 
 struct SurveySaveRequest: Encodable {

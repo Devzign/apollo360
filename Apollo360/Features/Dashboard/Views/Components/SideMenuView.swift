@@ -17,12 +17,13 @@ struct SideMenuOption: Identifiable {
 
 struct SideMenuView: View {
     let selectedTab: DashboardTab
+    let userDisplayName: String
     let onSelectTab: (DashboardTab) -> Void
     let onClose: () -> Void
     let logoutAction: () -> Void
 
     private let options: [SideMenuOption] = [
-        SideMenuOption(title: "Dashboard", icon: "square.grid.2x2", tab: .home, badge: nil),
+        SideMenuOption(title: "Dashboard", icon: "square.grid.2x2", tab: .dashboard, badge: nil),
         SideMenuOption(title: "Home", icon: "house", tab: .home, badge: nil),
         SideMenuOption(title: "Messages", icon: "bubble.left.and.bubble.right", tab: .message, badge: 3),
         SideMenuOption(title: "Library", icon: "books.vertical", tab: .library, badge: nil),
@@ -83,7 +84,7 @@ struct SideMenuView: View {
                 Text("Hello,")
                     .font(AppFont.body(size: 16))
                     .foregroundColor(.white.opacity(0.85))
-                Text("John Marks")
+                Text(displayName)
                     .font(AppFont.display(size: 22, weight: .semibold))
                     .foregroundColor(.white)
             }
@@ -100,6 +101,11 @@ struct SideMenuView: View {
             .padding(.trailing, 12)
         }
         .padding(.top, 48)
+    }
+
+    private var displayName: String {
+        let trimmed = userDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "User" : trimmed
     }
 
     private func menuRow(for option: SideMenuOption) -> some View {
@@ -167,6 +173,7 @@ struct SideMenuView: View {
 #Preview("Side Menu") {
     SideMenuView(
         selectedTab: .home,
+        userDisplayName: "User",
         onSelectTab: { _ in },
         onClose: {},
         logoutAction: {}

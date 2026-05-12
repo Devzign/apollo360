@@ -161,47 +161,15 @@ final class AppointmentViewModel: ObservableObject {
             }
 
             let localOptions = LocalOptions()
-            composite.launch(locator: .roomCall(roomId: roomId), localOptions: localOptions)
-#else
-            let client = CallClient()
-            callClient = client
-            let callAgentOptions = CallAgentOptions()
-            callAgentOptions.displayName = safeName
-            client.createCallAgent(userCredential: credential, options: callAgentOptions) { [weak self] agent, agentError in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    if let agentError {
-                        self.isJoiningCall = false
-                        self.joinErrorMessage = Self.mapJoinError(agentError.localizedDescription)
-                        return
-                    }
-                    guard let agent else {
-                        self.callClient = nil
-                        self.isJoiningCall = false
-                        self.joinErrorMessage = "Unable to create call agent."
-                        return
-                    }
-                    self.callAgent = agent
-                    let locator = RoomCallLocator(roomId: roomId)
-                    let joinOptions = JoinCallOptions()
-                    agent.join(with: locator, joinCallOptions: joinOptions) { [weak self] call, joinError in
-                        guard let self else { return }
-                        DispatchQueue.main.async {
-                            if let joinError {
-                                self.activeCall = nil
-                                self.callAgent = nil
-                                self.callClient = nil
-                                self.isJoiningCall = false
-                                self.joinErrorMessage = Self.mapJoinError(joinError.localizedDescription)
-                                self.refresh()
-                                return
-                            }
-                            self.activeCall = call
-                            self.isJoiningCall = false
-                        }
-                    }
-                }
+            DispatchQueue.main.async {
+                composite.launch(locator: .roomCall(roomId: roomId), localOptions: localOptions)
             }
+#else
+            self.callClient = nil
+            self.callAgent = nil
+            self.activeCall = nil
+            self.isJoiningCall = false
+            self.joinErrorMessage = "Video call UI is not available in this build. Please verify AzureCommunicationUICalling is linked in the app target."
 #endif
         } catch {
 #if canImport(AzureCommunicationUICalling)

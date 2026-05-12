@@ -134,4 +134,61 @@ final class DashboardAPIService {
             }
         }
     }
+
+    func fetchHomeSummary(bearerToken: String,
+                          completion: @escaping (Result<DashboardSummaryPayload, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardSummary,
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardSummaryAPIResponse.self) { result in
+            switch result {
+            case .success(let response):
+                if response.success {
+                    completion(.success(response.data))
+                } else {
+                    completion(.failure(.serverError(statusCode: 500, data: nil)))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchHomeActivityPlans(bearerToken: String,
+                                completion: @escaping (Result<DashboardActivityPlansPayload, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardActivityPlans,
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardActivityPlansAPIResponse.self) { result in
+            switch result {
+            case .success(let response):
+                if response.success {
+                    completion(.success(response.data))
+                } else {
+                    completion(.failure(.serverError(statusCode: 500, data: nil)))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchHomeMetricsLookup(bearerToken: String,
+                                completion: @escaping (Result<[DashboardLookupCategory], APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardMetricsLookup,
+                                 method: .get,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardMetricsLookupAPIResponse.self) { result in
+            switch result {
+            case .success(let response):
+                if response.success {
+                    completion(.success(response.data))
+                } else {
+                    completion(.failure(.serverError(statusCode: 500, data: nil)))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
 }

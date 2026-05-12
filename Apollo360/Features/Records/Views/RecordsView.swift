@@ -660,7 +660,7 @@ private struct DoctorVisitSummaryContent: View {
                     .font(AppFont.body(size: 16, weight: .semibold))
                     .foregroundColor(AppColor.color414141)
             }
-            ForEach(summary.practitioner.address?.formattedLines ?? [], id: \.self) { line in
+            ForEach(Array((summary.practitioner.address?.formattedLines ?? []).enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(AppFont.body(size: 15))
                     .foregroundColor(AppColor.color414141)
@@ -824,7 +824,7 @@ private struct DetailSectionCard: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(lines, id: \.self) { line in
+                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                     Text(line.hasPrefix("•") ? line : "• \(line)")
                         .font(AppFont.body(size: 16))
                         .foregroundColor(AppColor.color414141)

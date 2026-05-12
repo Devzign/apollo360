@@ -8,6 +8,7 @@
 import SwiftUI
 
 enum DashboardTab: String, CaseIterable {
+    case dashboard
     case metrics
     case library
     case home
@@ -170,6 +171,8 @@ struct DashboardTabBar: View {
     // MARK: - Tab Info
     private func tabInfo(for tab: DashboardTab) -> (asset: String, title: String) {
         switch tab {
+        case .dashboard:
+            return ("home", "Dashboard")
         case .metrics:
             return ("metrics", "Metrics")
         case .library:

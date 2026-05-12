@@ -163,6 +163,9 @@ enum APIEndpoint {
     static func dashboardMetrics(for patientId: String, selectionType: DashboardMetricSelectionType) -> String {
         "v1/dashboard/metrics/\(patientId)?selectionType=\(selectionType.rawValue)"
     }
+    static let dashboardActivityPlans = "v1/dashboard/activity-plans"
+    static let dashboardMetricsLookup = "v1/dashboard/metrics-lookup"
+    static let dashboardSummary = "v1/dashboard/summary"
     static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)"
     }

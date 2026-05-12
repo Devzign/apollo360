@@ -162,7 +162,7 @@ private struct SurveyQuestionScreen: View {
 
                         if question.questionType.lowercased().contains("textbox") {
                             TextField("Type your response...", text: Binding(
-                                get: { question.selectedValue ?? "" },
+                                get: { viewModel.currentQuestion?.selectedValue ?? "" },
                                 set: { viewModel.updateText($0) }
                             ))
                             .padding(14)
