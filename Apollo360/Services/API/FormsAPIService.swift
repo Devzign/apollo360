@@ -12,6 +12,8 @@ final class FormsAPIService {
 
     private init() {}
 
+    private struct EmptyJSONBody: Encodable {}
+
     func fetchPatientForms(bearerToken: String,
                            completion: @escaping (Result<[PatientFormAPIModel], APIError>) -> Void) {
         APIClient.shared.request(endpoint: APIEndpoint.patientForms,
@@ -79,6 +81,7 @@ final class FormsAPIService {
                          completion: @escaping (Result<PatientFormSignResponse, APIError>) -> Void) {
         APIClient.shared.request(endpoint: APIEndpoint.patientFormSign(id: id),
                                  method: .post,
+                                 body: EmptyJSONBody(),
                                  headers: ["Authorization": "Bearer \(bearerToken)"],
                                  responseType: PatientFormSignResponse.self,
                                  completion: completion)

@@ -238,3 +238,20 @@ struct DashboardLookupMetric: Decodable, Identifiable {
     let type: String
     let unit: String
 }
+
+struct DashboardCreateActivityRequest: Encodable {
+    let metricId: Int
+    let value: Double
+    let note: String
+    let unit: String
+}
+
+struct DashboardCreateSymptomsRequest: Encodable {
+    let symptoms: [String]
+    let symptom: String
+}
+
+struct DashboardCreateMutationResponse: Decodable {
+    let success: Bool
+    let message: String?
+}

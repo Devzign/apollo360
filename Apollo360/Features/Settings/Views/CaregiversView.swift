@@ -151,6 +151,10 @@ struct CaregiversView: View {
                                 openURL(url)
                             }
                         }
+                        Button(viewModel.isSigningConsent ? "Signing..." : "Sign Consent Form") {
+                            viewModel.signConsent(for: provider)
+                        }
+                        .disabled(viewModel.isSigningConsent)
                     }
                 }
             }

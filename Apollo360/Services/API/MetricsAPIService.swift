@@ -74,16 +74,36 @@ struct RPMMetricSelectionCategory: Identifiable, Hashable {
     let unavailableMetrics: [RPMMetricSelectionItem]
 }
 
+struct MetricFolderFilters {
+    let favourites: Bool?
+    let tags: [String]
+    let metricIds: [String]
+
+    init(favourites: Bool? = nil, tags: [String] = [], metricIds: [String] = []) {
+        self.favourites = favourites
+        self.tags = tags
+        self.metricIds = metricIds
+    }
+}
+
+struct BasicMetricOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+}
+
 final class MetricsAPIService {
     static let shared = MetricsAPIService()
 
     private init() {}
 
+    private struct EmptyJSONBody: Encodable {}
+
     func fetchRPMMetricFolders(patientId: String,
+                               filters: MetricFolderFilters? = nil,
                                bearerToken: String,
                                completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.rpmFolderMetrics(for: patientId),
+            endpoint: Self.appendFilters(to: APIEndpoint.rpmFolderMetrics(for: patientId), filters: filters),
             method: .get,
             headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
@@ -99,10 +119,11 @@ final class MetricsAPIService {
     }
 
     func fetchLabMetricFolders(patientId: String,
+                               filters: MetricFolderFilters? = nil,
                                bearerToken: String,
                                completion: @escaping (Result<[MetricFolderItem], APIError>) -> Void) {
         APIClient.shared.performDataRequest(
-            endpoint: APIEndpoint.labFolderMetrics(for: patientId),
+            endpoint: Self.appendFilters(to: APIEndpoint.labFolderMetrics(for: patientId), filters: filters),
             method: .get,
             headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
@@ -213,6 +234,7 @@ final class MetricsAPIService {
         APIClient.shared.performDataRequest(
             endpoint: endpoint,
             method: .put,
+            body: EmptyJSONBody(),
             headers: [
                 "Authorization": "Bearer \(bearerToken)",
                 "Content-Type": "application/json"
@@ -258,6 +280,7 @@ final class MetricsAPIService {
         APIClient.shared.performDataRequest(
             endpoint: endpoint,
             method: .put,
+            body: EmptyJSONBody(),
             headers: [
                 "Authorization": "Bearer \(bearerToken)",
                 "Content-Type": "application/json"
@@ -317,9 +340,170 @@ final class MetricsAPIService {
             }
         }
     }
+
+    func fetchAllLabMetricSelections(patientId: String,
+                                     bearerToken: String,
+                                     completion: @escaping (Result<[BasicMetricOption], APIError>) -> Void) {
+        let primaryEndpoint = APIEndpoint.getAvailableLabMetrics(for: patientId)
+        let fallbackEndpoint = APIEndpoint.showAllLabMetrics(for: patientId)
+
+        APIClient.shared.performDataRequest(
+            endpoint: primaryEndpoint,
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseBasicMetricOptions(from: $0)
+                }
+            case .failure:
+                APIClient.shared.performDataRequest(
+                    endpoint: fallbackEndpoint,
+                    method: .get,
+                    headers: ["Authorization": "Bearer \(bearerToken)"]
+                ) { fallbackResult in
+                    switch fallbackResult {
+                    case .success(let data):
+                        self.decodeJSONObject(from: data, completion: completion) {
+                            Self.parseBasicMetricOptions(from: $0)
+                        }
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            }
+        }
+    }
+
+    func fetchUnmanagedLabMetricCount(bearerToken: String,
+                                      completion: @escaping (Result<Int, APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.manageLabMetricsData(type: "unmanaged_count"),
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseUnmanagedCount(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchLabFavouriteMetrics(bearerToken: String,
+                                  completion: @escaping (Result<[BasicMetricOption], APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.labMetricsFavourite,
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseBasicMetricOptions(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchRPMFavouriteMetrics(bearerToken: String,
+                                  completion: @escaping (Result<[BasicMetricOption], APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.rpmMetricsFavourite,
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseBasicMetricOptions(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchMetricTags(bearerToken: String,
+                         completion: @escaping (Result<[String], APIError>) -> Void) {
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.tagsList,
+            method: .get,
+            headers: ["Authorization": "Bearer \(bearerToken)"]
+        ) { result in
+            switch result {
+            case .success(let data):
+                self.decodeJSONObject(from: data, completion: completion) {
+                    Self.parseTagList(from: $0)
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func updateLabPostValue(id: Int,
+                            value: String,
+                            bearerToken: String,
+                            completion: @escaping (Result<Void, APIError>) -> Void) {
+        struct UpdateLabPostValueRequest: Encodable {
+            let id: Int
+            let postValue: String
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case postValue = "post_value"
+            }
+        }
+
+        APIClient.shared.performDataRequest(
+            endpoint: APIEndpoint.updateLabPostValue,
+            method: .put,
+            body: UpdateLabPostValueRequest(id: id, postValue: value),
+            headers: [
+                "Authorization": "Bearer \(bearerToken)",
+                "Content-Type": "application/json"
+            ]
+        ) { result in
+            switch result {
+            case .success, .failure(.noData):
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
 }
 
 private extension MetricsAPIService {
+    static func appendFilters(to endpoint: String, filters: MetricFolderFilters?) -> String {
+        guard let filters else { return endpoint }
+        var queryItems: [String] = []
+
+        if let favourites = filters.favourites {
+            queryItems.append("favourites=\(favourites ? "true" : "false")")
+        }
+
+        for tag in filters.tags where !tag.isEmpty {
+            let encoded = tag.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tag
+            queryItems.append("tags=\(encoded)")
+        }
+
+        for metricId in filters.metricIds where !metricId.isEmpty {
+            let encoded = metricId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? metricId
+            queryItems.append("metric_ids=\(encoded)")
+        }
+
+        guard !queryItems.isEmpty else { return endpoint }
+        return "\(endpoint)?\(queryItems.joined(separator: "&"))"
+    }
+
     func decodeJSONObject<T>(from data: Data,
                              completion: @escaping (Result<T, APIError>) -> Void,
                              transform: (Any) -> T) {
@@ -385,6 +569,66 @@ private extension MetricsAPIService {
                 unavailableMetrics: unavailable
             )
         }
+    }
+
+    static func parseBasicMetricOptions(from json: Any) -> [BasicMetricOption] {
+        let rootArray = extractPrimaryArray(from: json)
+
+        var items: [BasicMetricOption] = rootArray.compactMap { item in
+            guard let dict = item as? [String: Any] else { return nil }
+            let id = stringValue(in: dict, keys: ["entry_id", "id", "metric_id", "main_entry_id", "metric"]) ?? UUID().uuidString
+            let title = stringValue(in: dict, keys: ["description", "title", "name", "metric"]) ?? id
+            return BasicMetricOption(id: id, title: title)
+        }
+
+        if items.isEmpty,
+           let dict = json as? [String: Any],
+           let data = dict["data"] as? [String: Any] {
+            let available = (data["availableMetrics"] as? [Any]) ?? []
+            let unavailable = (data["unavailableMetrics"] as? [Any]) ?? []
+            let combined = available + unavailable
+            items = combined.compactMap { item in
+                guard let metric = item as? [String: Any] else { return nil }
+                let id = stringValue(in: metric, keys: ["entry_id", "id", "metric"]) ?? UUID().uuidString
+                let title = stringValue(in: metric, keys: ["description", "title", "name", "metric"]) ?? id
+                return BasicMetricOption(id: id, title: title)
+            }
+        }
+
+        var seen = Set<String>()
+        return items.filter { seen.insert($0.id).inserted }
+    }
+
+    static func parseUnmanagedCount(from json: Any) -> Int {
+        if let array = json as? [[String: Any]], let first = array.first {
+            return intValue(in: first, keys: ["unmanaged_count", "count"]) ?? 0
+        }
+
+        if let dict = json as? [String: Any] {
+            if let value = intValue(in: dict, keys: ["unmanaged_count", "count"]) {
+                return value
+            }
+
+            if let dataArray = dict["data"] as? [[String: Any]], let first = dataArray.first {
+                return intValue(in: first, keys: ["unmanaged_count", "count"]) ?? 0
+            }
+        }
+
+        return 0
+    }
+
+    static func parseTagList(from json: Any) -> [String] {
+        let raw = extractPrimaryArray(from: json)
+        let tags = raw.compactMap { item -> String? in
+            if let value = item as? String {
+                return value
+            }
+            if let dict = item as? [String: Any] {
+                return stringValue(in: dict, keys: ["tag", "name", "title", "value"])
+            }
+            return nil
+        }
+        return Array(Set(tags)).sorted()
     }
 
     static func parseRPMMetricSelectionItems(_ raw: Any?, isAvailable: Bool) -> [RPMMetricSelectionItem] {
@@ -619,6 +863,18 @@ private extension MetricsAPIService {
             }
         }
         return []
+    }
+
+    static func intValue(in dict: [String: Any], keys: [String]) -> Int? {
+        for key in keys {
+            if let number = dict[key] as? NSNumber {
+                return number.intValue
+            }
+            if let text = dict[key] as? String, let value = Int(text) {
+                return value
+            }
+        }
+        return nil
     }
 
     static func uniqueCompareOptions(_ options: [MetricCompareOption]) -> [MetricCompareOption] {

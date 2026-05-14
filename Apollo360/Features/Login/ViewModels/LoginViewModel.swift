@@ -114,7 +114,8 @@ final class LoginViewModel: ObservableObject {
             phone: phoneDigits,
             otp: otpCode.trimmingCharacters(in: .whitespacesAndNewlines),
             deviceId: UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString,
-            rememberDevice: false
+            rememberDevice: false,
+            role: nil
         )
         isLoading = true
         APIClient.shared.verifyOTP(with: request) { [weak self] result in

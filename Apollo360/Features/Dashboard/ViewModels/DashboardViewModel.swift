@@ -296,15 +296,21 @@ final class DashboardViewModel: ObservableObject {
                 metricField: payload.metricField,
                 title: payload.description,
                 latestValueText: formatMetricValue(latestValue),
+                latestValue: latestValue,
+                factor: payload.factor ?? 1,
+                optimalFrom: payload.optimalFrom,
+                optimalThru: payload.optimalThru,
                 unitText: defaultUnit,
                 sourceText: source,
                 syncStatus: syncStatus,
                 trendText: formatTrendText(percentageChange),
+                percentageChange: percentageChange,
                 trendTint: trendTint(for: percentageChange),
-                statusBadgeText: statusBadgeText(for: syncStatus),
-                statusBadgeTint: statusBadgeTint(for: syncStatus),
-                statusBadgeBackground: statusBadgeBackground(for: syncStatus),
+                statusBadgeText: statusBadgeText(for: payload),
+                statusBadgeTint: statusBadgeTint(for: payload),
+                statusBadgeBackground: statusBadgeBackground(for: payload),
                 lastSyncText: relativeSyncText(from: payload.lastSyncDate),
+                lastSyncDateRaw: payload.lastSyncDate,
                 isHero: isHero,
                 sparkline: sparklineSeed(for: payload.metricField, anchor: latestValue, average: averageValue),
             )
@@ -328,35 +334,40 @@ final class DashboardViewModel: ObservableObject {
         return change < 0 ? AppColor.red : AppColor.green
     }
 
-    private func statusBadgeText(for syncStatus: String) -> String {
-        switch syncStatus.lowercased() {
-        case "critical":
-            return "Help"
-        case "warning":
-            return "Watch"
-        case "optimal", "good":
+    private func metricStatus(for payload: DashboardMetricPayload) -> String {
+        guard let latestValue = payload.latestValue,
+              let optimalFrom = payload.optimalFrom,
+              let optimalThru = payload.optimalThru else {
             return "Optimal"
-        default:
-            return syncStatus.capitalized
         }
+        let factor = payload.factor ?? 1
+        let normalizedValue = latestValue * factor
+        if normalizedValue >= optimalFrom && normalizedValue <= optimalThru {
+            return "Optimal"
+        }
+        return normalizedValue > optimalThru ? "High" : "Low"
     }
 
-    private func statusBadgeTint(for syncStatus: String) -> Color {
-        switch syncStatus.lowercased() {
-        case "critical":
+    private func statusBadgeText(for payload: DashboardMetricPayload) -> String {
+        metricStatus(for: payload)
+    }
+
+    private func statusBadgeTint(for payload: DashboardMetricPayload) -> Color {
+        switch metricStatus(for: payload) {
+        case "High":
             return AppColor.red
-        case "warning":
+        case "Low":
             return AppColor.yellow
         default:
             return AppColor.green
         }
     }
 
-    private func statusBadgeBackground(for syncStatus: String) -> Color {
-        switch syncStatus.lowercased() {
-        case "critical":
+    private func statusBadgeBackground(for payload: DashboardMetricPayload) -> Color {
+        switch metricStatus(for: payload) {
+        case "High":
             return AppColor.red.opacity(0.12)
-        case "warning":
+        case "Low":
             return AppColor.yellow.opacity(0.18)
         default:
             return AppColor.green.opacity(0.14)

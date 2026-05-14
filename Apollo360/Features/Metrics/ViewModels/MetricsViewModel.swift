@@ -39,6 +39,11 @@ final class MetricsViewModel: ObservableObject {
     @Published private(set) var isSavingCompare = false
     @Published private(set) var isLoadingRPMSelections = false
     @Published private(set) var isSavingRPMSelections = false
+    @Published private(set) var unmanagedLabMetricCount: Int = 0
+    @Published private(set) var labMetricTags: [String] = []
+    @Published private(set) var labFavouriteMetrics: [BasicMetricOption] = []
+    @Published private(set) var rpmFavouriteMetrics: [BasicMetricOption] = []
+    @Published private(set) var availableLabMetricSelections: [BasicMetricOption] = []
     @Published var errorMessage: String?
     @Published var compareStatusMessage: String?
     @Published var rpmSelectionErrorMessage: String?
@@ -108,6 +113,14 @@ final class MetricsViewModel: ObservableObject {
                     firstError = firstError ?? error
                 }
             }
+
+            group.enter()
+            service.fetchRPMFavouriteMetrics(bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                if case .success(let favourites) = result {
+                    self.rpmFavouriteMetrics = favourites
+                }
+            }
         } else {
             group.enter()
             service.fetchLabMetricFolders(patientId: credentials.patientId, bearerToken: credentials.token) { result in
@@ -117,6 +130,38 @@ final class MetricsViewModel: ObservableObject {
                     labFolders = folders
                 case .failure(let error):
                     firstError = firstError ?? error
+                }
+            }
+
+            group.enter()
+            service.fetchUnmanagedLabMetricCount(bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                if case .success(let count) = result {
+                    self.unmanagedLabMetricCount = count
+                }
+            }
+
+            group.enter()
+            service.fetchMetricTags(bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                if case .success(let tags) = result {
+                    self.labMetricTags = tags
+                }
+            }
+
+            group.enter()
+            service.fetchLabFavouriteMetrics(bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                if case .success(let favourites) = result {
+                    self.labFavouriteMetrics = favourites
+                }
+            }
+
+            group.enter()
+            service.fetchAllLabMetricSelections(patientId: credentials.patientId, bearerToken: credentials.token) { result in
+                defer { group.leave() }
+                if case .success(let options) = result {
+                    self.availableLabMetricSelections = options
                 }
             }
         }

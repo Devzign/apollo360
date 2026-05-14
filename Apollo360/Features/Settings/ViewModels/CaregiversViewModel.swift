@@ -14,6 +14,7 @@ final class CaregiversViewModel: ObservableObject {
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var isAddingCaregiver: Bool = false
     @Published private(set) var isAddingProvider: Bool = false
+    @Published private(set) var isSigningConsent: Bool = false
     @Published private(set) var errorMessage: String?
 
     private let session: SessionManager
@@ -165,6 +166,33 @@ final class CaregiversViewModel: ObservableObject {
             formType: "outbound",
             contactType: "healthcare-provider"
         )
+    }
+
+    func signConsent(for provider: HealthcareProviderContact,
+                     formType: String = "outbound",
+                     contactType: String = "healthcare-provider") {
+        guard !isSigningConsent else { return }
+        guard let token = session.accessToken else {
+            errorMessage = "You're not signed in."
+            return
+        }
+
+        isSigningConsent = true
+        errorMessage = nil
+
+        service.signConsentForm(for: provider.key,
+                                formType: formType,
+                                contactType: contactType,
+                                bearerToken: token) { [weak self] result in
+            guard let self else { return }
+            self.isSigningConsent = false
+            switch result {
+            case .success:
+                self.loadContacts(force: true)
+            case .failure(let error):
+                self.errorMessage = Self.prettyMessage(for: error)
+            }
+        }
     }
 
     private static func prettyMessage(for error: APIError) -> String {

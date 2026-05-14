@@ -25,6 +25,10 @@ struct PatientLoginResponse: Decodable {
         let firstName: String
         let lastName: String
         let role: String?
+        let careGiverKey: String?
+        let permissions: [String]
+        let screenName: String?
+        let isAdmin: Bool?
 
         private enum CodingKeys: String, CodingKey {
             case a360Id = "id"
@@ -35,6 +39,10 @@ struct PatientLoginResponse: Decodable {
             case lastName
             case role
             case userId // legacy fallback
+            case careGiverKey = "care_giver_key"
+            case permissions
+            case screenName = "screen_name"
+            case isAdmin
         }
 
         init(from decoder: Decoder) throws {
@@ -57,6 +65,10 @@ struct PatientLoginResponse: Decodable {
             firstName = (try? container.decode(String.self, forKey: .firstName)) ?? ""
             lastName = (try? container.decode(String.self, forKey: .lastName)) ?? ""
             role = try? container.decode(String.self, forKey: .role)
+            careGiverKey = decodeString(.careGiverKey)
+            permissions = (try? container.decode([String].self, forKey: .permissions)) ?? []
+            screenName = try? container.decode(String.self, forKey: .screenName)
+            isAdmin = try? container.decode(Bool.self, forKey: .isAdmin)
         }
 
         var fullName: String {

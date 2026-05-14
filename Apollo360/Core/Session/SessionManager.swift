@@ -23,6 +23,9 @@ final class SessionManager: ObservableObject {
     @Published private(set) var patientId: String?
     @Published private(set) var a360Id: String?
     @Published private(set) var username: String?
+    @Published private(set) var role: String?
+    @Published private(set) var careGiverKey: String?
+    @Published private(set) var permissions: [String] = []
     
     private enum StorageKeys {
         static let accessToken = "Apollo360.accessToken"
@@ -30,6 +33,9 @@ final class SessionManager: ObservableObject {
         static let patientId = "Apollo360.patientId"
         static let a360Id = "Apollo360.a360Id"
         static let username = "Apollo360.username"
+        static let role = "Apollo360.role"
+        static let careGiverKey = "Apollo360.careGiverKey"
+        static let permissions = "Apollo360.permissions"
     }
     
     private let defaults = UserDefaults.standard
@@ -50,12 +56,18 @@ final class SessionManager: ObservableObject {
                        refreshToken: String?,
                        patientId: String?,
                        a360Id: String?,
-                       username: String?) {
+                       username: String?,
+                       role: String? = nil,
+                       careGiverKey: String? = nil,
+                       permissions: [String] = []) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         self.patientId = patientId
         self.a360Id = a360Id
         self.username = username
+        self.role = role
+        self.careGiverKey = careGiverKey
+        self.permissions = permissions
         self.requiresBiometricUnlock = false
         self.isAuthenticated = accessToken != nil && patientId != nil
         persist()
@@ -87,6 +99,9 @@ final class SessionManager: ObservableObject {
             self.patientId = nil
             self.a360Id = nil
             self.username = nil
+            self.role = nil
+            self.careGiverKey = nil
+            self.permissions = []
             self.requiresBiometricUnlock = false
             self.isAuthenticated = false
             
@@ -95,6 +110,9 @@ final class SessionManager: ObservableObject {
             self.defaults.removeObject(forKey: StorageKeys.patientId)
             self.defaults.removeObject(forKey: StorageKeys.a360Id)
             self.defaults.removeObject(forKey: StorageKeys.username)
+            self.defaults.removeObject(forKey: StorageKeys.role)
+            self.defaults.removeObject(forKey: StorageKeys.careGiverKey)
+            self.defaults.removeObject(forKey: StorageKeys.permissions)
         }
     }
     
@@ -104,6 +122,9 @@ final class SessionManager: ObservableObject {
         patientId = defaults.string(forKey: StorageKeys.patientId)
         a360Id = defaults.string(forKey: StorageKeys.a360Id)
         username = defaults.string(forKey: StorageKeys.username)
+        role = defaults.string(forKey: StorageKeys.role)
+        careGiverKey = defaults.string(forKey: StorageKeys.careGiverKey)
+        permissions = defaults.stringArray(forKey: StorageKeys.permissions) ?? []
         let hasSession = accessToken != nil && patientId != nil
         requiresBiometricUnlock = hasSession && FaceIDPreferenceStore.isEnabled(for: patientId)
         isAuthenticated = hasSession && !requiresBiometricUnlock
@@ -115,6 +136,9 @@ final class SessionManager: ObservableObject {
         defaults.set(patientId, forKey: StorageKeys.patientId)
         defaults.set(a360Id, forKey: StorageKeys.a360Id)
         defaults.set(username, forKey: StorageKeys.username)
+        defaults.set(role, forKey: StorageKeys.role)
+        defaults.set(careGiverKey, forKey: StorageKeys.careGiverKey)
+        defaults.set(permissions, forKey: StorageKeys.permissions)
     }
     
     @objc private func handleSessionInvalidation() {
@@ -206,4 +230,3 @@ enum BiometricAuthError: LocalizedError {
         }
     }
 }
-

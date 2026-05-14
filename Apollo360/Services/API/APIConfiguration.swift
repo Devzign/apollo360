@@ -41,6 +41,10 @@ enum APIConfiguration {
 
 enum APIEndpoint {
     static let patientLogin = "v1/auth/patient-login"
+    static let adminPatientLogin = "v1/auth/admin-patient-login"
+    static let caregiverLogin = "v1/auth/caregiver-login"
+    static let caregiverSendEmail = "v1/auth/caregiver-send-email"
+    static let caregiverVerifyEmail = "v1/auth/caregiver-verify-email"
     static let verifyOTP = "v1/auth/verify-otp"
     static let refreshToken = "v1/auth/refresh"
     static let patientFaceID = "patient-faceId"
@@ -133,6 +137,19 @@ enum APIEndpoint {
     static func showAllRPMMetrics(for patientId: String) -> String {
         "v1/show-all-rpm-metrics/\(patientId)"
     }
+    static func showAllLabMetrics(for patientId: String) -> String {
+        "v1/show-all-lab-metrics/\(patientId)"
+    }
+    static func getAvailableLabMetrics(for patientId: String) -> String {
+        "v1/get-available-lab-metrics/\(patientId)"
+    }
+    static func manageLabMetricsData(type: String) -> String {
+        "v1/manage-lab-metrics-data?type=\(type)"
+    }
+    static let labMetricsFavourite = "v1/lab-metrics/favourite"
+    static let rpmMetricsFavourite = "v1/rpm-metrics/favourite"
+    static let tagsList = "v1/get-tags-list"
+    static let updateLabPostValue = "v1/update-lab-post-value"
     static func saveUserMetrics(patientId: String, memberId: String) -> String {
         "v1/save-user-metrics/\(patientId)/\(memberId)"
     }
@@ -166,6 +183,8 @@ enum APIEndpoint {
     static let dashboardActivityPlans = "v1/dashboard/activity-plans"
     static let dashboardMetricsLookup = "v1/dashboard/metrics-lookup"
     static let dashboardSummary = "v1/dashboard/summary"
+    static let dashboardActivity = "v1/dashboard/activity"
+    static let dashboardSymptoms = "v1/dashboard/symptoms"
     static func messagesConversation(for patientId: Int, a360hId: Int) -> String {
         "v1/messages/all/\(patientId)?a360hId=\(a360hId)"
     }
@@ -175,6 +194,9 @@ enum APIEndpoint {
     static let validicUser = "v1/validic/user"
     static let team = "v1/team"
     static let myContacts = "v1/my-contacts"
+    static let caregiverPatients = "v1/caregiver/patients"
+    static let caregiverNotification = "v1/caregiver/notification"
+    static let caregiverSwitchPatient = "v1/caregiver/switch-patient"
     static let myContactsCaregiver = "v1/my-contacts/caregiver"
     static let myContactsHealthcareProvider = "v1/my-contacts/healthcare-provider"
     static func myContactsContact(key: String) -> String {
@@ -182,6 +204,9 @@ enum APIEndpoint {
     }
     static func myContactsConsentForm(key: String, type: String, formType: String, contactType: String) -> String {
         "v1/my-contacts/\(key)/consent-form?type=\(type)&formType=\(formType)&contactType=\(contactType)"
+    }
+    static func myContactsConsentFormSign(key: String, formType: String, contactType: String) -> String {
+        "v1/my-contacts/\(key)/consent-form/sign?formType=\(formType)&contactType=\(contactType)"
     }
 
     static func providers(for patientId: Int) -> String {

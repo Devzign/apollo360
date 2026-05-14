@@ -191,4 +191,26 @@ final class DashboardAPIService {
             }
         }
     }
+
+    func createDashboardSymptoms(request: DashboardCreateSymptomsRequest,
+                                 bearerToken: String,
+                                 completion: @escaping (Result<DashboardCreateMutationResponse, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardSymptoms,
+                                 method: .post,
+                                 body: request,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardCreateMutationResponse.self,
+                                 completion: completion)
+    }
+
+    func createDashboardActivity(request: DashboardCreateActivityRequest,
+                                 bearerToken: String,
+                                 completion: @escaping (Result<DashboardCreateMutationResponse, APIError>) -> Void) {
+        APIClient.shared.request(endpoint: APIEndpoint.dashboardActivity,
+                                 method: .post,
+                                 body: request,
+                                 headers: ["Authorization": "Bearer \(bearerToken)"],
+                                 responseType: DashboardCreateMutationResponse.self,
+                                 completion: completion)
+    }
 }

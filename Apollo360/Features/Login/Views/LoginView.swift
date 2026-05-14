@@ -138,7 +138,7 @@ struct LoginView: View {
                 faceIDLoginButton
             }
 
-            NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
+            NavigationLink(destination: CaregiverLoginView().environmentObject(session)) {
                 HStack(spacing: 2) {
                     Text("Caregiver")
                         .font(AppFont.body(size: 14, weight: .medium))
@@ -149,6 +149,17 @@ struct LoginView: View {
                 }
             }
             .padding(.top, 8)
+
+            NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
+                HStack(spacing: 2) {
+                    Text("Password")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundColor(AppColor.black)
+                    Text(" Log-In")
+                        .font(AppFont.body(size: 14, weight: .medium))
+                        .foregroundColor(AppColor.green)
+                }
+            }
         }
         .padding(30)
         .frame(maxWidth: cardMaxWidth)

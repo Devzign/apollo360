@@ -12,6 +12,7 @@ struct VerifyOTPRequest: Encodable {
     let otp: String
     let deviceId: String
     let rememberDevice: Bool
+    let role: String?
 }
 
 struct PatientFaceIDRequest: Encodable {

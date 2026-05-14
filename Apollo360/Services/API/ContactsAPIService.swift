@@ -15,6 +15,7 @@ enum ContactType: String {
 final class ContactsAPIService {
     static let shared = ContactsAPIService()
     private let client: APIClient
+    private struct EmptyJSONBody: Encodable {}
 
     init(client: APIClient = .shared) {
         self.client = client
@@ -91,5 +92,28 @@ final class ContactsAPIService {
     func consentFormURL(for key: String, type: String, formType: String, contactType: String) -> URL? {
         URL(string: APIConfiguration.currentEnvironment.baseURLString)?
             .appendingPathComponent(APIEndpoint.myContactsConsentForm(key: key, type: type, formType: formType, contactType: contactType))
+    }
+
+    func signConsentForm(for key: String,
+                         formType: String,
+                         contactType: String,
+                         bearerToken: String,
+                         completion: @escaping (Result<Void, APIError>) -> Void) {
+        client.performDataRequest(
+            endpoint: APIEndpoint.myContactsConsentFormSign(key: key, formType: formType, contactType: contactType),
+            method: .post,
+            body: EmptyJSONBody(),
+            headers: [
+                "Authorization": "Bearer \(bearerToken)",
+                "Content-Type": "application/json"
+            ]
+        ) { result in
+            switch result {
+            case .success, .failure(.noData):
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
     }
 }

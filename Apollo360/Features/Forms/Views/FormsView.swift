@@ -310,10 +310,12 @@ private struct FormDetailView: View {
                         .foregroundColor(AppColor.black.opacity(0.4))
                 }
 
-                Text(subForm.body.htmlPlainText)
-                    .font(AppFont.body(size: 14))
-                    .foregroundColor(AppColor.black.opacity(0.82))
-                    .lineLimit(3)
+                HTMLPreviewText(
+                    html: subForm.body,
+                    fontSize: 14,
+                    textColor: UIColor(AppColor.black.opacity(0.82)),
+                    lineLimit: 3
+                )
 
                 if let signedDate = subForm.signedDate, !signedDate.isEmpty {
                     Text("Signed on \(signedDate)")
@@ -401,16 +403,19 @@ private struct HTMLPreviewText: View {
     let html: String
     let fontSize: CGFloat
     let textColor: UIColor
+    var lineLimit: Int? = nil
 
     var body: some View {
         if let attributed = html.htmlAttributedString(fontSize: fontSize, textColor: textColor),
            let swiftAttributed = try? AttributedString(attributed, including: \.foundation) {
             Text(swiftAttributed)
+                .lineLimit(lineLimit)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
             Text(html.htmlPlainText)
                 .font(AppFont.body(size: fontSize))
                 .foregroundColor(Color(textColor))
+                .lineLimit(lineLimit)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -420,8 +425,6 @@ private extension String {
     func htmlAttributedString(fontSize: CGFloat, textColor: UIColor) -> NSAttributedString? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        guard let data = trimmed.data(using: .utf8) else { return nil }
-
         let css = """
         <style>
         body { font-family: -apple-system; font-size: \(fontSize)px; color: \(textColor.hexString); margin: 0; padding: 0; }

@@ -171,15 +171,21 @@ struct DashboardMetricCardModel: Identifiable {
     let metricField: String
     let title: String
     let latestValueText: String
+    let latestValue: Double
+    let factor: Double
+    let optimalFrom: Double?
+    let optimalThru: Double?
     let unitText: String
     let sourceText: String
     let syncStatus: String
     let trendText: String
+    let percentageChange: Double?
     let trendTint: Color
     let statusBadgeText: String
     let statusBadgeTint: Color
     let statusBadgeBackground: Color
     let lastSyncText: String
+    let lastSyncDateRaw: String?
     let isHero: Bool
     let sparkline: [Double]
 }

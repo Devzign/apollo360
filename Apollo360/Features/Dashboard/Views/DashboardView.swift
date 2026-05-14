@@ -157,6 +157,7 @@ struct DashboardView: View {
                 myMetrics: viewModel.myMetricCards,
                 isLoading: viewModel.isLoading,
                 errorMessage: viewModel.homeMetricsError,
+                session: session,
                 onSelectMetrics: {
                     selectedTab = .metrics
                 }

@@ -355,6 +355,15 @@ final class APIClient {
                       completion: @escaping (Result<Data, APIError>) -> Void) {
         performDataRequest(endpoint: APIEndpoint.patientLogin, method: .post, body: payload, completion: completion)
     }
+
+    func adminPatientLogin(with payload: AdminPatientLoginRequest,
+                           completion: @escaping (Result<PatientLoginResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.adminPatientLogin,
+                method: .post,
+                body: payload,
+                responseType: PatientLoginResponse.self,
+                completion: completion)
+    }
     
     func verifyOTP(with payload: VerifyOTPRequest,
                    completion: @escaping (Result<PatientLoginResponse, APIError>) -> Void) {
@@ -401,6 +410,65 @@ final class APIClient {
                 method: .post,
                 headers: ["Authorization": "Bearer \(bearerToken)"],
                 responseType: LogoutResponse.self,
+                completion: completion)
+    }
+
+    func caregiverSendEmail(with payload: CaregiverEmailRequest,
+                            completion: @escaping (Result<CaregiverVerifyEmailResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.caregiverSendEmail,
+                method: .post,
+                body: payload,
+                responseType: CaregiverVerifyEmailResponse.self,
+                completion: completion)
+    }
+
+    func caregiverVerifyEmail(with payload: CaregiverVerifyEmailRequest,
+                              completion: @escaping (Result<CaregiverVerifyEmailResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.caregiverVerifyEmail,
+                method: .post,
+                body: payload,
+                responseType: CaregiverVerifyEmailResponse.self,
+                completion: completion)
+    }
+
+    func caregiverLogin(with payload: CaregiverLoginRequest,
+                        completion: @escaping (Result<CaregiverLoginResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.caregiverLogin,
+                method: .post,
+                body: payload,
+                responseType: CaregiverLoginResponse.self,
+                completion: completion)
+    }
+
+    func caregiverPatients(careGiverKey: String,
+                           bearerToken: String,
+                           completion: @escaping (Result<CaregiverPatientsResponse, APIError>) -> Void) {
+        request(endpoint: "\(APIEndpoint.caregiverPatients)?careGiverKey=\(careGiverKey)",
+                method: .get,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
+                responseType: CaregiverPatientsResponse.self,
+                completion: completion)
+    }
+
+    func caregiverSwitchPatient(with payload: CaregiverSwitchPatientRequest,
+                                bearerToken: String,
+                                completion: @escaping (Result<CaregiverSwitchPatientResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.caregiverSwitchPatient,
+                method: .post,
+                body: payload,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
+                responseType: CaregiverSwitchPatientResponse.self,
+                completion: completion)
+    }
+
+    func caregiverNotification(with payload: CaregiverNotificationRequest,
+                               bearerToken: String,
+                               completion: @escaping (Result<CaregiverNotificationResponse, APIError>) -> Void) {
+        request(endpoint: APIEndpoint.caregiverNotification,
+                method: .post,
+                body: payload,
+                headers: ["Authorization": "Bearer \(bearerToken)"],
+                responseType: CaregiverNotificationResponse.self,
                 completion: completion)
     }
     
