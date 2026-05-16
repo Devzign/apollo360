@@ -30,6 +30,16 @@ struct PasswordLoginView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 4)
 
+                if viewModel.canUseBiometrics {
+                    Toggle(isOn: $viewModel.faceIdEnabled) {
+                        Text("Enable Face ID on this device")
+                            .font(AppFont.body(size: 14))
+                            .foregroundColor(AppColor.black)
+                    }
+                    .toggleStyle(CheckboxToggleStyle())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 Button(action: viewModel.login) {
                     Text("Sign In")
                         .font(AppFont.body(size: 18, weight: .semibold))
@@ -55,6 +65,7 @@ struct PasswordLoginView: View {
             )
         }
         .onAppear {
+            viewModel.configureFaceIDSelection(for: session.patientId)
             if viewModel.onLoginSuccess == nil {
                 viewModel.onLoginSuccess = { response in
                     session.updateSession(
@@ -62,7 +73,10 @@ struct PasswordLoginView: View {
                         refreshToken: response.refreshToken,
                         patientId: response.patientId,
                         a360Id: response.a360Id,
-                        username: response.user.username
+                        username: response.user.username,
+                        role: nil,
+                        careGiverKey: nil,
+                        permissions: []
                     )
                 }
             }

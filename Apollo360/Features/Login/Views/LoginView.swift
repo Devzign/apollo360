@@ -138,17 +138,17 @@ struct LoginView: View {
                 faceIDLoginButton
             }
 
-            NavigationLink(destination: CaregiverLoginView().environmentObject(session)) {
-                HStack(spacing: 2) {
-                    Text("Caregiver")
-                        .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundColor(AppColor.black)
-                    Text(" Log-In")
-                        .font(AppFont.body(size: 14, weight: .medium))
-                        .foregroundColor(AppColor.green)
-                }
-            }
-            .padding(.top, 8)
+//            NavigationLink(destination: CaregiverLoginView().environmentObject(session)) {
+//                HStack(spacing: 2) {
+//                    Text("Caregiver")
+//                        .font(AppFont.body(size: 14, weight: .medium))
+//                        .foregroundColor(AppColor.black)
+//                    Text(" Log-In")
+//                        .font(AppFont.body(size: 14, weight: .medium))
+//                        .foregroundColor(AppColor.green)
+//                }
+//            }
+//            .padding(.top, 8)
 
             NavigationLink(destination: PasswordLoginView().environmentObject(session)) {
                 HStack(spacing: 2) {

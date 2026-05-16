@@ -19,7 +19,13 @@ final class PasswordLoginViewModel: ObservableObject {
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
     @Published var alertStyle: AlertStyle = .standard
+    @Published var faceIdEnabled: Bool = false
+    @Published private(set) var canUseBiometrics: Bool = false
     var onLoginSuccess: ((PasswordLoginResponse) -> Void)?
+
+    init() {
+        canUseBiometrics = FaceIDPreferenceStore.canUseBiometrics()
+    }
 
     var isFormValid: Bool {
         !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -44,12 +50,24 @@ final class PasswordLoginViewModel: ObservableObject {
             self.isLoading = false
             switch result {
             case .success(let response):
-                self.onLoginSuccess?(response)
-                self.showAlert(title: "Welcome \(response.user.firstName)", message: "Logged in as \(response.user.username).")
+                self.syncFaceIDPreference(using: response) { warning in
+                    self.onLoginSuccess?(response)
+                    let base = "Logged in as \(response.user.username)."
+                    if let warning, !warning.isEmpty {
+                        self.showAlert(title: "Welcome \(response.user.firstName)", message: "\(base)\n\n\(warning)")
+                    } else {
+                        self.showAlert(title: "Welcome \(response.user.firstName)", message: base)
+                    }
+                }
             case .failure(let error):
                 self.showAlert(title: "Login failed", message: error.localizedDescription, style: .error)
             }
         }
+    }
+
+    func configureFaceIDSelection(for patientId: String?) {
+        canUseBiometrics = FaceIDPreferenceStore.canUseBiometrics()
+        faceIdEnabled = FaceIDPreferenceStore.isEnabled(for: patientId)
     }
 
     private func showAlert(title: String, message: String, style: AlertStyle = .standard) {
@@ -57,6 +75,25 @@ final class PasswordLoginViewModel: ObservableObject {
         alertMessage = message
         alertStyle = style
         showAlert = true
+    }
+
+    private func syncFaceIDPreference(using response: PasswordLoginResponse,
+                                      completion: @escaping (String?) -> Void) {
+        guard let patientId = response.patientId, !patientId.isEmpty else {
+            completion(nil)
+            return
+        }
+
+        let payload = PatientFaceIDRequest(patientId: patientId, faceIdEnabled: faceIdEnabled)
+        APIClient.shared.updatePatientFaceID(with: payload) { result in
+            switch result {
+            case .success:
+                FaceIDPreferenceStore.setPreference(enabled: self.faceIdEnabled, patientId: patientId)
+                completion(nil)
+            case .failure(let error):
+                completion("Logged in, but Face ID preference was not updated. \(error.localizedDescription)")
+            }
+        }
     }
 
 }
