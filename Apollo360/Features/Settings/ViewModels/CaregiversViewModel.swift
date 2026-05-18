@@ -62,7 +62,7 @@ final class CaregiversViewModel: ObservableObject {
         }
     }
 
-    func addCaregiver(firstName: String, lastName: String, phone: String, email: String) {
+    func addCaregiver(firstName: String, lastName: String, phone: String, email: String, onSuccess: (() -> Void)? = nil) {
         guard !isAddingCaregiver else { return }
         guard let token = session.accessToken else {
             errorMessage = "You're not signed in."
@@ -80,13 +80,14 @@ final class CaregiversViewModel: ObservableObject {
             switch result {
             case .success:
                 self.loadContacts(force: true)
+                onSuccess?()
             case .failure(let error):
                 self.errorMessage = Self.prettyMessage(for: error)
             }
         }
     }
 
-    func addProvider(name: String, email: String, fax: String, organization: String, address: String, phone: String) {
+    func addProvider(name: String, email: String, fax: String, organization: String, address: String, phone: String, onSuccess: (() -> Void)? = nil) {
         guard !isAddingProvider else { return }
         guard let token = session.accessToken else {
             errorMessage = "You're not signed in."
@@ -111,6 +112,7 @@ final class CaregiversViewModel: ObservableObject {
             switch result {
             case .success:
                 self.loadContacts(force: true)
+                onSuccess?()
             case .failure(let error):
                 self.errorMessage = Self.prettyMessage(for: error)
             }

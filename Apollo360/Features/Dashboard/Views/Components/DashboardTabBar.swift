@@ -62,9 +62,9 @@ struct DashboardTabBar: View {
 
     private var bottomPadding: CGFloat {
         if horizontalSizeClass == .regular {
-            return max(bottomInset, 12)
+            return max(bottomInset - 8, 8)
         }
-        return max(bottomInset - 28, 0)
+        return max(bottomInset - 52, 0)
     }
 
     // MARK: - Body

@@ -158,7 +158,11 @@ final class LoginViewModel: ObservableObject {
     }
 
     func updatePhoneNumber(_ raw: String) {
-        let digits = raw.filter(\.isNumber)
+        var digits = raw.filter(\.isNumber)
+        // Strip US country code (+1) when user pastes/types an 11-digit number starting with 1
+        if digits.count == 11 && digits.hasPrefix("1") {
+            digits = String(digits.dropFirst())
+        }
         let truncated = String(digits.prefix(10))
         phoneDigits = truncated
         formattedPhoneNumber = formatPhoneNumber(truncated)
@@ -286,14 +290,35 @@ final class LoginViewModel: ObservableObject {
             return
         }
 
+        // Always persist locally first so Face ID works on next launch.
+        FaceIDPreferenceStore.setPreference(enabled: faceIdEnabled, patientId: patientId)
+
+        // If the user just enabled Face ID, trigger the system biometric prompt
+        // RIGHT NOW so they see and confirm Face ID setup immediately after OTP verify.
+        if faceIdEnabled && FaceIDPreferenceStore.canUseBiometrics() {
+            BiometricAuthenticator.authenticate(reason: "Set up Face ID for Apollo360") { [weak self] _ in
+                // Whether the user succeeds or cancels, proceed with login —
+                // the preference is already saved; Face ID will be ready next launch.
+                self?.syncFaceIDToServer(patientId: patientId, completion: completion)
+            }
+        } else {
+            syncFaceIDToServer(patientId: patientId, completion: completion)
+        }
+    }
+
+    private func syncFaceIDToServer(patientId: String, completion: @escaping (String?) -> Void) {
         let payload = PatientFaceIDRequest(patientId: patientId, faceIdEnabled: faceIdEnabled)
-        APIClient.shared.updatePatientFaceID(with: payload) { result in
+        APIClient.shared.updatePatientFaceID(with: payload) { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success:
-                FaceIDPreferenceStore.setPreference(enabled: self.faceIdEnabled, patientId: patientId)
                 completion(nil)
             case .failure(let error):
-                completion("Logged in, but Face ID preference was not updated. \(error.localizedDescription)")
+                if self.faceIdEnabled {
+                    completion(nil) // Saved locally; silently continue.
+                } else {
+                    completion("Logged in, but Face ID preference sync failed: \(error.localizedDescription)")
+                }
             }
         }
     }

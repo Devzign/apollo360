@@ -13,6 +13,7 @@ import WebKit
 struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     let provider: MessageProvider
+    let session: SessionManager
     @Environment(\.presentationMode) private var presentationMode
     @State private var isFileImporterPresented = false
     @State private var previewURL: URL?
@@ -20,11 +21,13 @@ struct ConversationView: View {
     init(session: SessionManager, service: MessageAPIService, provider: MessageProvider) {
         _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: service))
         self.provider = provider
+        self.session = session
     }
-    
+
     init(session: SessionManager, provider: MessageProvider) {
         _viewModel = StateObject(wrappedValue: ConversationViewModel(session: session, service: .shared))
         self.provider = provider
+        self.session = session
     }
 
     var body: some View {
@@ -151,7 +154,13 @@ struct ConversationView: View {
     }
 
     private func isMine(_ message: MessageEntry) -> Bool {
-        message.name == (viewModel.thread?.patientName ?? "You") || message.name == (viewModel.thread?.patientName ?? "")
+        // Check against the patient name returned from the API
+        let patientName = viewModel.thread?.patientName ?? ""
+        if !patientName.isEmpty && message.name == patientName { return true }
+        // Check against the logged-in username (used for optimistic messages)
+        let username = session.username ?? ""
+        if !username.isEmpty && message.name == username { return true }
+        return false
     }
 
     private var inputBar: some View {
@@ -214,10 +223,21 @@ private struct MessageBubble: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if isMine {
-                Spacer()
+                // My message: spacer on left pushes bubble to right
+                Spacer(minLength: 48)
+            } else {
+                // Provider message: avatar on LEFT (WhatsApp style)
+                AvatarView(urlString: nil, placeholderText: message.name)
+                    .frame(width: 32, height: 32)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: isMine ? .trailing : .leading, spacing: 6) {
+                if !isMine {
+                    Text(message.name)
+                        .font(AppFont.body(size: 11, weight: .semibold))
+                        .foregroundColor(AppColor.green)
+                }
+
                 Text(message.message)
                     .font(AppFont.body(size: 15))
                     .foregroundColor(isMine ? .white : AppColor.black)
@@ -227,22 +247,35 @@ private struct MessageBubble: View {
                     fileView(filePath: filePath)
                 }
 
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
+                HStack(spacing: 4) {
                     Text(formattedTime)
                         .font(AppFont.body(size: 11))
+                    if isMine {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                    }
                 }
-                .foregroundColor(isMine ? Color.white.opacity(0.8) : AppColor.grey)
+                .foregroundColor(isMine ? Color.white.opacity(0.75) : AppColor.grey)
             }
-            .padding(12)
-            .background(isMine ? AppColor.green : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: Color.black.opacity(isMine ? 0.08 : 0.04), radius: 6, y: 2)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                isMine
+                    ? AppColor.green
+                    : Color.white
+            )
+            .clipShape(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isMine ? Color.clear : Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(isMine ? 0.12 : 0.05), radius: 4, y: 2)
 
             if !isMine {
-                AvatarView(urlString: nil, placeholderText: message.name)
-                    .frame(width: 32, height: 32)
+                // Provider message: spacer on right keeps bubble left-aligned
+                Spacer(minLength: 48)
             }
         }
     }

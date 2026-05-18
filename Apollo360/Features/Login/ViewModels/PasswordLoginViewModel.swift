@@ -84,14 +84,25 @@ final class PasswordLoginViewModel: ObservableObject {
             return
         }
 
-        let payload = PatientFaceIDRequest(patientId: patientId, faceIdEnabled: faceIdEnabled)
-        APIClient.shared.updatePatientFaceID(with: payload) { result in
-            switch result {
-            case .success:
-                FaceIDPreferenceStore.setPreference(enabled: self.faceIdEnabled, patientId: patientId)
+        // Always persist locally first (works even when server is unreachable).
+        FaceIDPreferenceStore.setPreference(enabled: faceIdEnabled, patientId: patientId)
+
+        // Only contact the server — and show the biometric prompt — when
+        // the user explicitly turned Face ID ON. Skip the call entirely when
+        // it's off so we don't hit a potentially missing endpoint for no reason.
+        guard faceIdEnabled && FaceIDPreferenceStore.canUseBiometrics() else {
+            completion(nil)
+            return
+        }
+
+        // Trigger the system Face ID prompt immediately so the user sees it
+        // right after login, then sync the preference to the server.
+        BiometricAuthenticator.authenticate(reason: "Set up Face ID for Apollo360") { [weak self] _ in
+            guard let self else { return }
+            let payload = PatientFaceIDRequest(patientId: patientId, faceIdEnabled: self.faceIdEnabled)
+            APIClient.shared.updatePatientFaceID(with: payload) { _ in
+                // Ignore server result — preference is already saved locally.
                 completion(nil)
-            case .failure(let error):
-                completion("Logged in, but Face ID preference was not updated. \(error.localizedDescription)")
             }
         }
     }

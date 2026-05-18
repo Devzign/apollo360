@@ -23,6 +23,8 @@ struct Apollo360App: App {
             Group {
                 if session.isAuthenticated {
                     DashboardView(session: session)
+                } else if session.requiresBiometricUnlock {
+                    BiometricLockView()
                 } else {
                     LoginView()
                 }

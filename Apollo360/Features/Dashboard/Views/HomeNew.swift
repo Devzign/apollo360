@@ -244,65 +244,38 @@ struct HomeNew: View {
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Color.white))
             }
-
-            if isFeelingOpen || isActivitiesOpen {
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        isFeelingOpen = false
-                        isActivitiesOpen = false
-                    }
-            }
-
-            if isFeelingOpen {
-                GeometryReader { geo in
-                    let topInset = geo.safeAreaInsets.top + 8
-                    let bottomInset = geo.safeAreaInsets.bottom + 90
-                    VStack(spacing: 0) {
-                        Spacer(minLength: topInset)
-                        FeelingSheet(viewModel: viewModel,
-                                     onSaved: {
-                                         isFeelingOpen = false
-                                         withAnimation(.easeInOut(duration: 0.25)) {
-                                             homeSection = .feeling
-                                         }
-                                     },
-                                     onCancel: { isFeelingOpen = false })
-                        .frame(maxWidth: 390)
-                        .padding(.horizontal, 16)
-                        Spacer(minLength: bottomInset)
-                    }
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
-                .zIndex(3)
-            }
-
-            if isActivitiesOpen {
-                GeometryReader { geo in
-                    let topInset = geo.safeAreaInsets.top + 8
-                    let bottomInset = geo.safeAreaInsets.bottom + 90
-                    VStack(spacing: 0) {
-                        Spacer(minLength: topInset)
-                        ActivitiesSheet(viewModel: viewModel,
-                                        onSaved: {
-                                            isActivitiesOpen = false
-                                            withAnimation(.easeInOut(duration: 0.25)) {
-                                                homeSection = .activities
-                                            }
-                                        },
-                                        onCancel: { isActivitiesOpen = false })
-                        .frame(maxWidth: 390)
-                        .padding(.horizontal, 16)
-                        Spacer(minLength: bottomInset)
-                    }
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
-                .zIndex(3)
-            }
         }
-        .animation(.easeInOut(duration: 0.18), value: isFeelingOpen)
-        .animation(.easeInOut(duration: 0.18), value: isActivitiesOpen)
         .refreshable { viewModel.load() }
+        // ── I'm Feeling sheet ──────────────────────────────────────────────
+        .sheet(isPresented: $isFeelingOpen) {
+            NavigationView {
+                FeelingSheet(viewModel: viewModel,
+                             onSaved: {
+                                 isFeelingOpen = false
+                                 withAnimation(.easeInOut(duration: 0.25)) { homeSection = .feeling }
+                             },
+                             onCancel: { isFeelingOpen = false })
+            }
+            .navigationViewStyle(.stack)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .modifier(PresentationCornerRadiusModifier(radius: 26))
+        }
+        // ── Activities sheet ───────────────────────────────────────────────
+        .sheet(isPresented: $isActivitiesOpen) {
+            NavigationView {
+                ActivitiesSheet(viewModel: viewModel,
+                                onSaved: {
+                                    isActivitiesOpen = false
+                                    withAnimation(.easeInOut(duration: 0.25)) { homeSection = .activities }
+                                },
+                                onCancel: { isActivitiesOpen = false })
+            }
+            .navigationViewStyle(.stack)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .modifier(PresentationCornerRadiusModifier(radius: 26))
+        }
     }
 
     // MARK: - Section Switcher
@@ -316,10 +289,10 @@ struct HomeNew: View {
 
             ZStack(alignment: .leading) {
                 // Sliding green pill
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(AppColor.green)
-                    .frame(width: tabW - 8, height: geo.size.height - 8)
-                    .offset(x: selIdx * tabW + 4, y: 4)
+                    .frame(width: tabW - 4, height: geo.size.height - 4)
+                    .offset(x: selIdx * tabW + 2, y: 2)
                     .animation(.spring(response: 0.32, dampingFraction: 0.78), value: homeSection)
                     .shadow(color: AppColor.green.opacity(0.30), radius: 8, y: 3)
 
@@ -1043,6 +1016,18 @@ private struct InlineDropdown: View {
     }
 }
 
+// MARK: - iOS-version-safe presentationCornerRadius modifier
+private struct PresentationCornerRadiusModifier: ViewModifier {
+    let radius: CGFloat
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content.presentationCornerRadius(radius)
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - I’m Feeling Sheet
 private struct FeelingSheet: View {
     @ObservedObject var viewModel: HomeNewViewModel
@@ -1066,13 +1051,6 @@ private struct FeelingSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag handle
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(red: 0.82, green: 0.82, blue: 0.82))
-                .frame(width: 40, height: 5)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
             // Gradient header
             ZStack(alignment: .bottomLeading) {
                 LinearGradient(
@@ -1251,8 +1229,6 @@ private struct FeelingSheet: View {
                 }
                 .buttonStyle(HomeActionButtonStyle(isPrimary: true, isDisabled: !canSave))
 
-                Button("Cancel") { onCancel() }
-                    .buttonStyle(HomeActionButtonStyle(isPrimary: false, isDisabled: viewModel.isSavingFeeling))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
@@ -1319,13 +1295,6 @@ private struct ActivitiesSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag handle
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(red: 0.82, green: 0.82, blue: 0.82))
-                .frame(width: 40, height: 5)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
             // Gradient header
             ZStack(alignment: .bottomLeading) {
                 LinearGradient(
@@ -1520,8 +1489,6 @@ private struct ActivitiesSheet: View {
                 }
                 .buttonStyle(HomeActionButtonStyle(isPrimary: true, isDisabled: !canSave))
 
-                Button("Cancel") { onCancel() }
-                    .buttonStyle(HomeActionButtonStyle(isPrimary: false, isDisabled: viewModel.isSavingActivity))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)

@@ -382,7 +382,8 @@ private struct PhoneNumberTextField: UIViewRepresentable {
             let nsText = currentText as NSString
             let updated = nsText.replacingCharacters(in: range, with: string)
             let digits = updated.filter(\.isNumber)
-            let limitedDigits = String(digits.prefix(10))
+            // Pass up to 11 digits so the ViewModel can detect and strip the US +1 country code.
+            let limitedDigits = String(digits.prefix(11))
             parent.onTextChange(limitedDigits)
             let endPosition = textField.endOfDocument
             if let newRange = textField.textRange(from: endPosition, to: endPosition) {

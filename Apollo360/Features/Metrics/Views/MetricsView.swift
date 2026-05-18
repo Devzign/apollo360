@@ -116,17 +116,19 @@ struct MetricsView: View {
                 Button(action: {
                     isShowingMetricSelector = true
                 }) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                         Text("Select Metrics")
-                            .font(AppFont.body(size: 16, weight: .semibold))
+                            .font(AppFont.body(size: 14, weight: .semibold))
+                            .fixedSize()
+                            .lineLimit(1)
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(AppColor.green.opacity(0.82))
                     )
                 }
