@@ -101,16 +101,17 @@ final class APIClient {
             request.timeoutInterval = timeoutInterval
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if method != .get {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
         if let headers = headers {
             headers.forEach { key, value in
                 request.setValue(value, forHTTPHeaderField: key)
             }
         }
-        
+
+        // Only set Content-Type and attach a body when there is actual content.
+        // Sending Content-Type: application/json with an empty body causes
+        // Fastify (and other strict servers) to return 400 FST_ERR_CTP_EMPTY_JSON_BODY.
         if let body = body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             do {
                 request.httpBody = try JSONEncoder().encode(body)
             } catch {

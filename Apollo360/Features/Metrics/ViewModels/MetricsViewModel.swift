@@ -46,6 +46,7 @@ final class MetricsViewModel: ObservableObject {
     @Published private(set) var availableLabMetricSelections: [BasicMetricOption] = []
     @Published var errorMessage: String?
     @Published var compareStatusMessage: String?
+    private var compareStatusClearTask: Task<Void, Never>?
     @Published var rpmSelectionErrorMessage: String?
     @Published private(set) var selectedRange: String = "365"
     @Published private(set) var activeSource: MetricDataSource = .rpm
@@ -82,6 +83,17 @@ final class MetricsViewModel: ObservableObject {
         guard activeSource != source else { return }
         activeSource = source
         load()
+    }
+
+    /// Shows a success message then automatically clears it after 2.5 seconds.
+    private func showSuccessMessage(_ message: String) {
+        compareStatusMessage = message
+        compareStatusClearTask?.cancel()
+        compareStatusClearTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { self?.compareStatusMessage = nil }
+        }
     }
 
     private func loadMetrics(for source: MetricDataSource) {
@@ -298,7 +310,7 @@ final class MetricsViewModel: ObservableObject {
                 self.isSavingRPMSelections = false
                 switch result {
                 case .success:
-                    self.compareStatusMessage = "Metrics saved successfully."
+                    self.showSuccessMessage("Metrics saved successfully.")
                     self.loadRPMMetricSelections()
                     self.loadMetrics(for: .rpm)
                     completion?()
@@ -445,7 +457,7 @@ final class MetricsViewModel: ObservableObject {
                             self.applyCompareResult(baseMetricId: baseCard.id,
                                                     compareOption: compareOption,
                                                     payload: payload)
-                            self.compareStatusMessage = "Comparison saved successfully."
+                            self.showSuccessMessage("Comparison saved successfully.")
                         case .failure(let error):
                             self.compareStatusMessage = error.localizedDescription
                         }

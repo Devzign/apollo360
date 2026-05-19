@@ -231,14 +231,11 @@ final class MetricsAPIService {
             endpoint = APIEndpoint.checkLabMetric(metricId: metricId, patientId: patientId, memberId: memberId)
         }
 
+        // No body — server rejects any payload on these PUT endpoints
         APIClient.shared.performDataRequest(
             endpoint: endpoint,
             method: .put,
-            body: EmptyJSONBody(),
-            headers: [
-                "Authorization": "Bearer \(bearerToken)",
-                "Content-Type": "application/json"
-            ]
+            headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
             switch result {
             case .success, .failure(.noData):
@@ -277,14 +274,11 @@ final class MetricsAPIService {
             )
         }
 
+        // No body — server rejects any payload on these PUT endpoints
         APIClient.shared.performDataRequest(
             endpoint: endpoint,
             method: .put,
-            body: EmptyJSONBody(),
-            headers: [
-                "Authorization": "Bearer \(bearerToken)",
-                "Content-Type": "application/json"
-            ]
+            headers: ["Authorization": "Bearer \(bearerToken)"]
         ) { result in
             switch result {
             case .success, .failure(.noData):
