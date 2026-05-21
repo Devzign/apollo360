@@ -25,6 +25,7 @@ final class MessageAPIService {
         APIClient.shared.request(endpoint: endpoint,
                                  method: .get,
                                  headers: authHeaders(token: token),
+                                 timeoutInterval: 120,
                                  responseType: [MessageProvider].self,
                                  completion: completion)
     }

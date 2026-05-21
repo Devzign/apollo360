@@ -51,6 +51,41 @@ struct PatientDocumentItem: Decodable, Identifiable, Hashable {
         case status
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        func decodeInt(_ key: CodingKeys) -> Int? {
+            if let intValue = try? container.decode(Int.self, forKey: key) {
+                return intValue
+            }
+            if let stringValue = try? container.decode(String.self, forKey: key) {
+                return Int(stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
+            }
+            return nil
+        }
+
+        func decodeString(_ key: CodingKeys) -> String {
+            if let value = try? container.decode(String.self, forKey: key) {
+                return value
+            }
+            if let value = try? container.decode(Int.self, forKey: key) {
+                return String(value)
+            }
+            if let value = try? container.decode(Double.self, forKey: key) {
+                return String(value)
+            }
+            return ""
+        }
+
+        id = decodeInt(.id) ?? 0
+        fileName = decodeString(.fileName)
+        description = decodeString(.description)
+        date = decodeString(.date)
+        url = decodeString(.url)
+        s3FileURL = decodeString(.s3FileURL)
+        status = decodeInt(.status)
+    }
+
     var isVisible: Bool {
         !s3FileURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -89,6 +124,41 @@ struct DoctorVisitEncounter: Decodable, Identifiable, Hashable {
     let dateOfBooking: String?
     let visitType: String?
     let cptCodes: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case dateUnlocked
+        case dateOfService
+        case dateOfBooking
+        case visitType
+        case cptCodes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            id = intId
+        } else if let stringId = try? container.decode(String.self, forKey: .id),
+                  let parsed = Int(stringId.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            id = parsed
+        } else {
+            id = 0
+        }
+
+        dateUnlocked = try? container.decode(String.self, forKey: .dateUnlocked)
+        dateOfService = try? container.decode(String.self, forKey: .dateOfService)
+        dateOfBooking = try? container.decode(String.self, forKey: .dateOfBooking)
+        visitType = try? container.decode(String.self, forKey: .visitType)
+
+        if let codes = try? container.decode([String].self, forKey: .cptCodes) {
+            cptCodes = codes
+        } else if let intCodes = try? container.decode([Int].self, forKey: .cptCodes) {
+            cptCodes = intCodes.map(String.init)
+        } else {
+            cptCodes = []
+        }
+    }
 
     var title: String {
         let trimmed = (visitType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

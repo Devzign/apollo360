@@ -270,13 +270,21 @@ private struct DocumentFolderDetailView: View {
                     }
 
                     LazyVStack(spacing: 16) {
-                        ForEach(folder.visibleDocuments) { document in
-                            Button {
-                                handleSelection(document)
-                            } label: {
-                                DocumentRowView(document: document)
+                        if folder.visibleDocuments.isEmpty {
+                            Text("No document available for this record.")
+                                .font(AppFont.body(size: 15, weight: .medium))
+                                .foregroundColor(AppColor.grey)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 8)
+                        } else {
+                            ForEach(folder.visibleDocuments) { document in
+                                Button {
+                                    handleSelection(document)
+                                } label: {
+                                    DocumentRowView(document: document)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
 
@@ -377,6 +385,7 @@ private struct DocumentPreviewScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var localFileURL: URL?
+    @State private var pdfDocument: PDFDocument?
     @State private var image: UIImage?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -394,8 +403,8 @@ private struct DocumentPreviewScreen: View {
                             ProgressOverlayView(text: "Preparing preview...")
                         } else if let errorMessage {
                             inlineError(errorMessage)
-                        } else if asset.document.isPDF, let localFileURL {
-                            PDFKitView(url: localFileURL)
+                        } else if asset.document.isPDF, let pdfDocument {
+                            PDFKitView(document: pdfDocument)
                                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         } else if asset.document.isImage, let image {
                             ZoomableImageView(image: image)
@@ -471,14 +480,24 @@ private struct DocumentPreviewScreen: View {
         isLoading = true
         errorMessage = nil
         do {
-            let (url, _) = try await URLSession.shared.download(from: asset.remoteURL)
+            let (url, response) = try await URLSession.shared.download(from: asset.remoteURL)
+            try validatePreviewResponse(response, tempFileURL: url)
             let destination = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString + "-" + asset.document.title)
+                .appendingPathComponent(previewFileName(response: response))
             try? FileManager.default.removeItem(at: destination)
             try FileManager.default.moveItem(at: url, to: destination)
             localFileURL = destination
 
-            if asset.document.isImage {
+            if asset.document.isPDF {
+                if let document = PDFDocument(url: destination) {
+                    pdfDocument = document
+                } else if let data = try? Data(contentsOf: destination),
+                          let document = PDFDocument(data: data) {
+                    pdfDocument = document
+                } else {
+                    throw PreviewError.invalidPDF
+                }
+            } else if asset.document.isImage {
                 guard let data = try? Data(contentsOf: destination),
                       let uiImage = UIImage(data: data) else {
                     throw PreviewError.invalidImage
@@ -487,14 +506,94 @@ private struct DocumentPreviewScreen: View {
             }
             isLoading = false
         } catch {
-            errorMessage = "Unable to load this document."
+            if let previewError = error as? PreviewError {
+                switch previewError {
+                case .invalidImage:
+                    errorMessage = "Unable to decode image preview."
+                case .invalidPDF:
+                    errorMessage = "Unable to decode PDF preview."
+                case .invalidHTTPStatus(let statusCode):
+                    if statusCode == 404 {
+                        errorMessage = "No document available for this record."
+                    } else {
+                        errorMessage = "Unable to preview file (HTTP \(statusCode))."
+                    }
+                case .unexpectedContentType(let mimeType):
+                    errorMessage = "Server returned unsupported content type: \(mimeType)"
+                case .invalidPDFSignature:
+                    errorMessage = "Server returned non-PDF data for this file."
+                }
+            } else {
+                errorMessage = "Unable to load this document."
+            }
             isLoading = false
         }
+    }
+
+    private func validatePreviewResponse(_ response: URLResponse?, tempFileURL: URL) throws {
+        if let httpResponse = response as? HTTPURLResponse,
+           !(200...299).contains(httpResponse.statusCode) {
+            throw PreviewError.invalidHTTPStatus(statusCode: httpResponse.statusCode)
+        }
+
+        if asset.document.isPDF {
+            let mime = response?.mimeType?.lowercased() ?? ""
+            if !mime.isEmpty, !mime.contains("pdf"), !mime.contains("octet-stream") {
+                throw PreviewError.unexpectedContentType(mimeType: mime)
+            }
+
+            let data = try Data(contentsOf: tempFileURL)
+            if !isLikelyPDF(data) {
+                throw PreviewError.invalidPDFSignature
+            }
+        }
+    }
+
+    private func isLikelyPDF(_ data: Data) -> Bool {
+        let signature = "%PDF-".utf8.map { $0 }
+        guard data.count >= signature.count else { return false }
+        let prefix = Array(data.prefix(signature.count))
+        return prefix == signature
+    }
+
+    private func previewFileName(response: URLResponse?) -> String {
+        let existingExtension = asset.document.fileExtension
+        if !existingExtension.isEmpty {
+            return "\(UUID().uuidString)-\(sanitizedTitle()).\(existingExtension)"
+        }
+
+        let responseMime = response?.mimeType?.lowercased() ?? ""
+        let inferredExtension: String
+        if responseMime.contains("pdf") {
+            inferredExtension = "pdf"
+        } else if responseMime.contains("png") {
+            inferredExtension = "png"
+        } else if responseMime.contains("jpeg") || responseMime.contains("jpg") {
+            inferredExtension = "jpg"
+        } else if responseMime.contains("heic") {
+            inferredExtension = "heic"
+        } else {
+            inferredExtension = "tmp"
+        }
+        return "\(UUID().uuidString)-\(sanitizedTitle()).\(inferredExtension)"
+    }
+
+    private func sanitizedTitle() -> String {
+        let fallback = "document"
+        let value = asset.document.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return fallback }
+        let invalid = CharacterSet(charactersIn: "/:\\?%*|\"<>")
+        let cleaned = value.components(separatedBy: invalid).joined(separator: "-")
+        return cleaned.isEmpty ? fallback : cleaned
     }
 }
 
 private enum PreviewError: Error {
     case invalidImage
+    case invalidPDF
+    case invalidHTTPStatus(statusCode: Int)
+    case unexpectedContentType(mimeType: String)
+    case invalidPDFSignature
 }
 
 private struct DoctorVisitDetailView: View {
@@ -863,19 +962,20 @@ private struct ProgressOverlayView: View {
 }
 
 private struct PDFKitView: UIViewRepresentable {
-    let url: URL
+    let document: PDFDocument
 
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
         view.displayMode = .singlePageContinuous
         view.displayDirection = .vertical
+        view.backgroundColor = .white
         return view
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
-        if uiView.document?.documentURL != url {
-            uiView.document = PDFDocument(url: url)
+        if uiView.document !== document {
+            uiView.document = document
         }
     }
 }
