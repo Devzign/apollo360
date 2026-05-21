@@ -72,11 +72,19 @@ struct ConversationView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .onAppear {
-                            scrollToBottom(proxy: proxy)
+                            if let lastId = viewModel.messages.last?.id {
+                                withAnimation {
+                                    proxy.scrollTo(lastId, anchor: .bottom)
+                                }
+                            }
                         }
                         .onChange(of: viewModel.messages.count) { _ in
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                scrollToBottom(proxy: proxy)
+                                if let lastId = viewModel.messages.last?.id {
+                                    withAnimation {
+                                        proxy.scrollTo(lastId, anchor: .bottom)
+                                    }
+                                }
                             }
                         }
                     }
@@ -159,14 +167,6 @@ struct ConversationView: View {
 
     private func isMine(_ message: MessageEntry) -> Bool {
         message.messageType == 0
-    }
-
-    private func scrollToBottom(proxy: ScrollViewReader) {
-        if let lastId = viewModel.messages.last?.id {
-            withAnimation {
-                proxy.scrollTo(lastId, anchor: .bottom)
-            }
-        }
     }
 
     private var inputBar: some View {
