@@ -59,6 +59,7 @@ struct ConversationView: View {
                                     MessageBubble(
                                         message: message,
                                         isMine: isMine(message),
+                                        senderName: isMine(message) ? nil : provider.name,
                                         onOpenFile: { url in
                                             previewURL = url
                                         }
@@ -223,6 +224,7 @@ struct ConversationView: View {
 private struct MessageBubble: View {
     let message: MessageEntry
     let isMine: Bool
+    let senderName: String?
     let onOpenFile: (URL) -> Void
 
     var body: some View {
@@ -232,13 +234,13 @@ private struct MessageBubble: View {
                 Spacer(minLength: 48)
             } else {
                 // Provider message: avatar on LEFT (WhatsApp style)
-                AvatarView(urlString: nil, placeholderText: message.name)
+                AvatarView(urlString: nil, placeholderText: senderName ?? message.name)
                     .frame(width: 32, height: 32)
             }
 
             VStack(alignment: isMine ? .trailing : .leading, spacing: 6) {
                 if !isMine {
-                    Text(message.name)
+                    Text(senderName ?? message.name)
                         .font(AppFont.body(size: 11, weight: .semibold))
                         .foregroundColor(AppColor.green)
                 }
