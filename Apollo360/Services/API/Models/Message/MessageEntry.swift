@@ -20,7 +20,12 @@ struct MessageEntry: Decodable, Identifiable {
     let isUnread: Bool?
     let filePath: String?
 
-    var id: Int { entryId }
+    var id: String {
+        if entryId != 0 {
+            return String(entryId)
+        }
+        return "\(timestamp?.timeIntervalSince1970 ?? 0)-\(messageType)-\(name.hashValue)"
+    }
 
     enum CodingKeys: String, CodingKey {
         case entryId = "entry_id"

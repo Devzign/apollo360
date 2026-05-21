@@ -154,13 +154,7 @@ struct ConversationView: View {
     }
 
     private func isMine(_ message: MessageEntry) -> Bool {
-        // Check against the patient name returned from the API
-        let patientName = viewModel.thread?.patientName ?? ""
-        if !patientName.isEmpty && message.name == patientName { return true }
-        // Check against the logged-in username (used for optimistic messages)
-        let username = session.username ?? ""
-        if !username.isEmpty && message.name == username { return true }
-        return false
+        message.messageType == 0
     }
 
     private var inputBar: some View {
