@@ -123,9 +123,13 @@ final class ConversationViewModel: ObservableObject {
                 self.isSending = false
                 switch result {
                 case .success:
-                    // refresh to get canonical list
-                    self.loadConversation(providerMemberId: providerMemberId)
+                    // Message sent. Optimistic append already added to messages array.
+                    break
                 case .failure(let error):
+                    // Send failed. Remove optimistic message.
+                    if let lastIdx = self.messages.lastIndex(where: { $0.entryId >= 100_000 && $0.entryId <= 999_999 }) {
+                        self.messages.remove(at: lastIdx)
+                    }
                     self.errorMessage = error.localizedDescription
                 }
             }
