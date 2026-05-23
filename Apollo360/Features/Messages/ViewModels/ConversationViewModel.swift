@@ -96,7 +96,7 @@ final class ConversationViewModel: ObservableObject {
         // Optimistic append
         let optimistic = MessageEntry(
             entryId: Int.random(in: 100_000...999_999),
-            messageType: 1,
+            messageType: 0,
             name: session.username ?? "You",
             timestamp: Date(),
             message: hasText ? text : (attachmentName ?? "Attachment"),
