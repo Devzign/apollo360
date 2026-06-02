@@ -151,7 +151,6 @@ struct DashboardView: View {
 //                .padding(.horizontal, screenHorizontalPadding)
 //                .padding(.top, 16)
 //            }
-
             DoctorMeDashboard(
                 doctorMetrics: viewModel.doctorMetricCards,
                 myMetrics: viewModel.myMetricCards,
@@ -219,40 +218,6 @@ struct DashboardView: View {
 
     private func closeSideMenu() {
         isSideMenuVisible = false
-    }
-}
-// MARK: - Safe Area Preference
-private struct BottomSafeAreaPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-private extension AnyTransition {
-    static var sideMenu: AnyTransition {
-        let insertion = AnyTransition.move(edge: .leading)
-            .combined(with: .scale(scale: 0.95, anchor: .leading))
-            .combined(with: .opacity)
-        let removal = AnyTransition.move(edge: .leading)
-            .combined(with: .opacity)
-        return .asymmetric(insertion: insertion, removal: removal)
-    }
-}
-
-private struct SideMenuMotion: ViewModifier {
-    let isVisible: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isVisible ? 1 : 0.92, anchor: .leading)
-            .rotation3DEffect(
-                .degrees(isVisible ? 0 : -12),
-                axis: (x: 0, y: 1, z: 0),
-                anchor: .leading,
-                perspective: 0.7
-            )
-            .shadow(color: Color.black.opacity(0.4), radius: 30, y: 18)
     }
 }
 
