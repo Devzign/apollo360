@@ -51,5 +51,7 @@
 	<string>https://mobile-inform.prod.validic.com</string>
 	<key>VALIDIC_URL_V2</key>
 	<string>https://api.v2.validic.com</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

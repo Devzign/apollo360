@@ -11,7 +11,7 @@ struct DashboardView: View {
     
     // MARK: - State
     @StateObject private var viewModel: DashboardViewModel
-    @State private var selectedTab: DashboardTab = .dashboard
+    @State private var selectedTab: DashboardTab = .home
     @State private var isSideMenuVisible = false
     @State private var showingLogoutConfirmation = false
     @State private var isSyncDevicesVisible = false
