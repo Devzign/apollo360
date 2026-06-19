@@ -9,84 +9,81 @@ struct HeroMetricCard: View {
     let onInstructionTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.14))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: dashboardMetricIcon(for: metric.metricField))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.88))
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
                     Text(metric.title)
-                        .font(AppFont.body(size: 17, weight: .semibold))
-                        .foregroundColor(titleColor)
+                        .font(AppFont.body(size: 16, weight: .bold))
+                        .foregroundColor(.white)
                         .lineLimit(2)
-
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Image(systemName: "clock")
-                            .font(.system(size: 10))
-                            .foregroundColor(metaColor)
+                            .font(.system(size: 11, weight: .medium))
                         Text(metric.lastSyncText)
-                            .font(AppFont.body(size: 11, weight: .medium))
-                            .foregroundColor(metaColor)
-
-                        Button(action: onInstructionTap) {
-                            Image(systemName: "questionmark.circle")
-                                .foregroundColor(metaColor)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 7) {
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
-                        Text(metric.latestValueText)
-                            .font(AppFont.display(size: 36, weight: .bold))
-                            .foregroundColor(valueColor)
-                        Text(metric.unitText)
                             .font(AppFont.body(size: 12, weight: .medium))
-                            .foregroundColor(metaColor)
                     }
-                    Text(metric.statusBadgeText)
-                        .font(AppFont.body(size: 11, weight: .semibold))
-                        .foregroundColor(metric.statusBadgeTint)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(metric.statusBadgeBackground))
+                    .foregroundColor(.white.opacity(0.72))
                 }
+
+                Spacer(minLength: 8)
+
+                Button(action: onInstructionTap) {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.82))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity)
-            .background(background)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(border, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-        }
-        .buttonStyle(.plain)
-    }
 
-    private var background: some ShapeStyle {
-        if style == .primaryHero && !isOlderThan48Hours(metric.lastSyncDateRaw) {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.9), Color.blue.opacity(0.72)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                Text(metric.latestValueText)
+                    .font(.system(size: 33, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                Text(metric.unitText)
+                    .font(AppFont.body(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.78))
+                Spacer()
+                Text(metric.statusBadgeText)
+                    .font(AppFont.body(size: 11, weight: .bold))
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .frame(height: 27)
+                    .background(Capsule().fill(Color.white.opacity(0.17)))
+            }
+            .padding(.top, 10)
+
+            DashboardMetricSparkline(
+                points: metric.sparkline,
+                lineColor: Color(red: 36 / 255, green: 165 / 255, blue: 106 / 255),
+                showsFill: false
             )
+            .frame(height: 42)
+            .padding(.top, 2)
         }
-        return AnyShapeStyle(Color(red: 0.98, green: 0.96, blue: 0.89))
-    }
-
-    private var border: Color {
-        isOlderThan48Hours(metric.lastSyncDateRaw) ? Color(red: 250 / 255, green: 198 / 255, blue: 66 / 255) : Color.clear
-    }
-
-    private var titleColor: Color {
-        (style == .primaryHero && !isOlderThan48Hours(metric.lastSyncDateRaw)) ? .white : AppColor.black
-    }
-
-    private var valueColor: Color {
-        (style == .primaryHero && !isOlderThan48Hours(metric.lastSyncDateRaw)) ? .white : AppColor.black
-    }
-
-    private var metaColor: Color {
-        (style == .primaryHero && !isOlderThan48Hours(metric.lastSyncDateRaw)) ? .white.opacity(0.86) : AppColor.grey
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 214, alignment: .topLeading)
+        .background(
+            LinearGradient(
+                colors: style == .primaryHero
+                    ? [Color(red: 58 / 255, green: 105 / 255, blue: 255 / 255), Color(red: 82 / 255, green: 69 / 255, blue: 215 / 255)]
+                    : [Color(red: 54 / 255, green: 101 / 255, blue: 248 / 255), Color(red: 79 / 255, green: 66 / 255, blue: 209 / 255)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: Color(red: 59 / 255, green: 82 / 255, blue: 200 / 255).opacity(0.15), radius: 12, y: 8)
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture(perform: onTap)
     }
 }

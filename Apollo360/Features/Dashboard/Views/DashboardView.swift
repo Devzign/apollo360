@@ -34,6 +34,7 @@ struct DashboardView: View {
                     SectionHeaderView(
                         title: selectedTab.displayTitle,
                         isSyncing: viewModel.isHeaderSyncing,
+                        avatarText: dashboardInitials,
                         onMenuTap: {
                             isSideMenuVisible = true
                         },
@@ -159,6 +160,9 @@ struct DashboardView: View {
                 session: session,
                 onSelectMetrics: {
                     selectedTab = .metrics
+                },
+                onFixSync: {
+                    isSyncDevicesVisible = true
                 }
             )
         case .home:
@@ -188,6 +192,13 @@ struct DashboardView: View {
         case .settings:
             SettingsView(horizontalPadding: screenHorizontalPadding, session: session)
         }
+    }
+
+    private var dashboardInitials: String {
+        let words = (session.username ?? "Apollo User")
+            .split(whereSeparator: { $0.isWhitespace })
+        let initials = words.prefix(2).compactMap(\.first)
+        return initials.isEmpty ? "AU" : String(initials).uppercased()
     }
     
     // MARK: - Side Menu

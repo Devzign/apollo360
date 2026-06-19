@@ -10,41 +10,60 @@ import SwiftUI
 struct SectionHeaderView: View {
     let title: String
     let isSyncing: Bool
+    var avatarText: String? = nil
     let onMenuTap: () -> Void
     let onSyncTap: () -> Void
     let onSettingsTap: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Button(action: onMenuTap) {
-                VStack(spacing: 6) {
-                    Capsule()
-                        .fill(AppColor.green)
-                        .frame(width: 28, height: 6)
-                    Capsule()
-                        .fill(AppColor.black.opacity(0.7))
-                        .frame(width: 34, height: 6)
-                    Capsule()
-                        .fill(AppColor.green)
-                        .frame(width: 20, height: 6)
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 235 / 255, green: 247 / 255, blue: 240 / 255))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(Color(red: 35 / 255, green: 59 / 255, blue: 55 / 255))
                 }
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
             Text(title)
-                .font(AppFont.display(size: 22, weight: .bold))
+                .font(AppFont.display(size: 20, weight: .bold))
                 .foregroundColor(AppColor.black)
 
             Spacer()
+            if title == "Dashboard" {
+                Button(action: onSettingsTap) {
+                    Text(avatarText ?? "AU")
+                        .font(AppFont.body(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(Color(red: 0 / 255, green: 153 / 255, blue: 102 / 255)))
+                        .overlay(Circle().stroke(Color(red: 221 / 255, green: 246 / 255, blue: 233 / 255), lineWidth: 6))
+                }
+                .buttonStyle(.plain)
+                .frame(width: 42, height: 42)
+            } else {
                 Button(action: onSyncTap) {
                     HeaderIconButton(systemImage: "arrow.triangle.2.circlepath", showsBadge: false, isSpinning: isSyncing)
                 }
                 .disabled(isSyncing)
+            }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(AppColor.secondary)
+        .padding(.vertical, 14)
+        .background(title == "Dashboard" ? Color(red: 246 / 255, green: 255 / 255, blue: 249 / 255) : AppColor.secondary)
+        .overlay(alignment: .bottom) {
+            if title == "Dashboard" {
+                Rectangle()
+                    .fill(Color(red: 226 / 255, green: 239 / 255, blue: 232 / 255))
+                    .frame(height: 1)
+            }
+        }
     }
 
     private func square(color: Color) -> some View {

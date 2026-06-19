@@ -288,7 +288,9 @@ final class DashboardViewModel: ObservableObject {
             let percentageChange = payload.percentageChange
             let syncStatus = payload.syncStatus ?? "unknown"
             let defaultUnit = payload.defaultUnit?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let source = payload.source?.capitalized ?? "Unknown"
+            let source = payload.source?
+                .replacingOccurrences(of: "_", with: " ")
+                .capitalized ?? "Unknown"
             let isHero = selectionType == .doctor && index == 0
 
             return DashboardMetricCardModel(
@@ -326,7 +328,7 @@ final class DashboardViewModel: ObservableObject {
 
     private func formatTrendText(_ change: Double?) -> String {
         guard let change else { return "0%" }
-        return String(format: "%@%.0f%%", change >= 0 ? "+" : "", change)
+        return String(format: "%@%.2f%%", change >= 0 ? "+" : "", change)
     }
 
     private func trendTint(for change: Double?) -> Color {
@@ -385,12 +387,15 @@ final class DashboardViewModel: ObservableObject {
 
         let interval = max(Int(Date().timeIntervalSince(date)), 0)
         if interval < 3600 {
-            return "\(max(interval / 60, 1)) min ago"
+            let minutes = max(interval / 60, 1)
+            return minutes == 1 ? "1 min ago" : "\(minutes) mins ago"
         }
         if interval < 86_400 {
-            return "\(interval / 3600) hrs ago"
+            let hours = interval / 3600
+            return hours == 1 ? "1 hour ago" : "\(hours) hours ago"
         }
-        return "\(interval / 86_400)d ago"
+        let days = interval / 86_400
+        return days == 1 ? "1 day ago" : "\(days) days ago"
     }
 
     private func sparklineSeed(for metricField: String, anchor: Double, average: Double?) -> [Double] {
