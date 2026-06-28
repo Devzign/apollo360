@@ -16,7 +16,7 @@ enum APIEnvironment: String, CaseIterable {
         case .development:
             return "https://backend.pp-a360.com/api"
         case .production:
-            return "https://backend.pp-a360.com/api"
+            return "https://backend.a360h.com/api"
         }
     }
 

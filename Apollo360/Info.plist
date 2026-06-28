@@ -15,7 +15,7 @@
 	<key>ORGANISATION_ID</key>
 	<string>6232413757463e0001806968</string>
 	<key>PP_BASE_URL</key>
-	<string>https://backend.pp-a360.com</string>
+	<string>$(PP_BASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>font/poppins/Poppins-Black.ttf</string>

@@ -5,7 +5,7 @@
 ### Config keys
 Add these keys in [Info.plist](/Users/amitsinha/Devzign/iOS%20Native/Apollo360/Apollo360/Info.plist):
 - `PP_BASE_URL`
-  Default in this repo: `https://doctor.ioapollo.com`
+  Default in this repo: `https://backend.a360h.com`
 - `VALIDIC_URL_V2`
   Default Validic v2 base: `https://api.v2.validic.com`
 - `ORGANISATION_ID`
