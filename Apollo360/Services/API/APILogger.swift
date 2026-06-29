@@ -6,10 +6,12 @@
 //
 
 import Foundation
+import os
 
 enum APILogger {
 
     private static let line = String(repeating: "─", count: 50)
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Apollo360", category: "API")
 
     // MARK: - Request Log
     static func logRequest(
@@ -19,8 +21,8 @@ enum APILogger {
         headers: [String: String]?,
         body: Data?
     ) {
-        print("""
-        
+        logger.debug("""
+
         \(line)
         📤 API REQUEST
         Endpoint : \(endpoint)
@@ -40,8 +42,8 @@ enum APILogger {
         statusCode: Int,
         data: Data
     ) {
-        print("""
-        
+        logger.debug("""
+
         \(line)
         🌐 API RESPONSE
         Endpoint : \(endpoint)
@@ -60,8 +62,8 @@ enum APILogger {
         url: String,
         error: Error
     ) {
-        print("""
-        
+        logger.error("""
+
         \(line)
         ❌ API ERROR
         Endpoint : \(endpoint)

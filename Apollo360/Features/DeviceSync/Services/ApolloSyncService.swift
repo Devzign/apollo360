@@ -515,7 +515,6 @@ private extension ApolloSyncService {
   }
 
   func perform(request: URLRequest, endpointLabel: String) async throws -> (Data, URLResponse) {
-    #if DEBUG
     APILogger.logRequest(
       endpoint: endpointLabel,
       url: request.url?.absoluteString ?? "n/a",
@@ -523,11 +522,9 @@ private extension ApolloSyncService {
       headers: request.allHTTPHeaderFields,
       body: request.httpBody
     )
-    #endif
 
     do {
       let result = try await session.data(for: request)
-      #if DEBUG
       if let http = result.1 as? HTTPURLResponse {
         APILogger.logResponse(
           endpoint: endpointLabel,
@@ -536,16 +533,13 @@ private extension ApolloSyncService {
           data: result.0
         )
       }
-      #endif
       return result
     } catch {
-      #if DEBUG
       APILogger.logError(
         endpoint: endpointLabel,
         url: request.url?.absoluteString ?? "n/a",
         error: error
       )
-      #endif
       throw error
     }
   }

@@ -54,7 +54,6 @@ final class ProfileAPIService {
                                                data: imageData,
                                                boundary: boundary)
 
-        #if DEBUG
         APILogger.logRequest(
             endpoint: APIEndpoint.profilePicture,
             url: request.url?.absoluteString ?? "n/a",
@@ -62,17 +61,14 @@ final class ProfileAPIService {
             headers: request.allHTTPHeaderFields,
             body: request.httpBody
         )
-        #endif
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                #if DEBUG
                 APILogger.logError(
                     endpoint: APIEndpoint.profilePicture,
                     url: request.url?.absoluteString ?? "n/a",
                     error: error
                 )
-                #endif
                 completion(.failure(.requestFailed(error)))
                 return
             }
@@ -83,14 +79,12 @@ final class ProfileAPIService {
             }
 
             let statusCode = httpResponse.statusCode
-            #if DEBUG
             APILogger.logResponse(
                 endpoint: APIEndpoint.profilePicture,
                 url: request.url?.absoluteString ?? "n/a",
                 statusCode: statusCode,
                 data: data ?? Data()
             )
-            #endif
 
             guard (200...299).contains(statusCode) else {
                 completion(.failure(.serverError(statusCode: statusCode, data: data)))

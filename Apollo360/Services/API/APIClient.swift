@@ -151,7 +151,6 @@ final class APIClient {
             return
         }
 
-        #if DEBUG
         APILogger.logRequest(
             endpoint: endpoint,
             url: request.url?.absoluteString ?? "n/a",
@@ -159,38 +158,32 @@ final class APIClient {
             headers: request.allHTTPHeaderFields,
             body: request.httpBody
         )
-        #endif
 
         session.dataTask(with: request) { data, response, error in
             if let error = error {
-                #if DEBUG
                 APILogger.logError(
                     endpoint: endpoint,
                     url: request.url?.absoluteString ?? "n/a",
                     error: error
                 )
-                #endif
                 self.completeOnMain(completion, .failure(.requestFailed(error)))
                 return
             }
-            
+
             guard let httpResponse = response as? HTTPURLResponse else {
-                debugPrint("[APIClient] invalid response")
                 self.completeOnMain(completion, .failure(.invalidResponse))
                 return
             }
-            
+
             let statusCode = httpResponse.statusCode
             let data = data ?? Data()
-            
-            #if DEBUG
+
             APILogger.logResponse(
                 endpoint: endpoint,
                 url: request.url?.absoluteString ?? "n/a",
                 statusCode: statusCode,
                 data: data
             )
-            #endif
             guard (200...299).contains(statusCode) else {
                 if statusCode == 401,
                    canRetryAfterRefresh,
@@ -526,14 +519,14 @@ extension APIError: LocalizedError {
         case .invalidResponse:
             return "The server returned an unexpected response."
         case .serverError(let statusCode, let data):
-            if let backendMessage = APIClient.serverErrorMessage(from: data) {
-                return backendMessage
-            }
             if statusCode == 502 || statusCode == 503 || statusCode == 504 {
                 return "Server is temporarily unavailable. Please try again."
             }
             if statusCode >= 500 {
                 return "Something went wrong on server. Please try again."
+            }
+            if let backendMessage = APIClient.serverErrorMessage(from: data) {
+                return backendMessage
             }
             return HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
         case .decodingFailed(let error):

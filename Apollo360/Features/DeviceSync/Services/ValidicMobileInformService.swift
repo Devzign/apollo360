@@ -245,7 +245,6 @@ final class ValidicMobileInformService {
     do {
       request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-      #if DEBUG
       APILogger.logRequest(
         endpoint: "ValidicMobileInform/\(metricType)",
         url: url.absoluteString,
@@ -253,23 +252,29 @@ final class ValidicMobileInformService {
         headers: request.allHTTPHeaderFields,
         body: request.httpBody
       )
-      #endif
 
       let (data, response) = try await urlSession.data(for: request)
       if let http = response as? HTTPURLResponse {
-        #if DEBUG
         APILogger.logResponse(
           endpoint: "ValidicMobileInform/\(metricType)",
           url: url.absoluteString,
           statusCode: http.statusCode,
           data: data
         )
-        #endif
         let succeeded = (200...299).contains(http.statusCode)
         if succeeded {
-          print("✅ [ValidicMobileInform] \(metricType) log_id=\(logId) → HTTP \(http.statusCode)")
+          APILogger.logResponse(
+            endpoint: "ValidicMobileInform/\(metricType) log_id=\(logId)",
+            url: url.absoluteString,
+            statusCode: http.statusCode,
+            data: data
+          )
         } else {
-          print("❌ [ValidicMobileInform] \(metricType) HTTP \(http.statusCode) — source not connected or token invalid")
+          APILogger.logError(
+            endpoint: "ValidicMobileInform/\(metricType)",
+            url: url.absoluteString,
+            error: APIError.serverError(statusCode: http.statusCode, data: data)
+          )
         }
         return succeeded
       }
